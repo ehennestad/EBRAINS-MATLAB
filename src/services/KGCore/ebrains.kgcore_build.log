@@ -1,0 +1,486 @@
+OpenAPI Client Generator: 15-Mar-2024 22:02:49
+Getting CLI version, executing command:
+npx  @openapitools/openapi-generator-cli version
+
+Using configuration file: openapitools.json
+Writing configuration file: openapitools.json
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "6.6.0",
+    "generators": {
+      "v3.0": {
+        "generatorName": "MATLAB",
+        "output": "/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore",
+        "inputSpec": "kg_v3.json",
+        "packageName": "ebrains.kgcore",
+        "skipValidateSpec": true,
+        "templateDir": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/Mustache",
+        "additionalProperties": {
+          "openapiRoot": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB",
+          "packageVersion": "1.0.9"
+        }
+      }
+    }
+  }
+}
+Building client, executing command:
+npx  @openapitools/openapi-generator-cli generate --generator-key v3.0 --custom-generator "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" --config "openapitools.json"
+
+Prefixed command: npx  @openapitools/openapi-generator-cli generate --generator-key v3.0 --custom-generator "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" --config "openapitools.json"
+
+Command result: 0
+
+Command output:
+[[v3.0] kg_v3.json] [main] WARN  o.o.c.config.CodegenConfigurator - There were issues with the specification, but validation has been explicitly disabled.
+[[v3.0] kg_v3.json] Errors: 
+[[v3.0] kg_v3.json] 	-attribute components.securitySchemes.Authorization.scopes is missing
+[[v3.0] kg_v3.json] 	-attribute info.version is missing
+[[v3.0] kg_v3.json] 	-attribute paths.'/v3/queries/{queryId}/instances'(get).parameters.[allRequestParams].schemas.default is not of type `object`
+[[v3.0] kg_v3.json] 	-attribute paths.'/v3/queries'(post).parameters.[allRequestParams].schemas.default is not of type `object`
+[[v3.0] kg_v3.json] 
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.DefaultGenerator - Generating with dryRun=false
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.DefaultGenerator - OpenAPI Generator: MATLAB (client)
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.DefaultGenerator - Generator 'MATLAB' is considered stable.
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as ResultNormalizedJsonLd_data. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as ResultTypeInformation_data. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as PaginatedStreamResultJsonLdDoc_data. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as ResultUser_data. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as ResultSpaceInformation_data. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation/durationInMs to: ResultTypeInformation_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/http://schema.org/description to: TypeInformation_http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Model name changed from: UserWithRoles/clientId to: UserWithRoles_clientId
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/http://schema.org/identifier to: TypeInformation_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/https://core.kg.ebrains.eu/vocab/meta/targetTypes to: Property_https__core_kg_ebrains_eu_vocab_meta_targetTypes
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultScopeElement/data to: ResultScopeElement_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultJsonLdDoc/startTime to: ResultJsonLdDoc_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/http://schema.org/name to: Property_http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/space to: ScopeElement_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapUUIDResultReleaseStatus/message to: ResultMapUUIDResultReleaseStatus_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListUUID/durationInMs to: ResultListUUID_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/message to: PaginatedStreamResultJsonLdDoc_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/userName to: ResultUser_data_userName
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultVoid/message to: ResultVoid_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: Error/code to: Error_code
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/https://core.kg.ebrains.eu/vocab/meta/occurrences to: ResultTypeInformation_data_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestedLink/label to: SuggestedLink_label
+[[v3.0] kg_v3.json] Warning: Model name changed from: FunctionalityInstance/functionality to: FunctionalityInstance_functionality
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceInformation/http://schema.org/identifier to: SpaceInformation_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/empty to: ResultTypeInformation_data_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/children to: ScopeElement_children
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/size to: PaginatedStreamResultJsonLdDoc_size
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/message to: PaginatedResultTypeInformation_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser/error to: ResultUser_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListString/startTime to: ResultListString_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/data to: PaginatedResultTypeInformation_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestionResult/suggestions to: SuggestionResult_suggestions
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/from to: PaginatedResultTypeInformation_from
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation_data/https://core.kg.ebrains.eu/vocab/meta/permissions to: ResultSpaceInformation_data_https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/email to: ResultUser_data_email
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc_data/parallel to: PaginatedStreamResultJsonLdDoc_data_parallel
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListString/error to: ResultListString_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/size to: PaginatedResultNormalizedJsonLd_size
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/empty to: ResultUser_data_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: TargetType/https://core.kg.ebrains.eu/vocab/meta/spaces to: TargetType_https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSuggestionResult/startTime to: ResultSuggestionResult_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: InstanceId/space to: InstanceId_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser/durationInMs to: ResultUser_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedSuggestedLink/data to: PaginatedSuggestedLink_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedSuggestedLink/from to: PaginatedSuggestedLink_from
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation/message to: ResultTypeInformation_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd/error to: ResultNormalizedJsonLd_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: JsonLdDoc/id to: JsonLdDoc_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/permissions to: ScopeElement_permissions
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation_data/http://schema.org/identifier to: ResultSpaceInformation_data_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: InstanceId/uuid to: InstanceId_uuid
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultVoid/startTime to: ResultVoid_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/durationInMs to: PaginatedResultTypeInformation_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUserWithRoles/error to: ResultUserWithRoles_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/message to: PaginatedResultSpaceInformation_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultScopeElement/durationInMs to: ResultScopeElement_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/data to: PaginatedResultNormalizedJsonLd_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation/data to: ResultSpaceInformation_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/from to: PaginatedResultNormalizedJsonLd_from
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/startTime to: PaginatedResultTypeInformation_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultVoid/data to: ResultVoid_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation_data/http://schema.org/name to: ResultSpaceInformation_data_http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultScopeElement/message to: ResultScopeElement_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/from to: PaginatedStreamResultJsonLdDoc_from
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/data to: PaginatedStreamResultJsonLdDoc_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/total to: PaginatedResultTypeInformation_total
+[[v3.0] kg_v3.json] Warning: Model name changed from: IncomingLink/https://core.kg.ebrains.eu/vocab/meta/sourceTypes to: IncomingLink_https__core_kg_ebrains_eu_vocab_meta_sourceTypes
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: TypeInformation_https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSuggestionResult/durationInMs to: ResultSuggestionResult_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultGraphEntity/error to: ResultGraphEntity_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestedLink/id to: SuggestedLink_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation/error to: ResultSpaceInformation_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: UserWithRoles/user to: UserWithRoles_user
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListString/message to: ResultListString_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestedLink/space to: SuggestedLink_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/familyName to: ResultUser_data_familyName
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceInformation/https://core.kg.ebrains.eu/vocab/meta/permissions to: SpaceInformation_https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation/message to: ResultSpaceInformation_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapUUIDResultReleaseStatus/data to: ResultMapUUIDResultReleaseStatus_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListString/durationInMs to: ResultListString_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: SourceType/https://core.kg.ebrains.eu/vocab/meta/spaces to: SourceType_https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/space to: GraphEntity_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/startTime to: PaginatedStreamResultJsonLdDoc_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestionResult/types to: SuggestionResult_types
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/id to: ScopeElement_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/empty to: Property_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/http://schema.org/description to: ResultTypeInformation_data_http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd_data/id to: ResultNormalizedJsonLd_data_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/size to: PaginatedResultSpaceInformation_size
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestedLink/additionalInformation to: SuggestedLink_additionalInformation
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultReleaseStatus/message to: ResultReleaseStatus_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedSuggestedLink/size to: PaginatedSuggestedLink_size
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/error to: PaginatedResultSpaceInformation_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultJsonLdDoc/error to: ResultJsonLdDoc_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUserWithRoles/durationInMs to: ResultUserWithRoles_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: UserWithRoles/invitations to: UserWithRoles_invitations
+[[v3.0] kg_v3.json] Warning: Model name changed from: SuggestedLink/type to: SuggestedLink_type
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultReleaseStatus/data to: ResultReleaseStatus_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListUUID/error to: ResultListUUID_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultVoid/durationInMs to: ResultVoid_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/size to: PaginatedResultTypeInformation_size
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/message to: PaginatedResultNormalizedJsonLd_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceName/wildcard to: SpaceName_wildcard
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/error to: PaginatedStreamResultJsonLdDoc_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUserWithRoles/startTime to: ResultUserWithRoles_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceReference/https://core.kg.ebrains.eu/vocab/meta/occurrences to: SpaceReference_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/http://schema.org/name to: TypeInformation_http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultTypeInformation/startTime to: ResultMapStringResultTypeInformation_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd/durationInMs to: ResultNormalizedJsonLd_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceInformation/http://schema.org/name to: SpaceInformation_http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation/durationInMs to: ResultSpaceInformation_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/total to: PaginatedStreamResultJsonLdDoc_total
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUserWithRoles/data to: ResultUserWithRoles_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/https://core.kg.ebrains.eu/vocab/meta/occurrences to: Property_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceName/name to: SpaceName_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultJsonLdDoc/data to: ResultJsonLdDoc_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUserWithRoles/message to: ResultUserWithRoles_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultVoid/error to: ResultVoid_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/http://schema.org/name to: ResultTypeInformation_data_http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/outbound to: GraphEntity_outbound
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedStreamResultJsonLdDoc/durationInMs to: PaginatedStreamResultJsonLdDoc_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/http://schema.org/identifier to: Property_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: DynamicJson/empty to: DynamicJson_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceTypeInformation/https://core.kg.ebrains.eu/vocab/meta/space to: SpaceTypeInformation_https__core_kg_ebrains_eu_vocab_meta_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapUUIDResultReleaseStatus/error to: ResultMapUUIDResultReleaseStatus_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/durationInMs to: PaginatedResultSpaceInformation_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceInformation/empty to: SpaceInformation_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultJsonLdDoc/message to: ResultJsonLdDoc_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser/data to: ResultUser_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation_data/empty to: ResultSpaceInformation_data_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultNormalizedJsonLd/error to: ResultMapStringResultNormalizedJsonLd_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/id to: ResultUser_data_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: Error/message to: Error_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultTypeInformation/durationInMs to: ResultMapStringResultTypeInformation_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapUUIDResultReleaseStatus/startTime to: ResultMapUUIDResultReleaseStatus_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/types to: GraphEntity_types
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultReleaseStatus/durationInMs to: ResultReleaseStatus_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/https://core.kg.ebrains.eu/vocab/meta/nameForReverseLink to: Property_https__core_kg_ebrains_eu_vocab_meta_nameForReverseLink
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/https://core.kg.ebrains.eu/vocab/meta/spaces to: ResultTypeInformation_data_https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultReleaseStatus/startTime to: ResultReleaseStatus_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/https://core.kg.ebrains.eu/vocab/meta/spaces to: TypeInformation_https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceTypeInformation/https://core.kg.ebrains.eu/vocab/meta/properties to: SpaceTypeInformation_https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSuggestionResult/data to: ResultSuggestionResult_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/data to: PaginatedResultSpaceInformation_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/nativeId to: ResultUser_data_nativeId
+[[v3.0] kg_v3.json] Warning: Model name changed from: FunctionalityInstance/id to: FunctionalityInstance_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation/startTime to: ResultTypeInformation_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSuggestionResult/message to: ResultSuggestionResult_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser/message to: ResultUser_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/total to: PaginatedResultSpaceInformation_total
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultScopeElement/error to: ResultScopeElement_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultReleaseStatus/error to: ResultReleaseStatus_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSpaceInformation/startTime to: ResultSpaceInformation_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/http://schema.org/identifier to: ResultTypeInformation_data_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/from to: PaginatedResultSpaceInformation_from
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/displayName to: ResultUser_data_displayName
+[[v3.0] kg_v3.json] Warning: Model name changed from: Property/http://schema.org/description to: Property_http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceReference/https://core.kg.ebrains.eu/vocab/meta/space to: SpaceReference_https__core_kg_ebrains_eu_vocab_meta_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: JsonLdId/@id to: JsonLdId_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: JsonLdDoc/empty to: JsonLdDoc_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: Error/instanceId to: Error_instanceId
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultTypeInformation/error to: PaginatedResultTypeInformation_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/id to: GraphEntity_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultTypeInformation/data to: ResultMapStringResultTypeInformation_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultGraphEntity/message to: ResultGraphEntity_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: NormalizedJsonLd/empty to: NormalizedJsonLd_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListUUID/message to: ResultListUUID_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/internalId to: ScopeElement_internalId
+[[v3.0] kg_v3.json] Warning: Model name changed from: NormalizedJsonLd/id to: NormalizedJsonLd_id
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultNormalizedJsonLd/durationInMs to: ResultMapStringResultNormalizedJsonLd_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd/data to: ResultNormalizedJsonLd_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd/startTime to: ResultNormalizedJsonLd_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListUUID/data to: ResultListUUID_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: IncomingLink/http://schema.org/identifier to: IncomingLink_http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/inbound to: GraphEntity_inbound
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser/startTime to: ResultUser_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/empty to: TypeInformation_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultNormalizedJsonLd/startTime to: ResultMapStringResultNormalizedJsonLd_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultJsonLdDoc/durationInMs to: ResultJsonLdDoc_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd_data/empty to: ResultNormalizedJsonLd_data_empty
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListString/data to: ResultListString_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: UserWithRoles/permissions to: UserWithRoles_permissions
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/total to: PaginatedResultNormalizedJsonLd_total
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultSuggestionResult/error to: ResultSuggestionResult_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: ResultTypeInformation_data_https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultGraphEntity/data to: ResultGraphEntity_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/https://core.kg.ebrains.eu/vocab/meta/occurrences to: TypeInformation_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedSuggestedLink/totalResults to: PaginatedSuggestedLink_totalResults
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation/data to: ResultTypeInformation_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultListUUID/startTime to: ResultListUUID_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/label to: ScopeElement_label
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation/error to: ResultTypeInformation_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultUser_data/givenName to: ResultUser_data_givenName
+[[v3.0] kg_v3.json] Warning: Model name changed from: TargetType/https://core.kg.ebrains.eu/vocab/meta/type to: TargetType_https__core_kg_ebrains_eu_vocab_meta_type
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultScopeElement/startTime to: ResultScopeElement_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ScopeElement/types to: ScopeElement_types
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultGraphEntity/durationInMs to: ResultGraphEntity_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapUUIDResultReleaseStatus/durationInMs to: ResultMapUUIDResultReleaseStatus_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/durationInMs to: PaginatedResultNormalizedJsonLd_durationInMs
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultTypeInformation_data/https://core.kg.ebrains.eu/vocab/meta/properties to: ResultTypeInformation_data_https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultNormalizedJsonLd/data to: ResultMapStringResultNormalizedJsonLd_data
+[[v3.0] kg_v3.json] Warning: Model name changed from: SpaceTypeInformation/https://core.kg.ebrains.eu/vocab/meta/occurrences to: SpaceTypeInformation_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultGraphEntity/startTime to: ResultGraphEntity_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: InstanceId/unresolved to: InstanceId_unresolved
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultNormalizedJsonLd/message to: ResultMapStringResultNormalizedJsonLd_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultNormalizedJsonLd/message to: ResultNormalizedJsonLd_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultSpaceInformation/startTime to: PaginatedResultSpaceInformation_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/error to: PaginatedResultNormalizedJsonLd_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: PaginatedResultNormalizedJsonLd/startTime to: PaginatedResultNormalizedJsonLd_startTime
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultTypeInformation/message to: ResultMapStringResultTypeInformation_message
+[[v3.0] kg_v3.json] Warning: Model name changed from: TargetType/https://core.kg.ebrains.eu/vocab/meta/occurrences to: TargetType_https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Model name changed from: FunctionalityInstance/space to: FunctionalityInstance_space
+[[v3.0] kg_v3.json] Warning: Model name changed from: SourceType/https://core.kg.ebrains.eu/vocab/meta/type to: SourceType_https__core_kg_ebrains_eu_vocab_meta_type
+[[v3.0] kg_v3.json] Warning: Model name changed from: GraphEntity/name to: GraphEntity_name
+[[v3.0] kg_v3.json] Warning: Model name changed from: ResultMapStringResultTypeInformation/error to: ResultMapStringResultTypeInformation_error
+[[v3.0] kg_v3.json] Warning: Model name changed from: UserWithRoles/privateSpace to: UserWithRoles_privateSpace
+[[v3.0] kg_v3.json] Warning: Model name changed from: FunctionalityInstance/instanceId to: FunctionalityInstance_instanceId
+[[v3.0] kg_v3.json] Warning: Model name changed from: TypeInformation/https://core.kg.ebrains.eu/vocab/meta/properties to: TypeInformation_https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] [main] ERROR o.o.codegen.DefaultGenerator - Missing required field info version. Default appVersion set to 1.0.0
+[[v3.0] kg_v3.json] [main] ERROR o.o.codegen.DefaultGenerator - Missing required field info version. Default appVersion set to 1.0.0
+[[v3.0] kg_v3.json] [main] ERROR o.o.codegen.DefaultGenerator - Missing required field info version. Default version set to 1.0.0
+[[v3.0] kg_v3.json] [main] ERROR o.o.codegen.DefaultGenerator - Missing required field info version. Default version set to 1.0.0
+[[v3.0] kg_v3.json] Warning: Variable name changed from: @id to: id
+[[v3.0] kg_v3.json] Warning: Variable name changed from: @id to: id
+[[v3.0] kg_v3.json] Warning: Variable name changed from: @id to: id
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/identifier to: http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/identifier to: http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/identifier to: http__schema_org_identifier
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/sourceTypes to: https__core_kg_ebrains_eu_vocab_meta_sourceTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/sourceTypes to: https__core_kg_ebrains_eu_vocab_meta_sourceTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/sourceTypes to: https__core_kg_ebrains_eu_vocab_meta_sourceTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/sourceTypes to: https__core_kg_ebrains_eu_vocab_meta_sourceTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/description to: http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/description to: http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/description to: http__schema_org_description
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/name to: http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/name to: http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Variable name changed from: http://schema.org/name to: http__schema_org_name
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/nameForReverseLink to: https__core_kg_ebrains_eu_vocab_meta_nameForReverseLink
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/nameForReverseLink to: https__core_kg_ebrains_eu_vocab_meta_nameForReverseLink
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/nameForReverseLink to: https__core_kg_ebrains_eu_vocab_meta_nameForReverseLink
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/occurrences to: https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/occurrences to: https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/occurrences to: https__core_kg_ebrains_eu_vocab_meta_occurrences
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/targetTypes to: https__core_kg_ebrains_eu_vocab_meta_targetTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/targetTypes to: https__core_kg_ebrains_eu_vocab_meta_targetTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/targetTypes to: https__core_kg_ebrains_eu_vocab_meta_targetTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/targetTypes to: https__core_kg_ebrains_eu_vocab_meta_targetTypes
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/type to: https__core_kg_ebrains_eu_vocab_meta_type
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/type to: https__core_kg_ebrains_eu_vocab_meta_type
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/type to: https__core_kg_ebrains_eu_vocab_meta_type
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/space to: https__core_kg_ebrains_eu_vocab_meta_space
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/space to: https__core_kg_ebrains_eu_vocab_meta_space
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/space to: https__core_kg_ebrains_eu_vocab_meta_space
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/properties to: https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/properties to: https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/properties to: https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/properties to: https__core_kg_ebrains_eu_vocab_meta_properties
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/incomingLinks to: https__core_kg_ebrains_eu_vocab_meta_incomingLinks
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/spaces to: https__core_kg_ebrains_eu_vocab_meta_spaces
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/permissions to: https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/permissions to: https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/permissions to: https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] Warning: Variable name changed from: https://core.kg.ebrains.eu/vocab/meta/permissions to: https__core_kg_ebrains_eu_vocab_meta_permissions
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/DynamicJson.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/Error.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/FunctionalityInstance.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/FunctionalityInstanceFunctionalityEnum.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/GraphEntity.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/IncomingLink.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/InstanceId.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/JsonLdDoc.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/JsonLdId.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/NormalizedJsonLd.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedResultNormalizedJsonLd.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedResultSpaceInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedResultTypeInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedStreamResultJsonLdDoc.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedStreamResultJsonLdDoc_data.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/PaginatedSuggestedLink.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/Property.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultGraphEntity.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultHttps__core_kg_ebrains_eu_vocab_meta_permissionsEnum_0000.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultJsonLdDoc.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultListString.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultListUUID.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultMapStringResultNormalizedJsonLd.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultMapStringResultTypeInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultMapUUIDResultReleaseStatus.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultNormalizedJsonLd.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultNormalizedJsonLd_data.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultReleaseStatus.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultReleaseStatusDataEnum.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultScopeElement.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultSpaceInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultSpaceInformation_data.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultSuggestionResult.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultTypeInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultTypeInformation_data.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultUser.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultUserWithRoles.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultUser_data.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ResultVoid.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ScopeElement.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/ScopeElementPermissionsEnum.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SourceType.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SpaceIHttps__core_kg_ebrains_eu_vocab_meta_permissionsEnum_0000.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SpaceInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SpaceName.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SpaceReference.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SpaceTypeInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SuggestedLink.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/SuggestionResult.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/TargetType.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/TypeInformation.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/UserWithRoles.m
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Variable name changed from: global to: xglobal
+[[v3.0] kg_v3.json] Warning: Cannot use reserved word as model name: global renaming to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: global to: Modelglobal
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: + Type: object not handled in setParameterExampleValue
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+api/Admin.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+api/Advanced.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+api/Basic.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/BaseClient.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/+models/FreeFormObject.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/CookieJar.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/JSONEnum.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/JSONMapper.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/JSONMapperMap.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/+ebrains/+kgcore/JSONPropertyInfo.m
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - Skipped /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/.openapi-generator-ignore (Skipped by supportingFiles options supplied by user.)
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/.openapi-generator/VERSION
+[[v3.0] kg_v3.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore/.openapi-generator/FILES
+[[v3.0] kg_v3.json] ################################################################################
+[[v3.0] kg_v3.json] # Thanks for using OpenAPI Generator.                                          #
+[[v3.0] kg_v3.json] # Please consider donation to help us maintain this project 🙏                 #
+[[v3.0] kg_v3.json] # https://opencollective.com/openapi_generator/donate                          #
+[[v3.0] kg_v3.json] ################################################################################
+[[v3.0] kg_v3.json] java -cp "/Users/eivihe/Code/MATLAB/node_modules/@openapitools/openapi-generator-cli/versions/6.6.0.jar:/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" org.openapitools.codegen.OpenAPIGenerator generate --input-spec="kg_v3.json" --generator-name="MATLAB" --output="/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore" --package-name="ebrains.kgcore" --skip-validate-spec --template-dir="/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/Mustache" --additional-properties="openapiRoot=/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB,packageVersion=1.0.9" exited with code 0
+[v3.0] kg_v3.json
+
+
+Build completed, output directory: /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore

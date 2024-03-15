@@ -1,0 +1,2751 @@
+classdef Basic < ebrains.kgcore.BaseClient
+    % Basic No description provided
+    %
+    % Basic Properties:
+    %
+    %   serverUri           - Base URI to use when calling the API. Allows using a different server
+    %                         than specified in the original API spec.
+    %   httpOptions         - HTTPOptions used by all requests.
+    %   preferredAuthMethod - If operation supports multiple authentication methods, specified which
+    %                         method to prefer.
+    %   bearerToken         - If Bearer token authentication is used, the token can be supplied 
+    %                         here. Note the token is only used if operations are called for which
+    %                         the API explicitly specified that Bearer authentication is supported.
+    %                         If this has not been specified in the spec but most operations do 
+    %                         require Bearer authentication, consider adding the relevant header to
+    %                         all requests in the preSend method.
+    %   apiKey              - If API key authentication is used, the key can be supplied here. 
+    %                         Note the key is only used if operations are called for which
+    %                         the API explicitly specified that API key authentication is supported.
+    %                         If this has not been specified in the spec but most operations do 
+    %                         require API key authentication, consider adding the API key to all
+    %                         requests in the preSend method.
+    %   httpCredentials     - If Basic or Digest authentication is supported username/password
+    %                         credentials can be supplied here as matlab.net.http.Credentials. Note 
+    %                         these are only actively used if operations are called for which the 
+    %                         API spec has specified they require Basic authentication. If this has
+    %                         not been specified in the spec but most operations do require
+    %                         Basic authentication, consider setting the Credentials property in the
+    %                         httpOptions rather than through httpCredentials.
+    %   cookies             - Cookie jar. The cookie jar is shared across all Api classes in the 
+    %                         same package. All responses are automatically parsed for Set-Cookie
+    %                         headers and cookies are automatically added to the jar. Similarly
+    %                         cookies are added to outgoing requests if there are matching cookies 
+    %                         in the jar for the given request. Cookies can also be added manually
+    %                         by calling the setCookies method on the cookies property. The cookie
+    %                         jar is also saved to disk (cookies.mat in the same directory as 
+    %                         BaseClient) and reloaded in new MATLAB sessions.
+    %
+    % Basic Methods:
+    %
+    %   Basic - Constructor
+    %   contributeToInstanceFullReplacement - Replace contribution to an existing instance
+    %   contributeToInstancePartialReplacement - Partially update contribution to an existing instance
+    %   createNewInstance - Create new instance with a system generated id
+    %   createNewInstanceWithId - Create new instance with a client defined id
+    %   deleteInstance - Delete an instance
+    %   executeQueryById - Execute a stored query to receive the instances
+    %   getInstanceById - Get the instance
+    %   getOpenIdConfigUrl - Get the endpoint of the configured openid configuration
+    %   getQuerySpecification - Get the query specification with the given query id in a specific space
+    %   getReleaseStatus - Get the release status for an instance
+    %   listInstances - Returns a list of instances according to their types
+    %   listQueriesPerRootType - List the queries and filter them by root type and/or text in the label, name or description
+    %   listTypes - Returns the types available - either with property information or without
+    %   moveInstance - Move an instance to another space
+    %   myUserInfo - Retrieve user information from the passed token (including detailed information such as e-mail address)
+    %   normalizePayload - Normalizes the passed payload according to the EBRAINS KG conventions
+    %   releaseInstance - Release or re-release an instance
+    %   removeQuery - Remove a query specification
+    %   runDynamicQuery - Execute the query in the payload (e.g. for execution before saving with the KG QueryBuilder)
+    %   saveQuery - Create or save a query specification
+    %   unreleaseInstance - Unrelease an instance
+    %
+    % See Also: matlab.net.http.HTTPOptions, matlab.net.http.Credentials, 
+    %   CookieJar.setCookies, ebrains.kgcore.BaseClient
+
+    % This file is automatically generated using OpenAPI
+    % Specification version: 1.0.0
+    % MATLAB Generator for OpenAPI version: 1.0.9
+    
+
+    % Instruct MATLAB Code Analyzer to ignore unnecessary brackets
+    %#ok<*NBRAK2> 
+
+    % Class properties
+    properties
+    end
+
+    % Class methods
+    methods
+        function obj = Basic(options)
+            % Basic Constructor, creates a Basic instance.
+            % When called without inputs, tries to load configuration
+            % options from JSON file 'ebrains.kgcore.Client.Settings.json'.
+            % If this file is not present, the instance is initialized with 
+            % default configuration option. An alternative configuration 
+            % file can be provided through the "configFile" Name-Value pair.
+            % All other properties of the instance can also be overridden 
+            % using Name-Value pairs where Name equals the property name.
+            % 
+            % Examples:
+            %
+            %   % Create a client with default options and serverUri
+            %   % as parsed from OpenAPI spec (if available)
+            %   client = ebrains.kgcore.api.Basic();
+            %
+            %   % Create a client for alternative server/base URI
+            %   client = ebrains.kgcore.api.Basic("serverUri","https://example.com:1234/api/");
+            %
+            %   % Create a client loading configuration options from 
+            %   % JSON configuration file
+            %   client = ebrains.kgcore.api.Basic("configFile","myconfig.json");
+            %
+            %   % Create a client with alternative HTTPOptions and an API key
+            %   client = ebrains.kgcore.api.Basic("httpOptions",...
+            %       matlab.net.http.HTTPOptions("ConnectTimeout",42),...
+            %       "apiKey", "ABC123");
+
+            arguments
+                options.configFile string
+                options.?ebrains.kgcore.BaseClient
+            end
+            % Call base constructor to override any configured settings
+            args = namedargs2cell(options);
+            obj@ebrains.kgcore.BaseClient(args{:})
+        end
+
+        function [code, result, response] = contributeToInstanceFullReplacement(obj, id, request_body, optionals)
+            % contributeToInstanceFullReplacement Replace contribution to an existing instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:contributeToInstanceFullReplacement:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","contributeToInstanceFullReplacement")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:contributeToInstanceFullReplacement:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","contributeToInstanceFullReplacement")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('PUT');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("contributeToInstanceFullReplacement", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("contributeToInstanceFullReplacement", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:contributeToInstanceFullReplacement:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","contributeToInstanceFullReplacement",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % contributeToInstanceFullReplacement method
+
+        function [code, result, response] = contributeToInstancePartialReplacement(obj, id, request_body, optionals)
+            % contributeToInstancePartialReplacement Partially update contribution to an existing instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:contributeToInstancePartialReplacement:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","contributeToInstancePartialReplacement")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:contributeToInstancePartialReplacement:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","contributeToInstancePartialReplacement")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('PATCH');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("contributeToInstancePartialReplacement", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("contributeToInstancePartialReplacement", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:contributeToInstancePartialReplacement:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","contributeToInstancePartialReplacement",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % contributeToInstancePartialReplacement method
+
+        function [code, result, response] = createNewInstance(obj, space, request_body, optionals)
+            % createNewInstance Create new instance with a system generated id
+            % The invocation of this endpoint causes the ingestion of the payload (if valid) in the KG by assigning a new \"@id\" to it.  Please note that any \"@id\" specified in the payload will be interpreted as an additional identifier and therefore added to the \"http://schema.org/identifier\" array. 
+            %
+            % Required parameters:
+            %   space - The space name the instance shall be stored in or \"myspace\" if you want to store it to your private space, Type: string
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              space string
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:createNewInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","createNewInstance")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:createNewInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","createNewInstance")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('POST');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances";
+
+            % No path parameters
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("space", space);
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("createNewInstance", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("createNewInstance", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:createNewInstance:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","createNewInstance",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % createNewInstance method
+
+        function [code, result, response] = createNewInstanceWithId(obj, id, space, request_body, optionals)
+            % createNewInstanceWithId Create new instance with a client defined id
+            % The invocation of this endpoint causes the ingestion of the payload (if valid) in the KG by using the specified UUID  Please note that any \"@id\" specified in the payload will be interpreted as an additional identifier and therefore added to the \"http://schema.org/identifier\" array. 
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   space - The space name the instance shall be stored in or \"myspace\" if you want to store it to your private space, Type: string
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              space string
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:createNewInstanceWithId:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","createNewInstanceWithId")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:createNewInstanceWithId:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","createNewInstanceWithId")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('POST');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("space", space);
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("createNewInstanceWithId", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("createNewInstanceWithId", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:createNewInstanceWithId:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","createNewInstanceWithId",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % createNewInstanceWithId method
+
+        function [code, result, response] = deleteInstance(obj, id)
+            % deleteInstance Delete an instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultVoid
+            %
+            % See Also: ebrains.kgcore.models.ResultVoid
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:deleteInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","deleteInstance")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('DELETE');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("deleteInstance", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("deleteInstance", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultVoid(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:deleteInstance:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","deleteInstance",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % deleteInstance method
+
+        function [code, result, response] = executeQueryById(obj, queryId, stage, optionals)
+            % executeQueryById Execute a stored query to receive the instances
+            % No description provided
+            %
+            % Required parameters:
+            %   queryId - No description provided, Type: string, Format: uuid
+            %   stage - No description provided, Type: string
+            %
+            % Optional name-value parameters:
+            %   from - No description provided, Type: int64, Format: int64
+            %   size - No description provided, Type: int64, Format: int64
+            %   returnTotalResults - No description provided, Type: logical
+            %   instanceId - No description provided, Type: string, Format: uuid
+            %   restrictToSpaces - No description provided, Type: array
+            %   allRequestParams - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: PaginatedStreamResultJsonLdDoc
+            %
+            % See Also: ebrains.kgcore.models.PaginatedStreamResultJsonLdDoc
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              queryId string
+              stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
+              optionals.from int64
+              optionals.size int64
+              optionals.returnTotalResults logical
+              optionals.instanceId string
+              optionals.restrictToSpaces string
+              optionals.allRequestParams ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:executeQueryById:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","executeQueryById")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries/{queryId}/instances";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "queryId" +"}") = queryId;
+
+            % Set query parameters
+            if isfield(optionals, "from"), uri.Query(end+1) = matlab.net.QueryParameter("from", optionals.from); end
+            if isfield(optionals, "size"), uri.Query(end+1) = matlab.net.QueryParameter("size", optionals.size); end
+            if isfield(optionals, "returnTotalResults"), uri.Query(end+1) = matlab.net.QueryParameter("returnTotalResults", optionals.returnTotalResults); end
+            uri.Query(end+1) = matlab.net.QueryParameter("stage", stage);
+            if isfield(optionals, "instanceId"), uri.Query(end+1) = matlab.net.QueryParameter("instanceId", optionals.instanceId); end
+            if isfield(optionals, "restrictToSpaces"), uri.Query(end+1) = matlab.net.QueryParameter("restrictToSpaces", optionals.restrictToSpaces, matlab.net.ArrayFormat.repeating); end
+            if isfield(optionals, "allRequestParams"), uri.Query(end+1) = matlab.net.QueryParameter("allRequestParams", optionals.allRequestParams); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("executeQueryById", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("executeQueryById", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.PaginatedStreamResultJsonLdDoc(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:executeQueryById:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","executeQueryById",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % executeQueryById method
+
+        function [code, result, response] = getInstanceById(obj, id, stage, optionals)
+            % getInstanceById Get the instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   stage - No description provided, Type: string
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:getInstanceById:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","getInstanceById")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("stage", stage);
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("getInstanceById", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("getInstanceById", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:getInstanceById:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","getInstanceById",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % getInstanceById method
+
+        function [code, result, response] = getOpenIdConfigUrl(obj)
+            % getOpenIdConfigUrl Get the endpoint of the configured openid configuration
+            % No description provided
+            %
+            % No required parameters
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultJsonLdDoc
+            %
+            % See Also: ebrains.kgcore.models.ResultJsonLdDoc
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:getOpenIdConfigUrl:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","getOpenIdConfigUrl")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/setup/authentication";
+
+            % No path parameters
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Operation does not require authorization
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("getOpenIdConfigUrl", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("getOpenIdConfigUrl", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultJsonLdDoc(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:getOpenIdConfigUrl:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","getOpenIdConfigUrl",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % getOpenIdConfigUrl method
+
+        function [code, result, response] = getQuerySpecification(obj, queryId)
+            % getQuerySpecification Get the query specification with the given query id in a specific space
+            % No description provided
+            %
+            % Required parameters:
+            %   queryId - No description provided, Type: string, Format: uuid
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              queryId string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:getQuerySpecification:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","getQuerySpecification")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries/{queryId}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "queryId" +"}") = queryId;
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("getQuerySpecification", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("getQuerySpecification", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:getQuerySpecification:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","getQuerySpecification",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % getQuerySpecification method
+
+        function [code, result, response] = getReleaseStatus(obj, id, releaseTreeScope)
+            % getReleaseStatus Get the release status for an instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   releaseTreeScope - No description provided, Type: string
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   404: Instance not found
+            %   200: The release status of the instance
+            %
+            % Returns: ResultReleaseStatus
+            %
+            % See Also: ebrains.kgcore.models.ResultReleaseStatus
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              releaseTreeScope string { mustBeMember(releaseTreeScope,["TOP_INSTANCE_ONLY","CHILDREN_ONLY","CHILDREN_ONLY_RESTRICTED"]) }
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:getReleaseStatus:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","getReleaseStatus")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}/release/status";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("releaseTreeScope", releaseTreeScope);
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("getReleaseStatus", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("getReleaseStatus", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 404
+                    result = ebrains.kgcore.models.ResultReleaseStatus(response.Body.Data);
+                case 200
+                    result = ebrains.kgcore.models.ResultReleaseStatus(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:getReleaseStatus:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","getReleaseStatus",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % getReleaseStatus method
+
+        function [code, result, response] = listInstances(obj, stage, type, optionals)
+            % listInstances Returns a list of instances according to their types
+            % No description provided
+            %
+            % Required parameters:
+            %   stage - No description provided, Type: string
+            %   type - No description provided, Type: string
+            %
+            % Optional name-value parameters:
+            %   space - The space of the instances to be listed or \"myspace\" for your private space, Type: string
+            %   searchByLabel - No description provided, Type: string
+            %   filterProperty - No description provided, Type: string
+            %   filterValue - No description provided, Type: string
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %   from - No description provided, Type: int64, Format: int64
+            %   size - No description provided, Type: int64, Format: int64
+            %   returnTotalResults - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: PaginatedResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.PaginatedResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
+              type string
+              optionals.space string
+              optionals.searchByLabel string
+              optionals.filterProperty string
+              optionals.filterValue string
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+              optionals.from int64
+              optionals.size int64
+              optionals.returnTotalResults logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:listInstances:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","listInstances")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances";
+
+            % No path parameters
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("stage", stage);
+            uri.Query(end+1) = matlab.net.QueryParameter("type", type);
+            if isfield(optionals, "space"), uri.Query(end+1) = matlab.net.QueryParameter("space", optionals.space); end
+            if isfield(optionals, "searchByLabel"), uri.Query(end+1) = matlab.net.QueryParameter("searchByLabel", optionals.searchByLabel); end
+            if isfield(optionals, "filterProperty"), uri.Query(end+1) = matlab.net.QueryParameter("filterProperty", optionals.filterProperty); end
+            if isfield(optionals, "filterValue"), uri.Query(end+1) = matlab.net.QueryParameter("filterValue", optionals.filterValue); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            if isfield(optionals, "from"), uri.Query(end+1) = matlab.net.QueryParameter("from", optionals.from); end
+            if isfield(optionals, "size"), uri.Query(end+1) = matlab.net.QueryParameter("size", optionals.size); end
+            if isfield(optionals, "returnTotalResults"), uri.Query(end+1) = matlab.net.QueryParameter("returnTotalResults", optionals.returnTotalResults); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("listInstances", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("listInstances", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.PaginatedResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:listInstances:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","listInstances",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % listInstances method
+
+        function [code, result, response] = listQueriesPerRootType(obj, optionals)
+            % listQueriesPerRootType List the queries and filter them by root type and/or text in the label, name or description
+            % No description provided
+            %
+            % No required parameters
+            %
+            % Optional name-value parameters:
+            %   from - No description provided, Type: int64, Format: int64
+            %   size - No description provided, Type: int64, Format: int64
+            %   returnTotalResults - No description provided, Type: logical
+            %   type - No description provided, Type: string
+            %   search - No description provided, Type: string
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: PaginatedResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.PaginatedResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              optionals.from int64
+              optionals.size int64
+              optionals.returnTotalResults logical
+              optionals.type string
+              optionals.search string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:listQueriesPerRootType:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","listQueriesPerRootType")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries";
+
+            % No path parameters
+
+            % Set query parameters
+            if isfield(optionals, "from"), uri.Query(end+1) = matlab.net.QueryParameter("from", optionals.from); end
+            if isfield(optionals, "size"), uri.Query(end+1) = matlab.net.QueryParameter("size", optionals.size); end
+            if isfield(optionals, "returnTotalResults"), uri.Query(end+1) = matlab.net.QueryParameter("returnTotalResults", optionals.returnTotalResults); end
+            if isfield(optionals, "type"), uri.Query(end+1) = matlab.net.QueryParameter("type", optionals.type); end
+            if isfield(optionals, "search"), uri.Query(end+1) = matlab.net.QueryParameter("search", optionals.search); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("listQueriesPerRootType", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("listQueriesPerRootType", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.PaginatedResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:listQueriesPerRootType:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","listQueriesPerRootType",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % listQueriesPerRootType method
+
+        function [code, result, response] = listTypes(obj, stage, optionals)
+            % listTypes Returns the types available - either with property information or without
+            % No description provided
+            %
+            % Required parameters:
+            %   stage - No description provided, Type: string
+            %
+            % Optional name-value parameters:
+            %   space - The space by which the types should be filtered or \"myspace\" for your private space., Type: string
+            %   withProperties - No description provided, Type: logical
+            %   withIncomingLinks - No description provided, Type: logical
+            %   from - No description provided, Type: int64, Format: int64
+            %   size - No description provided, Type: int64, Format: int64
+            %   returnTotalResults - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: PaginatedResultTypeInformation
+            %
+            % See Also: ebrains.kgcore.models.PaginatedResultTypeInformation
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
+              optionals.space string
+              optionals.withProperties logical
+              optionals.withIncomingLinks logical
+              optionals.from int64
+              optionals.size int64
+              optionals.returnTotalResults logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:listTypes:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","listTypes")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/types";
+
+            % No path parameters
+
+            % Set query parameters
+            uri.Query(end+1) = matlab.net.QueryParameter("stage", stage);
+            if isfield(optionals, "space"), uri.Query(end+1) = matlab.net.QueryParameter("space", optionals.space); end
+            if isfield(optionals, "withProperties"), uri.Query(end+1) = matlab.net.QueryParameter("withProperties", optionals.withProperties); end
+            if isfield(optionals, "withIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("withIncomingLinks", optionals.withIncomingLinks); end
+            if isfield(optionals, "from"), uri.Query(end+1) = matlab.net.QueryParameter("from", optionals.from); end
+            if isfield(optionals, "size"), uri.Query(end+1) = matlab.net.QueryParameter("size", optionals.size); end
+            if isfield(optionals, "returnTotalResults"), uri.Query(end+1) = matlab.net.QueryParameter("returnTotalResults", optionals.returnTotalResults); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("listTypes", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("listTypes", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.PaginatedResultTypeInformation(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:listTypes:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","listTypes",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % listTypes method
+
+        function [code, result, response] = moveInstance(obj, id, space, optionals)
+            % moveInstance Move an instance to another space
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %   space - No description provided, Type: string
+            %
+            % Optional name-value parameters:
+            %   returnIncomingLinks - No description provided, Type: logical
+            %   incomingLinksPageSize - No description provided, Type: int64, Format: int64
+            %   returnPayload - No description provided, Type: logical
+            %   returnPermissions - No description provided, Type: logical
+            %   returnAlternatives - No description provided, Type: logical
+            %   returnEmbedded - No description provided, Type: logical
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              space string
+              optionals.returnIncomingLinks logical
+              optionals.incomingLinksPageSize int64
+              optionals.returnPayload logical
+              optionals.returnPermissions logical
+              optionals.returnAlternatives logical
+              optionals.returnEmbedded logical
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:moveInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","moveInstance")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('PUT');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}/spaces/{space}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+            uri.Path(uri.Path == "{" + "space" +"}") = space;
+
+            % Set query parameters
+            if isfield(optionals, "returnIncomingLinks"), uri.Query(end+1) = matlab.net.QueryParameter("returnIncomingLinks", optionals.returnIncomingLinks); end
+            if isfield(optionals, "incomingLinksPageSize"), uri.Query(end+1) = matlab.net.QueryParameter("incomingLinksPageSize", optionals.incomingLinksPageSize); end
+            if isfield(optionals, "returnPayload"), uri.Query(end+1) = matlab.net.QueryParameter("returnPayload", optionals.returnPayload); end
+            if isfield(optionals, "returnPermissions"), uri.Query(end+1) = matlab.net.QueryParameter("returnPermissions", optionals.returnPermissions); end
+            if isfield(optionals, "returnAlternatives"), uri.Query(end+1) = matlab.net.QueryParameter("returnAlternatives", optionals.returnAlternatives); end
+            if isfield(optionals, "returnEmbedded"), uri.Query(end+1) = matlab.net.QueryParameter("returnEmbedded", optionals.returnEmbedded); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("moveInstance", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("moveInstance", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:moveInstance:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","moveInstance",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % moveInstance method
+
+        function [code, result, response] = myUserInfo(obj)
+            % myUserInfo Retrieve user information from the passed token (including detailed information such as e-mail address)
+            % No description provided
+            %
+            % No required parameters
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultUser
+            %
+            % See Also: ebrains.kgcore.models.ResultUser
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:myUserInfo:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","myUserInfo")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('GET');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/users/me";
+
+            % No path parameters
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("myUserInfo", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("myUserInfo", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultUser(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:myUserInfo:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","myUserInfo",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % myUserInfo method
+
+        function [code, result, response] = normalizePayload(obj, request_body)
+            % normalizePayload Normalizes the passed payload according to the EBRAINS KG conventions
+            % No description provided
+            %
+            % Required parameters:
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: NormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.NormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:normalizePayload:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","normalizePayload")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:normalizePayload:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","normalizePayload")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('POST');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/jsonld/normalizedPayload";
+
+            % No path parameters
+
+            % No query parameters
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("normalizePayload", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("normalizePayload", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.NormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:normalizePayload:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","normalizePayload",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % normalizePayload method
+
+        function [code, result, response] = releaseInstance(obj, id, optionals)
+            % releaseInstance Release or re-release an instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %
+            % Optional name-value parameters:
+            %   revision - No description provided, Type: string
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultVoid
+            %
+            % See Also: ebrains.kgcore.models.ResultVoid
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+              optionals.revision string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:releaseInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","releaseInstance")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('PUT');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}/release";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % Set query parameters
+            if isfield(optionals, "revision"), uri.Query(end+1) = matlab.net.QueryParameter("revision", optionals.revision); end
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("releaseInstance", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("releaseInstance", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultVoid(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:releaseInstance:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","releaseInstance",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % releaseInstance method
+
+        function [code, result, response] = removeQuery(obj, queryId)
+            % removeQuery Remove a query specification
+            % No description provided
+            %
+            % Required parameters:
+            %   queryId - No description provided, Type: string, Format: uuid
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: 
+            %
+            % See Also: ebrains.kgcore.models.
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              queryId string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % No return content type specified, defaulting to JSON
+            request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('DELETE');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries/{queryId}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "queryId" +"}") = queryId;
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("removeQuery", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("removeQuery", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = response.Body.Data;
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:removeQuery:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","removeQuery",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % removeQuery method
+
+        function [code, result, response] = runDynamicQuery(obj, stage, request_body, optionals)
+            % runDynamicQuery Execute the query in the payload (e.g. for execution before saving with the KG QueryBuilder)
+            % No description provided
+            %
+            % Required parameters:
+            %   stage - No description provided, Type: string
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   from - No description provided, Type: int64, Format: int64
+            %   size - No description provided, Type: int64, Format: int64
+            %   returnTotalResults - No description provided, Type: logical
+            %   instanceId - No description provided, Type: string, Format: uuid
+            %   restrictToSpaces - No description provided, Type: array
+            %   allRequestParams - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: PaginatedStreamResultJsonLdDoc
+            %
+            % See Also: ebrains.kgcore.models.PaginatedStreamResultJsonLdDoc
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.from int64
+              optionals.size int64
+              optionals.returnTotalResults logical
+              optionals.instanceId string
+              optionals.restrictToSpaces string
+              optionals.allRequestParams ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:runDynamicQuery:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","runDynamicQuery")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:runDynamicQuery:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","runDynamicQuery")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('POST');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries";
+
+            % No path parameters
+
+            % Set query parameters
+            if isfield(optionals, "from"), uri.Query(end+1) = matlab.net.QueryParameter("from", optionals.from); end
+            if isfield(optionals, "size"), uri.Query(end+1) = matlab.net.QueryParameter("size", optionals.size); end
+            if isfield(optionals, "returnTotalResults"), uri.Query(end+1) = matlab.net.QueryParameter("returnTotalResults", optionals.returnTotalResults); end
+            uri.Query(end+1) = matlab.net.QueryParameter("stage", stage);
+            if isfield(optionals, "instanceId"), uri.Query(end+1) = matlab.net.QueryParameter("instanceId", optionals.instanceId); end
+            if isfield(optionals, "restrictToSpaces"), uri.Query(end+1) = matlab.net.QueryParameter("restrictToSpaces", optionals.restrictToSpaces, matlab.net.ArrayFormat.repeating); end
+            if isfield(optionals, "allRequestParams"), uri.Query(end+1) = matlab.net.QueryParameter("allRequestParams", optionals.allRequestParams); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("runDynamicQuery", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("runDynamicQuery", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.PaginatedStreamResultJsonLdDoc(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:runDynamicQuery:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","runDynamicQuery",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % runDynamicQuery method
+
+        function [code, result, response] = saveQuery(obj, queryId, request_body, optionals)
+            % saveQuery Create or save a query specification
+            % No description provided
+            %
+            % Required parameters:
+            %   queryId - No description provided, Type: string, Format: uuid
+            %   request_body - No description provided, Type: ebrains.kgcore.JSONMapperMap
+            %       Required properties in the model for this call:
+            %       Optional properties in the model for this call:
+            %           id
+            %           empty
+            %
+            % Optional name-value parameters:
+            %   space - Required only when the instance is created to specify where it should be stored (myspace for your private space) - but not if it''s updated., Type: string
+            %
+            % Responses:
+            %   200: OK
+            %
+            % Returns: ResultNormalizedJsonLd
+            %
+            % See Also: ebrains.kgcore.models.ResultNormalizedJsonLd
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              queryId string
+              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.space string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:saveQuery:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","saveQuery")
+            end
+            
+            % Verify that operation supports JSON or FORM as input
+            specContentTypeHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/json');
+            elseif ismember("application/x-www-form-urlencoded",specContentTypeHeaders)
+                request.Header(end+1) = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            else
+                error("ebrains:kgcore:api:saveQuery:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' and 'application/x-www-form-urlencoded' MediaTypes.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","saveQuery")
+            end
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('PUT');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/queries/{queryId}";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "queryId" +"}") = queryId;
+
+            % Set query parameters
+            if isfield(optionals, "space"), uri.Query(end+1) = matlab.net.QueryParameter("space", optionals.space); end
+            
+            % Set JSON Body
+            requiredProperties = [...
+            ];
+            optionalProperties = [...
+                "id",...
+                "empty",...
+            ];
+            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("saveQuery", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("saveQuery", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultNormalizedJsonLd(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:saveQuery:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","saveQuery",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % saveQuery method
+
+        function [code, result, response] = unreleaseInstance(obj, id)
+            % unreleaseInstance Unrelease an instance
+            % No description provided
+            %
+            % Required parameters:
+            %   id - No description provided, Type: string, Format: uuid
+            %
+            % No optional parameters
+            %
+            % Responses:
+            %   200: The instance that has been unreleased
+            %   404: Instance not found
+            %
+            % Returns: ResultVoid
+            %
+            % See Also: ebrains.kgcore.models.ResultVoid
+
+            arguments
+              obj ebrains.kgcore.api.Basic
+              id string
+            end
+
+            % Create the request object
+            request = matlab.net.http.RequestMessage();
+            
+            % Verify that operation supports returning JSON
+            specAcceptHeaders = [...
+                "application/json", ...
+            ];
+            if ismember("application/json",specAcceptHeaders)
+                request.Header(end+1) = matlab.net.http.field.AcceptField('application/json');
+            else
+                error("ebrains:kgcore:api:unreleaseInstance:UnsupportedMediaType","Generated OpenAPI Classes only support 'application/json' MediaType.\n" + ...
+                    "Operation '%s' does not support this. It may be possible to call this operation by first editing the generated code.","unreleaseInstance")
+            end
+            
+            % No body input, so no need to check its content type
+            
+            % No header parameters
+
+            % Configure default httpOptions
+            httpOptions = obj.httpOptions;
+            % Never convert API response
+            httpOptions.ConvertResponse = false;
+
+            % Configure request verb/method
+            request.Method = matlab.net.http.RequestMethod('DELETE');
+
+            % Build the request URI
+            if ~isempty(obj.serverUri)
+                % If URI specified in object, use that
+                uri = obj.serverUri;
+            else
+                % If no server specified use base path from OpenAPI spec
+                uri = matlab.net.URI("https://core.kg.ebrains.eu");
+            end
+            % Append the operation end-point
+            uri.EncodedPath = uri.EncodedPath + "/v3/instances/{id}/release";
+
+            % Substitute path parameters
+            uri.Path(uri.Path == "{" + "id" +"}") = id;
+
+            % No query parameters
+            
+            % No JSON body parameters
+
+            % No form body parameters
+
+            % Configure Authentication
+            authNames = [...
+                "Authorization", ...
+                "Client-Authorization", ...
+            ];  
+            [request, httpOptions, uri] = obj.requestAuth(authNames, request, httpOptions, uri);
+
+            % Add cookies if set
+            request = obj.applyCookies(request, uri);
+
+            % Call preSend
+            [request, httpOptions, uri] = obj.preSend("unreleaseInstance", request, httpOptions, uri);
+
+            % Perform the request
+            [response, ~, history] = send(request, uri, httpOptions);
+
+            % Handle cookies if set
+            obj.setCookies(history);
+
+            % Call postSend
+            response = obj.postSend("unreleaseInstance", response, request, uri, httpOptions);
+
+            % Handle response
+            code = response.StatusCode;
+            switch (code)
+                case 200
+                    result = ebrains.kgcore.models.ResultVoid(response.Body.Data);
+                case 404
+                    result = ebrains.kgcore.models.ResultVoid(response.Body.Data);
+                otherwise % Unexpected output, not declared in spec
+                    % Any response in the OK range will not throw a warning
+                    if (int32(response.StatusCode) < 200 || int32(response.StatusCode) >= 300)
+                        % Others will throw a warning
+                        warning("ebrains:kgcore:api:unreleaseInstance:UndocumentedResponse","Operation '%s' returned an undocumented response code '%d'.\n" + ...
+                            "Response Body is returned as raw data.","unreleaseInstance",code);
+                    end
+                    % Return the raw body data
+                    result = response.Body.Data;
+            end
+        
+        end % unreleaseInstance method
+
+    end %methods
+end %class
+
+
