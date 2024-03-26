@@ -1,0 +1,217 @@
+OpenAPI Client Generator: 26-Mar-2024 21:23:41
+Getting CLI version, executing command:
+npx  @openapitools/openapi-generator-cli version
+
+Using configuration file: openapitools.json
+Writing configuration file: openapitools.json
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "6.6.0",
+    "generators": {
+      "v3.0": {
+        "generatorName": "MATLAB",
+        "output": "/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy",
+        "inputSpec": "/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json",
+        "packageName": "ebrains.dataproxy",
+        "skipValidateSpec": true,
+        "templateDir": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/Mustache",
+        "additionalProperties": {
+          "openapiRoot": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB",
+          "packageVersion": "1.0.9"
+        }
+      }
+    }
+  }
+}
+Building client, executing command:
+npx  @openapitools/openapi-generator-cli generate --generator-key v3.0 --custom-generator "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" --config "openapitools.json"
+
+Prefixed command: npx  @openapitools/openapi-generator-cli generate --generator-key v3.0 --custom-generator "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" --config "openapitools.json"
+
+Command result: 0
+
+Command output:
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.DefaultGenerator - Generating with dryRun=false
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.DefaultGenerator - OpenAPI Generator: MATLAB (client)
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.DefaultGenerator - Generator 'MATLAB' is considered stable.
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as Objects_inner. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.InlineModelResolver - Inline schema created as Location_inner. To have complete control of the model name, set the `title` field or use the inlineSchemaNameMapping option (--inline-schema-name-mappings in CLI).
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkUpdateForm/object_name to: PermalinkUpdateForm_object_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkCreate/object_name to: PermalinkCreate_object_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: HTTPValidationError/detail to: HTTPValidationError_detail
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/created_at to: PermalinkModel_created_at
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/issuer to: PermalinkModel_issuer
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: TempUrlResponse/url to: TempUrlResponse_url
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ValidationError/type to: ValidationError_type
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStat/name to: ContainerStat_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftDirWithObjectsResponse/bytes to: SwiftDirWithObjectsResponse_bytes
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStat/objects_count to: ContainerStat_objects_count
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: RenameObjectSetting/target_name to: RenameObjectSetting_target_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/bytes to: ContainerStatResponse_bytes
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkCreate/bucket_name to: PermalinkCreate_bucket_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftDirWithObjectsResponse/subdir to: SwiftDirWithObjectsResponse_subdir
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftObject/hash to: SwiftObject_hash
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftDirWithObjectsResponse/objects_count to: SwiftDirWithObjectsResponse_objects_count
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: BucketListEntry/is_public to: BucketListEntry_is_public
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/objects_count to: ContainerStatResponse_objects_count
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: UpdateBucketPayload/is_public to: UpdateBucketPayload_is_public
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: DeleteResponse/number_of_removals to: DeleteResponse_number_of_removals
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/name to: ContainerStatResponse_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/container to: SwiftApiResponse_container
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/last_modified to: ContainerStatResponse_last_modified
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ValidationError/loc to: ValidationError_loc
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/limit to: SwiftApiResponse_limit
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: CreateBucketPayload/bucket_name to: CreateBucketPayload_bucket_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/prefix to: SwiftApiResponse_prefix
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/revoked to: PermalinkModel_revoked
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/bucket_name to: PermalinkModel_bucket_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftDirWithObjectsResponse/last_modified to: SwiftDirWithObjectsResponse_last_modified
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftObject/bytes to: SwiftObject_bytes
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/last_accessed_at to: PermalinkModel_last_accessed_at
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/description to: PermalinkModel_description
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStat/bytes to: ContainerStat_bytes
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/entity_id to: PermalinkModel_entity_id
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkModel/object_name to: PermalinkModel_object_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftObject/last_modified to: SwiftObject_last_modified
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/is_initialized to: ContainerStatResponse_is_initialized
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ValidationError/msg to: ValidationError_msg
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: BucketListEntry/role to: BucketListEntry_role
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStat/last_modified to: ContainerStat_last_modified
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftObject/content_type to: SwiftObject_content_type
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/objects to: SwiftApiResponse_objects
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: PermalinkCreate/description to: PermalinkCreate_description
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/marker to: SwiftApiResponse_marker
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: BucketListEntry/name to: BucketListEntry_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: RenameObjectPayload/rename to: RenameObjectPayload_rename
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/is_public to: ContainerStatResponse_is_public
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: DeleteResponse/failures to: DeleteResponse_failures
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: ContainerStatResponse/role to: ContainerStatResponse_role
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftObject/name to: SwiftObject_name
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: SwiftApiResponse/delimiter to: SwiftApiResponse_delimiter
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: anyOf<SwiftObject,SwiftDirWithObjectsResponse> to: anyOfSwiftObjectSwiftDirWithObjectsResponse
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: anyOf<string,integer> to: anyOfstringinteger
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/AclAccessType.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/BucketListEntry.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/ContainerStat.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/ContainerStatResponse.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/CreateBucketPayload.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/DeleteResponse.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/HTTPValidationError.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/Location_inner.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/Objects_inner.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/PermalinkCreate.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/PermalinkModel.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/PermalinkUpdateForm.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/RenameObjectPayload.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/RenameObjectSetting.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/SwiftApiResponse.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/SwiftDirWithObjectsResponse.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/SwiftObject.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/TempUrlResponse.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/UpdateBucketPayload.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/UserRole.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/ValidationError.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: PermalinkCreate not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: PermalinkUpdateForm not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: PermalinkCreate not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: PermalinkUpdateForm not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: CreateBucketPayload not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: UpdateBucketPayload not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: RenameObjectPayload not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: + Type: AclAccessType not handled in setParameterExampleValue
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] Warning: Model name changed from: application/json to: application_json
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Acl.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Admin.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Buckets.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Datasets.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Deprecated.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+api/Permalinks.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - Ignored /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/BaseClient.m (Ignored by rule in ignore file.)
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/+models/FreeFormObject.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/CookieJar.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/JSONEnum.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/JSONMapper.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/JSONMapperMap.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/+ebrains/+dataproxy/JSONPropertyInfo.m
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - Skipped /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/.openapi-generator-ignore (Skipped by supportingFiles options supplied by user.)
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/.openapi-generator/VERSION
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] [main] INFO  o.o.codegen.TemplateManager - writing file /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/.openapi-generator/FILES
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] ################################################################################
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] # Thanks for using OpenAPI Generator.                                          #
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] # Please consider donation to help us maintain this project 🙏                 #
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] # https://opencollective.com/openapi_generator/donate                          #
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] ################################################################################
+[[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json] java -cp "/Users/eivihe/Code/MATLAB/node_modules/@openapitools/openapi-generator-cli/versions/6.6.0.jar:/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB/lib/jar/MATLABClientCodegen-openapi-generator-0.0.1.jar" org.openapitools.codegen.OpenAPIGenerator generate --input-spec="/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json" --generator-name="MATLAB" --output="/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy" --package-name="ebrains.dataproxy" --skip-validate-spec --template-dir="/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/Mustache" --additional-properties="openapiRoot=/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB,packageVersion=1.0.9" exited with code 0
+[v3.0] /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy/build/dp_openapi.json
+
+
+Build completed, output directory: /Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy

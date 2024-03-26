@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "6.6.0",
+    "generators": {
+      "v3.0": {
+        "generatorName": "MATLAB",
+        "output": "/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/src/services/DataProxy",
+        "inputSpec": "https://data-proxy.ebrains.eu/api/openapi.json",
+        "packageName": "ebrains.dataproxy",
+        "skipValidateSpec": true,
+        "templateDir": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/Mustache",
+        "additionalProperties": {
+          "openapiRoot": "/Users/eivihe/Code/MATLAB/Repositories/mathworks-ref-arch/matlab-openapi-generator/Software/MATLAB",
+          "packageVersion": "1.0.9"
+        }
+      }
+    }
+  }
+}
