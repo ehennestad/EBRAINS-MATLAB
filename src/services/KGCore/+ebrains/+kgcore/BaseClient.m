@@ -86,6 +86,9 @@ classdef (Abstract) BaseClient < handle & matlab.mixin.CustomDisplay
             for p = string(fieldnames(options))'
                 obj.(p) = options.(p);
             end
+
+            authClient = ebrains.iam.AuthenticationClient.instance();
+            obj.bearerToken = authClient.AccessToken;
         end
     end % public methods
 

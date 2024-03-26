@@ -6,7 +6,8 @@ c = openapi.build.Client;
 % Set the package name, defaults to "OpenAPIClient"
 c.packageName = "ebrains.kgcore";
 % Set the path to the spec., this may also be a HTTP URL
-c.inputSpec = "kg_v3.json";
+%c.inputSpec = "kg_v3.json";
+c.inputSpec = "https://core.kg.ebrains.eu/v3/api-docs/v3";
 % Set a directory where the results will be stored
 c.output = fullfile("/Users/eivihe/Code/MATLAB/Nesys/EBRAINS/services/KGCore");
 % Trigger the build process

@@ -65,6 +65,11 @@ classdef AuthenticationClient < handle
                 "Authorization", sprintf("Bearer %s", obj.AccessToken)];
         end
 
+        function authField = getAuthHeaderField(obj)
+            authField = matlab.net.http.field.AuthorizationField(...
+                'Authorization', sprintf('Bearer %s', obj.AccessToken));
+        end
+
         function fetchToken(obj)
         % fetchToken - Fetch token
 

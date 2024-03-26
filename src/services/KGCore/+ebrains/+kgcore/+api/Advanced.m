@@ -1375,7 +1375,8 @@ classdef Advanced < ebrains.kgcore.BaseClient
             ];
             optionalProperties = [...
             ];
-            request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+            %request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
+            request.Body(1).Data = cellstr(request_body);
 
             % No form body parameters
 
