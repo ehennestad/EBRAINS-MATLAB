@@ -73,7 +73,6 @@ classdef AuthenticationClient < handle
         function fetchToken(obj)
         % fetchToken - Fetch token
 
-
             % openid-connect/auth/device
             endpointUrl = obj.OpenIdConfig.device_authorization_endpoint;
             
@@ -83,17 +82,14 @@ classdef AuthenticationClient < handle
 
             message = "Redirecting to web browser to authenticate...";
             f = msgbox(message, "Authenticating...");
-            f.Children(1).Visible = 'off';
+            reformatMessageBoxBeforeRedirecting(f)
             pause(1)
             
             % Open browser
             web(responseDevice.verification_uri_complete)
             
             pause(1)
-            message = "Press OK to continue.";
-            f.Children(1).Visible = 'on';
-            f.Children(2).Children(1).String = message;
-            f.Children(2).Children(1).HorizontalAlignment = "left";
+            reformatMessageBoxAfterRedirecting(f)
             uiwait(f)
             delete(f)
 
@@ -181,4 +177,40 @@ classdef AuthenticationClient < handle
             obj = authClientObject;
         end
     end
+end
+
+function reformatMessageBoxBeforeRedirecting(hFigure)
+    hFigure.Position = hFigure.Position + [-50, 0, 100,14];
+    hFigure.Children(1).Visible = 'off';
+    hFigure.Children(1).FontSize = 14;
+    centerHorizontally(hFigure, hFigure.Children(1) )
+    hFigure.Children(2).Children(1).FontSize = 14;
+    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)+5;
+    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
+end
+
+function reformatMessageBoxAfterRedirecting(hFigure)
+    message = "Press Continue to complete authentication.";
+    hFigure.Children(1).Visible = 'on';
+    hFigure.Children(1).String = 'Continue';
+    %f.Children(1).Position(3:4) = [80,30];
+    hFigure.Children(1).Position(3:4) = [80, 22];
+    centerHorizontally(hFigure, hFigure.Children(1) )
+    hFigure.Children(1).Position(2) = hFigure.Children(1).Position(2) + 4;
+
+    hFigure.Children(2).Children(1).String = message;
+    hFigure.Children(2).Children(1).HorizontalAlignment = "left";
+    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
+    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)+8;
+end
+
+function centerHorizontally(hFigure, component)
+    W = hFigure.Position(3);
+    componentPosition = component.Position;
+    if numel(componentPosition)==3
+        componentPosition(3:4) = component.Extent(3:4);
+    end
+    
+    xLeft = W/2 - componentPosition(3)/2;
+    component.Position(1)=xLeft;
 end
