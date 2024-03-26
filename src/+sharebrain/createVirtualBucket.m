@@ -1,15 +1,20 @@
 function createVirtualBucket(bucketName, virtualBucketRootPath, options)
+% createVirtualBucket - Create a virtual bucket locally.
 %
+%   This function will create a dataset with dummy files (i.e empty files)
+%   for all objects in a bucket.
 %
-%   Example:
-%      bucketName = "d-ca602c23-364a-4c9b-943b-87d1b09a5821";
-%      virtualBucketRootPath = "data_demo";
-%      sharebrain.createVirtualBucket(bucketName, virtualBucketRootPath)
+%   Syntax:
+%       sharebrain.createVirtualBucket(bucketName, virtualBucketRootPath)
+%           creates the virtual dataset for a bucket in the folder 
+%           specified by virtualBucketRootPath
+%
+%   See also: createVirtualDatasetBucket
 
     arguments
         bucketName (1,1) string
         virtualBucketRootPath (1,1) string
-        options.Verbose = true
+        options.Verbose = false
     end
 
     S = ebrains.bucket.listBucketObjects(bucketName, "Verbose", options.Verbose);
