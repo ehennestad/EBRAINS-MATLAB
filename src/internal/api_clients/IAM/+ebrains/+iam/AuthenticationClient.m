@@ -139,9 +139,9 @@ classdef AuthenticationClient < handle
         end
 
         function accessToken = get.AccessToken(obj)
-            %if ismissing(obj.AccessToken_)
+            if ismissing(obj.AccessToken_)
                 obj.fetchToken()
-            %end
+            end
             accessToken = obj.AccessToken_;
         end
     end
