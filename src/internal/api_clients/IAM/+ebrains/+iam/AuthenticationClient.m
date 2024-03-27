@@ -91,14 +91,30 @@ classdef AuthenticationClient < handle
             pause(1)
             reformatMessageBoxAfterRedirecting(f)
             uiwait(f)
-            delete(f)
-
+            
             % openid-connect/token
-            tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
-                "grant_type", "urn:ietf:params:oauth:grant-type:device_code", ...
-                "client_id", obj.OIDC_CLIENT_NAME,...
-                "device_code", responseDevice.device_code ...
-                );
+            try
+                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
+                    "grant_type", "urn:ietf:params:oauth:grant-type:device_code", ...
+                    "client_id", obj.OIDC_CLIENT_NAME,...
+                    "device_code", responseDevice.device_code ...
+                    );
+
+                showSuccess(f)
+            catch ME
+                delete(f)
+                titleMessage = "Authentication failed";
+
+                switch ME.identifier
+                    case 'MATLAB:webservices:HTTP400StatusCodeError'
+                        errorMessage = "Make sure the log in to EBRAINS in your web browser and grant access rights to SHAREbrain before pressing the continue button.";
+                        errordlg(errorMessage, titleMessage)
+                        throwAsCaller(ME) 
+                    otherwise
+                        errordlg(ME.message, titleMessage)
+                        throwAsCaller(ME) 
+                end
+            end
             
             obj.AccessToken_ = tokenResponse.access_token;
             obj.RefreshToken = tokenResponse.refresh_token;
@@ -123,9 +139,9 @@ classdef AuthenticationClient < handle
         end
 
         function accessToken = get.AccessToken(obj)
-            if ismissing(obj.AccessToken_)
+            %if ismissing(obj.AccessToken_)
                 obj.fetchToken()
-            end
+            %end
             accessToken = obj.AccessToken_;
         end
     end
@@ -179,6 +195,23 @@ classdef AuthenticationClient < handle
     end
 end
 
+function showSuccess(hFigure)
+    message = "Access token successfully retrieved!";
+    hFigure.Children(2).Children(1).String = message;
+    pause(1.5)
+    delete(hFigure)
+end
+
+function onContinuePressed(hFigure)
+    hFigure.Children(1).Visible = 'off';
+    message = "Please wait while retrieving your access token...";
+
+    hFigure.Children(2).Children(1).String = message;
+    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
+    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)-8;
+    uiresume(hFigure)
+end
+
 function reformatMessageBoxBeforeRedirecting(hFigure)
     hFigure.Position = hFigure.Position + [-50, 0, 100,14];
     hFigure.Children(1).Visible = 'off';
@@ -193,6 +226,8 @@ function reformatMessageBoxAfterRedirecting(hFigure)
     message = "Press Continue to complete authentication.";
     hFigure.Children(1).Visible = 'on';
     hFigure.Children(1).String = 'Continue';
+    hFigure.Children(1).Callback = @(s,e,h) onContinuePressed(hFigure);
+
     %f.Children(1).Position(3:4) = [80,30];
     hFigure.Children(1).Position(3:4) = [80, 22];
     centerHorizontally(hFigure, hFigure.Children(1) )
