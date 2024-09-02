@@ -6,9 +6,9 @@ bucketObjects = ebrains.bucket.listBucketObjects(bucketName);
 
 bucketSizeBytes = sum([bucketObjects.bytes]);
 
-sizeUnit = ["bytes", "kB", "MB", "GB"];
+sizeUnit = ["bytes", "kB", "MB", "GB", "TB", "PB"];
 
 unitScale = floor( log10(bucketSizeBytes) / 3 );
 
 bucketSize = bucketSizeBytes / 10^(3*unitScale);
-fprintf('Bucket size is %.2f %s\n', bucketSize, sizeUnit(unitScale))
+fprintf('Bucket size is %.2f %s\n', bucketSize, sizeUnit(unitScale+1))
