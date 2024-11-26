@@ -2,7 +2,7 @@ classdef KGCollection < openminds.Collection
     
     % Todo: add method to resolve links...
 
-    properties (Dependent, Access = private)
+    properties (Dependent, Access = protected)
         FairgraphClient
     end
 
@@ -11,7 +11,6 @@ classdef KGCollection < openminds.Collection
     end
     
     methods 
-        
         function wasSuccess = downloadRemoteInstances(obj, metadataType, options)
             
             %Todo: how to apply custom property filters based on
@@ -19,7 +18,7 @@ classdef KGCollection < openminds.Collection
 
             arguments
                 obj
-                metadataType (1,1) om.enum.Types
+                metadataType (1,1) openminds.enum.Types
                 options.ProgressDialog matlab.ui.dialog.ProgressDialog = matlab.ui.dialog.ProgressDialog.empty
                 options.Verbose (1,1) logical = false
                 %options.Filter struct
@@ -28,11 +27,7 @@ classdef KGCollection < openminds.Collection
             wasSuccess = false;
 
             fgClient = obj.FairgraphClient;
-            
-            typeClassName = metadataType.ClassName;
-            fairgraphType = ebrains.kg.internal.convert.getFairgraphType(typeClassName);
-
-            fgInstance = feval(fairgraphType);
+            fgInstance = obj.getFairgraphObject(metadataType);
 
             listedInstances = {};
 
@@ -97,10 +92,28 @@ classdef KGCollection < openminds.Collection
             % Add to collection
             for i = 1:numel(omInstances)
                 if ~obj.contains(omInstances(i))
-                    obj.add(omInstances(i))
+                    obj.add(omInstances(i));
                 end
             end
             wasSuccess = true;
+        end
+    
+        function instance = downloadInstance(obj, metadataType, instanceId, scope)
+            arguments
+                obj (1,1) ebrains.kg.KGCollection
+                metadataType (1,1) openminds.enum.Types
+                instanceId (1,1) string
+                scope (1,1) string {mustBeMember(scope, ["released", "in progress"])} = "released"
+            end
+            
+            fgClient = obj.FairgraphClient;
+            fgInstance = obj.getFairgraphObject(metadataType);
+           
+            instance = fgInstance.from_id(instanceId, fgClient, scope=scope, use_cache=false);
+        end
+
+        function downloadTypes(obj)
+
         end
     end
 
@@ -114,8 +127,6 @@ classdef KGCollection < openminds.Collection
     end
 
     methods (Access = protected)
-        
-        
         %Add an instance to the Node container.
         function addNode(obj, instance, options)
     
@@ -152,7 +163,17 @@ classdef KGCollection < openminds.Collection
         function initializeFairgraphClient(comp)
             % Todo: Get from singleton.
             authClient = ebrains.iam.AuthenticationClient.instance();
-            comp.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken ); 
+            comp.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host="core.kg.ebrains.eu" ); 
+        end
+
+        function fgInstance = getFairgraphObject(obj, metadataType)
+            arguments
+                obj (1,1) ebrains.kg.KGCollection
+                metadataType (1,1) openminds.enum.Types
+            end
+            typeClassName = metadataType.ClassName;
+            fairgraphType = ebrains.kg.internal.convert.getFairgraphType(typeClassName);
+            fgInstance = feval(fairgraphType);
         end
     end 
 end

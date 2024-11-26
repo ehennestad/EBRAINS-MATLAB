@@ -4,10 +4,14 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
         fgObject
         fgClient
         options.ResolveLinksDepth = 0
+        options.Scope = "released"
     end
     
     % NB: Dependency: openminds UI
-    
+    if isa(fgObject, 'py.NoneType')
+        omObject = []; return
+    end
+
     fgType = class(fgObject);
     
     fgTypeSplit = strsplit(fgType, '.');
@@ -18,10 +22,17 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
     omType = strrep(omType, '_', '');
 
 
-    if isprop(fgObject, 'id')
+    if startsWith( class(fgObject), 'py.fairgraph.openminds.controlled_terms')
+        omObject = feval(omType, string(fgObject.name));
+
+    elseif isprop(fgObject, 'id')
         omObject = feval(omType, 'id', fgObject.id);
     else
-        omObject = feval(omType);
+        try
+            omObject = feval(omType);
+        catch
+            keyboard
+        end
     end
     
     omProperties = properties(omObject);
@@ -66,7 +77,11 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
 
             elseif isa(fgPropertyValue{j}, 'py.fairgraph.kgproxy.KGProxy')
                 if options.ResolveLinksDepth > 0
-                    fgPropertyValue{j} = fgPropertyValue{j}.resolve();
+                    try
+                        fgPropertyValue{j} = fgPropertyValue{j}.resolve(fgClient, scope="any", use_cache=false);
+                    catch
+                        keyboard
+                    end
                     fgPropertyValue{j} = ebrains.kg.internal.convert.fairgraph2openminds(fgPropertyValue{j}, fgClient);
                 else
 
@@ -99,23 +114,29 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
             end
         end
 
-        if doSetProperty
-            if numel(fgPropertyValue) == 1
-                omObject.(omPropertyName) = fgPropertyValue{1};
-            else
-                try
-                    omObject.(omPropertyName) = [fgPropertyValue{:}];
-                catch
-                    omObject.(omPropertyName) = fgPropertyValue;
+        try
+            if doSetProperty
+                if numel(fgPropertyValue) == 1
+                    omObject.(omPropertyName) = fgPropertyValue{1};
+                else
+                    try
+                        omObject.(omPropertyName) = [fgPropertyValue{:}];
+                    catch
+                        omObject.(omPropertyName) = fgPropertyValue;
+                    end
                 end
             end
+        catch ME
+            warning('openMINDS:Collection:CouldNotSetProperty', '%s', ME.message)
+            keyboard
+
         end
     end    
 end
 
 function pythonName = jsonicName2pythonicName(jsonName, isPlural)
 % jsonicName2pythonicName - Convert name    
-    import om.internal.vocab.getPropertyAlias
+    import openminds.internal.vocab.getPropertyAlias
     if nargin < 2; isPlural = false; end
     label = getPropertyAlias(jsonName, 'Alias', 'label', "Plural", isPlural);
     pythonName = strrep(lower(label), ' ', '_');
