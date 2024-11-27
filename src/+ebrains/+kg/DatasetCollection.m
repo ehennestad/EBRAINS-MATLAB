@@ -1,11 +1,11 @@
 classdef DatasetCollection < ebrains.kg.KGCollection
 
     properties
-        DatasetUUID (1,1) string
+        Identifier (1,1) string
     end
 
     properties
-        LinksToResolve (1,1) logical = 1
+        LinksToResolve (1,1) double = 1
     end
 
     properties (SetAccess = private)
@@ -13,14 +13,29 @@ classdef DatasetCollection < ebrains.kg.KGCollection
     end
 
     methods
-        function obj = DatasetCollection(datasetUUID)
-            obj = obj@ebrains.kg.KGCollection();
-            obj.DatasetUUID = datasetUUID;
+        function obj = DatasetCollection(identifier, options)
+            arguments
+                identifier
+                options.type (1,1) string {mustBeMember(options.type, [ ...
+                    "Dataset", ...
+                    "DatasetVersion" ] ...
+                    )} = "Dataset"
+                options.LinksToResolve (1,1) double = 1
+            end
 
-            instance = obj.downloadInstance("DatasetVersion", obj.DatasetUUID, "in progress");
+            obj = obj@ebrains.kg.KGCollection();
+            
+            if isfield(options, 'LinksToResolve')
+                obj.LinksToResolve = options.LinksToResolve;
+            end
+            
+            obj.Identifier = identifier;
+            instance = obj.downloadInstance(options.type, obj.Identifier, "any");
 
             try
-                omInstance = ebrains.kg.internal.convert.fairgraph2openminds(instance, obj.FairgraphClient, ResolveLinksDepth=1);
+                omInstance = ebrains.kg.internal.convert.fairgraph2openminds(...
+                    instance, obj.FairgraphClient, ...
+                    ResolveLinksDepth=obj.LinksToResolve);
             catch ME
                 omInstance = feval( metadataType.ClassName, 'id', 'none' );
                 disp(ME.message)

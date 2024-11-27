@@ -103,7 +103,7 @@ classdef KGCollection < openminds.Collection
                 obj (1,1) ebrains.kg.KGCollection
                 metadataType (1,1) openminds.enum.Types
                 instanceId (1,1) string
-                scope (1,1) string {mustBeMember(scope, ["released", "in progress"])} = "released"
+                scope (1,1) string {mustBeMember(scope, ["released", "in progress", "any"])} = "any"
             end
             
             fgClient = obj.FairgraphClient;
@@ -113,6 +113,10 @@ classdef KGCollection < openminds.Collection
         end
 
         function downloadTypes(obj)
+
+        end
+
+        function resolve(obj)
 
         end
     end
@@ -141,7 +145,7 @@ classdef KGCollection < openminds.Collection
                 obj.Nodes(instance.id) = {instance};
             elseif isa(instance, 'openminds.abstract.Schema')
                 nvPairs = namedargs2cell(options);
-                addNode@openminds.Collection(obj, instance, nvPairs{:})
+                addNode@openminds.Collection(obj, instance, nvPairs{:});
             end
             
             if isempty(instance.id)
