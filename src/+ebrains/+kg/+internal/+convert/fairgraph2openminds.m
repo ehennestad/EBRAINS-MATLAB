@@ -23,16 +23,17 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
 
 
     if startsWith( class(fgObject), 'py.fairgraph.openminds.controlled_terms')
-        omObject = feval(omType, string(fgObject.name));
+        try
+            omObject = feval(omType, string(fgObject.name));
+            return
+        catch ME
+            omObject = feval(omType);
+        end
 
     elseif isprop(fgObject, 'id')
         omObject = feval(omType, 'id', fgObject.id);
     else
-        try
-            omObject = feval(omType);
-        catch
-            keyboard
-        end
+        omObject = feval(omType);
     end
     
     omProperties = properties(omObject);
@@ -69,7 +70,8 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
                 continue
             elseif isa(fgPropertyValue{j}, 'datetime')
                 % pass
-            
+            elseif isa(fgPropertyValue{j}, 'py.int')
+                fgPropertyValue{j} = double(fgPropertyValue{j});
             elseif isa(fgPropertyValue{j}, 'py.str')
                 fgPropertyValue{j} = string(fgPropertyValue{j});
             elseif isa(fgPropertyValue{j}, 'py.fairgraph.base.IRI')
@@ -79,10 +81,12 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
                 if options.ResolveLinksDepth > 0
                     try
                         fgPropertyValue{j} = fgPropertyValue{j}.resolve(fgClient, scope="any", use_cache=false);
-                    catch
-                        keyboard
+                    catch ME
+                        warning('EBRAINS_MATLAB:FairgraphConvert:CouldNotResolveInstance', ...
+                            'Could not resolve instance for property with name "%s".', fgPropertyName)
+                        continue
                     end
-                    fgPropertyValue{j} = ebrains.kg.internal.convert.fairgraph2openminds(fgPropertyValue{j}, fgClient);
+                    fgPropertyValue{j} = ebrains.kg.internal.convert.fairgraph2openminds(fgPropertyValue{j}, fgClient, "ResolveLinksDepth", options.ResolveLinksDepth-1);
                 else
 
                     if isa( omObject.(omPropertyName), 'openminds.internal.abstract.LinkedCategory')
@@ -107,7 +111,7 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
                 end
 
             elseif isa(fgPropertyValue{j}, 'py.fairgraph.embedded.EmbeddedMetadata')
-                fgPropertyValue{j} = ebrains.kg.internal.convert.fairgraph2openminds(fgPropertyValue{j}, fgClient);
+                fgPropertyValue{j} = ebrains.kg.internal.convert.fairgraph2openminds(fgPropertyValue{j}, fgClient, "ResolveLinksDepth", options.ResolveLinksDepth-1);
             else
                 doSetProperty = false;
                 disp(omProperties{i})
@@ -128,8 +132,6 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
             end
         catch ME
             warning('openMINDS:Collection:CouldNotSetProperty', '%s', ME.message)
-            keyboard
-
         end
     end    
 end
