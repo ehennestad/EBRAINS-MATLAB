@@ -1,0 +1,7 @@
+function expiration_time = get_token_expiration(token)
+% GET_TOKEN_EXPIRATION - Return token expiration time in local time zone
+    
+    decoded_token = ebrains.internal.decode_jwt(token);
+    expiration_time = datetime(decoded_token.exp, ...
+        'ConvertFrom', 'posixtime', 'TimeZone', 'local');
+end
