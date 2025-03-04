@@ -189,7 +189,7 @@ classdef AuthenticationClient < handle
             if ~ismissing(obj.AccessToken_)
                 tf = obj.ExpiresIn > seconds(0);
                 if obj.ExpiresIn < seconds(3600)
-                    warning("Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
+                    warning("EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
                 end
             end
         end
