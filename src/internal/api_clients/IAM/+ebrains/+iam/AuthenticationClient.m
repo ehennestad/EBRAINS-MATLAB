@@ -51,6 +51,21 @@ classdef AuthenticationClient < handle
     methods (Access = private)
         function obj = AuthenticationClient(obj)
             obj.initOidc()
+
+            % Try to get from secrets
+            if exist("isSecret", "file")
+                if isSecret('EBRAINS_TOKEN')
+                    obj.AccessToken_ = getSecret('EBRAINS_TOKEN');
+                    obj.decodeTokenExpiryTime()
+                    return
+                end
+            end
+
+            % Try to get from env
+            if isenv('EBRAINS_TOKEN')
+                obj.AccessToken_ = getenv('EBRAINS_TOKEN');
+                obj.decodeTokenExpiryTime()
+            end
         end
     end
 
@@ -125,6 +140,63 @@ classdef AuthenticationClient < handle
             obj.RefreshTokenExpiresAt = ...
                 datetime("now") + seconds(tokenResponse.refresh_expires_in);
         end
+        
+        function refreshToken(obj)
+            % refreshToken - Refresh the access token using the refresh token
+        
+            % Check if refresh token exists
+            if isempty(obj.RefreshToken)
+                error("No refresh token available. Please authenticate first.");
+            end
+        
+            try
+                % Request a new access token using the refresh token
+                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
+                    "grant_type", "refresh_token", ...
+                    "client_id", obj.OIDC_CLIENT_NAME, ...
+                    "refresh_token", obj.RefreshToken ...
+                );
+        
+                % Update object properties with new token values
+                obj.AccessToken_ = tokenResponse.access_token;
+                obj.RefreshToken = tokenResponse.refresh_token;
+        
+                obj.AccessTokenExpiresAt = ...
+                    datetime("now") + seconds(tokenResponse.expires_in);
+        
+                obj.RefreshTokenExpiresAt = ...
+                    datetime("now") + seconds(tokenResponse.refresh_expires_in);
+        
+                % Log success
+                disp("Token refreshed successfully.");
+        
+            catch ME
+                titleMessage = "Token Refresh Failed";
+                switch ME.identifier
+                    case 'MATLAB:webservices:HTTP400StatusCodeError'
+                        errorMessage = "The refresh token is invalid or expired. Please reauthenticate.";
+                        errordlg(errorMessage, titleMessage);
+                        throwAsCaller(ME);
+                    otherwise
+                        errordlg(ME.message, titleMessage);
+                        throwAsCaller(ME);
+                end
+            end
+        end
+
+        function tf = hasActiveToken(obj)
+            tf = false;
+            if ~ismissing(obj.AccessToken_)
+                tf = obj.ExpiresIn > seconds(0);
+                if obj.ExpiresIn < seconds(3600)
+                    warning("EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
+                end
+            end
+        end
+    
+        function copyTokenToClipboard(obj)
+            clipboard("copy", obj.AccessToken_)
+        end
     end
 
     methods
@@ -152,7 +224,12 @@ classdef AuthenticationClient < handle
             obj.OpenIdConfig = ...
                 webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT);
         end
-
+        
+        function decodeTokenExpiryTime(obj)
+            obj.AccessTokenExpiresAt = ...
+                ebrains.internal.get_token_expiration(obj.AccessToken_);
+            obj.AccessTokenExpiresAt.TimeZone = '';
+        end
     end
 
     methods (Static)
