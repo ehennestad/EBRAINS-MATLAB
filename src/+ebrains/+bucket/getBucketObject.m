@@ -22,4 +22,7 @@ function filePath = getBucketObject(bucketName, objectName, options)
 
     filePath = fullfile(options.TargetFolder, objectName);
     downloadFile(filePath, result.url)
+    if nargout == 0
+        clear filePath
+    end
 end
