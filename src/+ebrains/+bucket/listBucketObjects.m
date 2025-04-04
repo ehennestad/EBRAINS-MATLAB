@@ -62,6 +62,10 @@ function completeObjectList = listBucketObjects(bucketName, options)
             fprintf('Retrieved %d/%d objects.\n', numel(completeObjectList), nTotalObjects)
         end
 
+        if isempty(objectList)
+            return
+        end
+        
         marker = objectList(end).name;
 
         if numel(objectList) < pageSize
