@@ -48,6 +48,8 @@ classdef (Abstract) BaseClient < handle & matlab.mixin.CustomDisplay
         % Basic authentication consider setting the Credentials property in the
         % httpOptions rather than through httpCredentials.
         httpCredentials = matlab.net.http.Credentials.empty;
+
+        AuthClient
     end
 
     properties (Constant)
@@ -89,6 +91,7 @@ classdef (Abstract) BaseClient < handle & matlab.mixin.CustomDisplay
 
             % Get the token for the iam auth client
             authClient = ebrains.iam.AuthenticationClient.instance();
+            obj.AuthClient = authClient;
             obj.bearerToken = authClient.AccessToken;
         end
     end % public methods
