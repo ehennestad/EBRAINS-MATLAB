@@ -37,4 +37,4 @@ jsonInstance = openminds.internal.serializer.struct2jsonld(omNodes);
 openminds.internal.utility.filewrite('test_kg_download.jsonld', jsonInstance)
 toc
 
-C = openminds.Collection('test_kg_download.jsonld')
+C = openminds.Collection('test_kg_download.jsonld', 'LinkResolver', ebrains.kg.KGResolver());
