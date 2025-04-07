@@ -1,4 +1,9 @@
 function fairgraphObject = convertToFairgraphObject(openMindsObject, fgClient)
+    
+    arguments
+        openMindsObject openminds.abstract.Schema
+        fgClient py.fairgraph.client.KGClient
+    end
 
     fgType = getFairgraphType( class(openMindsObject) );
 
@@ -15,8 +20,8 @@ function fairgraphObject = convertToFairgraphObject(openMindsObject, fgClient)
             propName = propNames{iProp};
             propValue = openMindsObject.(propName);
     
-            fgPropName = generatePythonName(propName);
-            fgPropName = validateFgPropName(fgPropName, fairgraphObject);
+            fgPropName = ebrains.kg.internal.convert.generatePythonName(propName);
+            fgPropName = ebrains.kg.internal.convert.validateFgPropName(fgPropName, fairgraphObject);
             
             if isempty(propValue); continue; end
 
@@ -24,7 +29,7 @@ function fairgraphObject = convertToFairgraphObject(openMindsObject, fgClient)
             for jPropValue = 1:numel(propValue)
 
                 if isa(propValue(jPropValue), 'openminds.abstract.Schema')
-                    fgPropValues{jPropValue} = convertToFairgraphObject(propValue(jPropValue), fgClient);
+                    fgPropValues{jPropValue} = ebrains.kg.internal.convert.convertToFairgraphObject(propValue(jPropValue), fgClient);
                 
                 elseif isa(propValue, 'mixedtype') % Todo...
                     error('Not implemented yet')

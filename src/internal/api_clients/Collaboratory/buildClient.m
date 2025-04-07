@@ -1,6 +1,6 @@
 % Run startup to configure the package's MATLAB paths
-startup
-cd ..
+% startup
+% cd ..
 
 % Create a builder object
 c = openapi.build.Client;

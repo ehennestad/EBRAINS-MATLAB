@@ -174,9 +174,10 @@ classdef AuthenticationClient < handle
                 titleMessage = "Token Refresh Failed";
                 switch ME.identifier
                     case 'MATLAB:webservices:HTTP400StatusCodeError'
-                        errorMessage = "The refresh token is invalid or expired. Please reauthenticate.";
-                        errordlg(errorMessage, titleMessage);
-                        throwAsCaller(ME);
+                        %errorMessage = "The refresh token is invalid or expired. Please reauthenticate.";
+                        %errordlg(errorMessage, titleMessage);
+                        obj.fetchToken()
+                        %throwAsCaller(ME);
                     otherwise
                         errordlg(ME.message, titleMessage);
                         throwAsCaller(ME);
@@ -213,6 +214,9 @@ classdef AuthenticationClient < handle
         function accessToken = get.AccessToken(obj)
             if ismissing(obj.AccessToken_)
                 obj.fetchToken()
+            end
+            if ~obj.hasActiveToken()
+                obj.refreshToken()
             end
             accessToken = obj.AccessToken_;
         end

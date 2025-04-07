@@ -1,0 +1,2020 @@
+{
+  "@context": {
+    "@vocab": "https://openminds.ebrains.eu/vocab/"
+  },
+  "@graph": [
+    {
+      "repository": {
+        "@id": "https://kg.ebrains.eu/api/instances/598fab88-0622-4b11-98b9-e34df48f701b"
+      },
+      "keyword": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/b8f63aae-745f-40aa-aadd-9ea2c30b8060"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d77eb055-3ee9-484f-9c53-b2e621afcb45"
+        }
+      ],
+      "preparationDesign": {
+        "@id": "https://kg.ebrains.eu/api/instances/1ea3e394-b6d6-4cbd-8be6-c0681a255e59"
+      },
+      "studyTarget": {
+        "@id": "https://kg.ebrains.eu/api/instances/8cc1219f-0353-4604-9854-104411ac060b"
+      },
+      "studiedSpecimen": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5272c06a-6df8-41ba-a396-38c193b1f92c"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5389c58a-0306-4a49-9737-a6377e83c13b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d2a2bb8c-72d7-4398-9d3e-c00cfa79cc31"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/bb597695-2183-4a86-8cf2-d4053a69804d"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/734cb469-6445-4a5c-a15f-6020b3768870"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/282c5ec6-8a7b-44e9-901a-458acaf9d125"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/49303986-21d3-4357-aeab-ce461bba1d3b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/27b4b917-e824-4389-a90b-269b92fb1272"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1a1a8b9a-a6c0-43e8-96df-327a0433b063"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/66d49b44-afe1-4c5e-a556-6096647637f4"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/01fc223e-a35c-4599-8d60-d5f39bce3086"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/48d6a563-332d-4d50-abd3-c354f0bac68f"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/51f57b5a-68db-4f58-b96f-ea28c595f0b9"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/802828dd-ff62-4351-b6a1-06483f594378"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/28b5eff6-175e-4acc-b66d-fbfe61ab63e2"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/32938b65-e495-4b9d-b74b-12a63c638d79"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/17651173-3f30-4e0c-b488-f91afe0d8e24"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/65f9eecf-d644-4167-a80c-fc4518f22143"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/ed62ad66-721c-48aa-9b46-ce368c57851b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/8de77a31-5e26-4fe4-98a5-23ab16fe522a"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/c67caa67-48a7-4b3d-b4b6-d3f0160970b6"
+        }
+      ],
+      "versionIdentifier": "v1",
+      "behavioralProtocol": {
+        "@id": "https://kg.ebrains.eu/api/instances/25c4c12a-6aa3-4650-83c4-4b0bb3e20449"
+      },
+      "fullName": "Longitudinal imaging and LFP data from visPOR across learning, with offline manipulation of neural activity in parvalbumin expressing neurons",
+      "shortName": "2P+LFP recording in visPOR",
+      "otherContribution": [
+        {
+          "@type": [
+            "https://openminds.ebrains.eu/core/Contribution"
+          ],
+          "https___openminds_ebrains_eu_vocab_type": {
+            "@id": "https://kg.ebrains.eu/api/instances/b47d91d4-6a9f-4d06-b09b-02d353808d9c"
+          },
+          "https___openminds_ebrains_eu_vocab_contributor": {
+            "@id": "https://kg.ebrains.eu/api/instances/0a37dcd0-d2a5-4a8f-9f0e-de7ecf75357d"
+          }
+        },
+        {
+          "@type": [
+            "https://openminds.ebrains.eu/core/Contribution"
+          ],
+          "https___openminds_ebrains_eu_vocab_type": {
+            "@id": "https://kg.ebrains.eu/api/instances/b40444ea-53d2-45cc-8416-14846ca27cab"
+          },
+          "https___openminds_ebrains_eu_vocab_contributor": {
+            "@id": "https://kg.ebrains.eu/api/instances/06fc8a34-d4b8-497d-8f0c-a7668a62ec0c"
+          }
+        }
+      ],
+      "ethicsAssessment": {
+        "@id": "https://kg.ebrains.eu/api/instances/5837d74e-c3e3-4ddd-8fe9-6d0eea6a0d14"
+      },
+      "relatedPublication": {
+        "@id": "https://kg.ebrains.eu/api/instances/8b9794ad-087e-4659-8de6-775e35dbc848"
+      },
+      "license": {
+        "@id": "https://kg.ebrains.eu/api/instances/64c1704b-db12-4b29-9541-b9143d081044"
+      },
+      "accessibility": {
+        "@id": "https://kg.ebrains.eu/api/instances/b2ff7a47-b349-48d7-8ce4-cf51868675f1"
+      },
+      "digitalIdentifier": {
+        "@id": "https://kg.ebrains.eu/api/instances/a5d29304-eee1-4688-8256-e1eac950b7cd"
+      },
+      "versionInnovation": "This first dataset version contains an overview of the behavioural data from 9 mice, in addition to raw behavioural data and two-photon Ca2+ imaging and LFP recordings of 13 mice, expressing either Flex-mRuby3 or DIO-hM4Di-mCherry bilaterally in visPOR. Neural activity in each mouse was tracked across 10 sessions (days).",
+      "experimentalApproach": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5fd69e3e-fc49-4e53-8d31-2c84d82c1db8"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/411b233f-a054-4719-bbd5-e86f1302bc46"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d69c1c0c-4704-4a6a-95d1-276d5b73c1c2"
+        }
+      ],
+      "dataType": {
+        "@id": "https://kg.ebrains.eu/api/instances/f468ee45-37a6-4e71-8b70-0cbe66d367db"
+      },
+      "technique": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/22d9b62a-dd93-4e00-80be-55e7b948a371"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/8a5a607c-e810-4564-8af6-0a607ec7073e"
+        }
+      ],
+      "fullDocumentation": {
+        "@id": "https://kg.ebrains.eu/api/instances/02e4445f-ad92-4b10-88f8-ed7cf250d7cd"
+      },
+      "@type": "https://openminds.ebrains.eu/core/DatasetVersion",
+      "@id": "https://kg.ebrains.eu/api/instances/8f36d73a-befc-4aa5-b501-fc546e723f30"
+    },
+    {
+      "type": {
+        "@id": "https://kg.ebrains.eu/api/instances/877e7f6b-b9e6-4a07-a8c9-01f9f5e4ca8b"
+      },
+      "IRI": "https://data-proxy.ebrains.eu/api/v1/buckets/d-8f36d73a-befc-4aa5-b501-fc546e723f30",
+      "hostedBy": {
+        "@id": "https://kg.ebrains.eu/api/instances/7dfdd91f-3d05-424a-80bd-6d1d5dc11cd3"
+      },
+      "name": "bucket/d-8f36d73a-befc-4aa5-b501-fc546e723f30",
+      "contentTypePattern": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/cf20dba7-19f5-4c0b-9be8-33e9ead6ee93"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/56349b8f-b914-4fa2-96c7-039293e8d953"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/9deb66dc-5207-49c0-933c-98ee0e6cb5c7"
+        }
+      ],
+      "@type": "https://openminds.ebrains.eu/core/FileRepository",
+      "@id": "https://kg.ebrains.eu/api/instances/598fab88-0622-4b11-98b9-e34df48f701b"
+    },
+    {
+      "preferredOntologyIdentifier": "http://uri.interlex.org/tgbugs/uris/readable/modality/Behavior",
+      "name": "behavior",
+      "synonym": "behavioral approach",
+      "definition": "Any experimental approach focused on the mechanical activity or cognitive processes underlying mechanical activity of living organisms often in response to external sensory stimuli.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0739413",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ExperimentalApproach",
+      "@id": "https://kg.ebrains.eu/api/instances/d69c1c0c-4704-4a6a-95d1-276d5b73c1c2"
+    },
+    {
+      "format": {
+        "@id": "https://kg.ebrains.eu/api/instances/25cc7d31-2dde-4b74-b40a-0188846b5e8e"
+      },
+      "contentDescription": "data-descriptor",
+      "IRI": "https://data-proxy.ebrains.eu/api/permalinks/48c75eb3-6dce-4498-862f-35126e534a66",
+      "@type": "https://openminds.ebrains.eu/core/WebResource",
+      "@id": "https://kg.ebrains.eu/api/instances/02e4445f-ad92-4b10-88f8-ed7cf250d7cd"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/b09efbef-0def-4265-a970-73d6276d425e"
+      },
+      "lookupLabel": "IS20",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "IS20",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/32938b65-e495-4b9d-b74b-12a63c638d79"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/d0d7b440-4f38-4045-879f-dfe8039f3f6d"
+      },
+      "lookupLabel": "IS23",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "IS23",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/17651173-3f30-4e0c-b488-f91afe0d8e24"
+    },
+    {
+      "name": "data processing",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ContributionType",
+      "@id": "https://kg.ebrains.eu/api/instances/b47d91d4-6a9f-4d06-b09b-02d353808d9c"
+    },
+    {
+      "name": "coordination",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ContributionType",
+      "@id": "https://kg.ebrains.eu/api/instances/b40444ea-53d2-45cc-8416-14846ca27cab"
+    },
+    {
+      "preferredOntologyIdentifier": "http://uri.interlex.org/tgbugs/uris/readable/technique/twoPhoton",
+      "name": "two-photon fluorescence microscopy",
+      "synonym": [
+        "2-photon excitation microscopy",
+        "2-photon fluorescence microscopy",
+        "2-photon microscopy",
+        "2PEF",
+        "TPEF",
+        "TPM",
+        "two-photon excitation fluorescence microscopy",
+        "two-photon excitation microscopy",
+        "two-photon microscopy"
+      ],
+      "definition": "Two-photon fluorescence microscopy is a fluorescence microscopy technique for living tissue which is based on the simultaneous excitation by two photons with longer wavelength than the emitted light.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0739658",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/Technique",
+      "@id": "https://kg.ebrains.eu/api/instances/22d9b62a-dd93-4e00-80be-55e7b948a371"
+    },
+    {
+      "identifier": "https://doi.org/10.25493/6B00-3N8",
+      "@type": "https://openminds.ebrains.eu/core/DOI",
+      "@id": "https://kg.ebrains.eu/api/instances/a5d29304-eee1-4688-8256-e1eac950b7cd"
+    },
+    {
+      "description": "Data are ethically approved in compliance with EU law. No additional ethics assessment was made by the data sharing initiative. This is typically true for all, human post-mortem data, human cross-subject statistics, non-primate vertebrate animals as well as cephalopods.",
+      "name": "EU compliant",
+      "definition": "Data are ethically approved in compliance with EU law. No additional ethics assessment was made by the data sharing initiative.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/EthicsAssessment",
+      "@id": "https://kg.ebrains.eu/api/instances/5837d74e-c3e3-4ddd-8fe9-6d0eea6a0d14"
+    },
+    {
+      "givenName": "Kristin",
+      "contactInformation": {
+        "@id": "https://kg.ebrains.eu/api/instances/56924d80-25f3-4b73-a157-bca728eadca6"
+      },
+      "familyName": "Tøndel",
+      "@type": "https://openminds.ebrains.eu/core/Person",
+      "@id": "https://kg.ebrains.eu/api/instances/0a37dcd0-d2a5-4a8f-9f0e-de7ecf75357d"
+    },
+    {
+      "preferredOntologyIdentifier": "http://uri.interlex.org/tgbugs/uris/readable/modality/CellPopulationImaging",
+      "name": "cell population imaging",
+      "definition": "Any experimental approach focused on imaging biochemical, molecular, or physiological characteristics of populations of cells.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0739402",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ExperimentalApproach",
+      "@id": "https://kg.ebrains.eu/api/instances/5fd69e3e-fc49-4e53-8d31-2c84d82c1db8"
+    },
+    {
+      "name": "postrhinal cortex",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/TermSuggestion",
+      "@id": "https://kg.ebrains.eu/api/instances/b8f63aae-745f-40aa-aadd-9ea2c30b8060"
+    },
+    {
+      "preferredOntologyIdentifier": "http://uri.interlex.org/tgbugs/uris/readable/modality/Electrophysiology",
+      "name": "electrophysiology",
+      "definition": "Any experimental approach focused on electrical phenomena associated with living systems, most notably the nervous system, cardiac system, and musculoskeletal system.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0741202",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ExperimentalApproach",
+      "@id": "https://kg.ebrains.eu/api/instances/411b233f-a054-4719-bbd5-e86f1302bc46"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/2427eb33-b39a-442f-9408-dd65dad8b2c3"
+      },
+      "lookupLabel": "KKL196",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL196",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/d2a2bb8c-72d7-4398-9d3e-c00cfa79cc31"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/2cd047b0-d5a7-4edd-b420-63e32ad69730"
+      },
+      "lookupLabel": "IS19",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "IS19",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/28b5eff6-175e-4acc-b66d-fbfe61ab63e2"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/6e96b7ac-0137-47c9-9939-5aeb9a65bf49"
+      },
+      "lookupLabel": "KKL366",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL366",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/49303986-21d3-4357-aeab-ce461bba1d3b"
+    },
+    {
+      "name": "extracellular electrophysiology",
+      "definition": "In 'extracellular electrophysiology' electrodes are inserted into living tissue, but remain outside the cells in the extracellular environment to measure or stimulate electrical activity coming from adjacent cells, usually neurons.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/Technique",
+      "@id": "https://kg.ebrains.eu/api/instances/8a5a607c-e810-4564-8af6-0a607ec7073e"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/0f6157e0-d3c6-447c-bc91-436a49ddef14"
+      },
+      "lookupLabel": "KKL415",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL415",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/51f57b5a-68db-4f58-b96f-ea28c595f0b9"
+    },
+    {
+      "webpage": [
+        "https://creativecommons.org/licenses/by/4.0",
+        "https://spdx.org/licenses/CC-BY-4.0.html"
+      ],
+      "fullName": "Creative Commons Attribution 4.0 International",
+      "legalCode": "https://creativecommons.org/licenses/by/4.0/legalcode",
+      "shortName": "CC BY 4.0",
+      "@type": "https://openminds.ebrains.eu/core/License",
+      "@id": "https://kg.ebrains.eu/api/instances/64c1704b-db12-4b29-9541-b9143d081044"
+    },
+    {
+      "preferredOntologyIdentifier": "http://uri.interlex.org/tgbugs/uris/indexes/ontologies/methods/89",
+      "name": "in vivo",
+      "synonym": "in vivo technique",
+      "definition": "Something happening or existing inside a living body.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0739622",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/PreparationType",
+      "@id": "https://kg.ebrains.eu/api/instances/1ea3e394-b6d6-4cbd-8be6-c0681a255e59"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/d2f01b9e-59ba-47e4-a13e-d5e9e7f4f693"
+      },
+      "lookupLabel": "KKL404",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL404",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/48d6a563-332d-4d50-abd3-c354f0bac68f"
+    },
+    {
+      "repository": {
+        "@id": "https://kg.ebrains.eu/api/instances/598fab88-0622-4b11-98b9-e34df48f701b"
+      },
+      "keyword": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/b8f63aae-745f-40aa-aadd-9ea2c30b8060"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d77eb055-3ee9-484f-9c53-b2e621afcb45"
+        }
+      ],
+      "preparationDesign": {
+        "@id": "https://kg.ebrains.eu/api/instances/1ea3e394-b6d6-4cbd-8be6-c0681a255e59"
+      },
+      "studyTarget": {
+        "@id": "https://kg.ebrains.eu/api/instances/8cc1219f-0353-4604-9854-104411ac060b"
+      },
+      "studiedSpecimen": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5272c06a-6df8-41ba-a396-38c193b1f92c"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5389c58a-0306-4a49-9737-a6377e83c13b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d2a2bb8c-72d7-4398-9d3e-c00cfa79cc31"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/bb597695-2183-4a86-8cf2-d4053a69804d"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/734cb469-6445-4a5c-a15f-6020b3768870"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/282c5ec6-8a7b-44e9-901a-458acaf9d125"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/49303986-21d3-4357-aeab-ce461bba1d3b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/27b4b917-e824-4389-a90b-269b92fb1272"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1a1a8b9a-a6c0-43e8-96df-327a0433b063"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/66d49b44-afe1-4c5e-a556-6096647637f4"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/01fc223e-a35c-4599-8d60-d5f39bce3086"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/48d6a563-332d-4d50-abd3-c354f0bac68f"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/51f57b5a-68db-4f58-b96f-ea28c595f0b9"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/802828dd-ff62-4351-b6a1-06483f594378"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/28b5eff6-175e-4acc-b66d-fbfe61ab63e2"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/32938b65-e495-4b9d-b74b-12a63c638d79"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/17651173-3f30-4e0c-b488-f91afe0d8e24"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/65f9eecf-d644-4167-a80c-fc4518f22143"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/ed62ad66-721c-48aa-9b46-ce368c57851b"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/8de77a31-5e26-4fe4-98a5-23ab16fe522a"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/c67caa67-48a7-4b3d-b4b6-d3f0160970b6"
+        }
+      ],
+      "versionIdentifier": "v1",
+      "behavioralProtocol": {
+        "@id": "https://kg.ebrains.eu/api/instances/25c4c12a-6aa3-4650-83c4-4b0bb3e20449"
+      },
+      "fullName": "Longitudinal imaging and LFP data from visPOR across learning, with offline manipulation of neural activity in parvalbumin expressing neurons",
+      "shortName": "2P+LFP recording in visPOR",
+      "otherContribution": [
+        {
+          "@type": [
+            "https://openminds.ebrains.eu/core/Contribution"
+          ],
+          "https___openminds_ebrains_eu_vocab_type": {
+            "@id": "https://kg.ebrains.eu/api/instances/b47d91d4-6a9f-4d06-b09b-02d353808d9c"
+          },
+          "https___openminds_ebrains_eu_vocab_contributor": {
+            "@id": "https://kg.ebrains.eu/api/instances/0a37dcd0-d2a5-4a8f-9f0e-de7ecf75357d"
+          }
+        },
+        {
+          "@type": [
+            "https://openminds.ebrains.eu/core/Contribution"
+          ],
+          "https___openminds_ebrains_eu_vocab_type": {
+            "@id": "https://kg.ebrains.eu/api/instances/b40444ea-53d2-45cc-8416-14846ca27cab"
+          },
+          "https___openminds_ebrains_eu_vocab_contributor": {
+            "@id": "https://kg.ebrains.eu/api/instances/06fc8a34-d4b8-497d-8f0c-a7668a62ec0c"
+          }
+        }
+      ],
+      "ethicsAssessment": {
+        "@id": "https://kg.ebrains.eu/api/instances/5837d74e-c3e3-4ddd-8fe9-6d0eea6a0d14"
+      },
+      "relatedPublication": {
+        "@id": "https://kg.ebrains.eu/api/instances/8b9794ad-087e-4659-8de6-775e35dbc848"
+      },
+      "license": {
+        "@id": "https://kg.ebrains.eu/api/instances/64c1704b-db12-4b29-9541-b9143d081044"
+      },
+      "accessibility": {
+        "@id": "https://kg.ebrains.eu/api/instances/b2ff7a47-b349-48d7-8ce4-cf51868675f1"
+      },
+      "digitalIdentifier": {
+        "@id": "https://kg.ebrains.eu/api/instances/a5d29304-eee1-4688-8256-e1eac950b7cd"
+      },
+      "versionInnovation": "This first dataset version contains an overview of the behavioural data from 9 mice, in addition to raw behavioural data and two-photon Ca2+ imaging and LFP recordings of 13 mice, expressing either Flex-mRuby3 or DIO-hM4Di-mCherry bilaterally in visPOR. Neural activity in each mouse was tracked across 10 sessions (days).",
+      "experimentalApproach": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/5fd69e3e-fc49-4e53-8d31-2c84d82c1db8"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/411b233f-a054-4719-bbd5-e86f1302bc46"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/d69c1c0c-4704-4a6a-95d1-276d5b73c1c2"
+        }
+      ],
+      "dataType": {
+        "@id": "https://kg.ebrains.eu/api/instances/f468ee45-37a6-4e71-8b70-0cbe66d367db"
+      },
+      "technique": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/22d9b62a-dd93-4e00-80be-55e7b948a371"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/8a5a607c-e810-4564-8af6-0a607ec7073e"
+        }
+      ],
+      "fullDocumentation": {
+        "@id": "https://kg.ebrains.eu/api/instances/02e4445f-ad92-4b10-88f8-ed7cf250d7cd"
+      },
+      "@type": "https://openminds.ebrains.eu/core/DatasetVersion",
+      "@id": "https://kg.ebrains.eu/api/instances/8f36d73a-befc-4aa5-b501-fc546e723f30"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/10ab1222-3374-4c6c-a658-e50303535d6c"
+      },
+      "lookupLabel": "KKL401",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL401",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/734cb469-6445-4a5c-a15f-6020b3768870"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/60c8a315-c7dd-405f-8fd8-9088dc693eff"
+      },
+      "lookupLabel": "AS59",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "AS59",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/8de77a31-5e26-4fe4-98a5-23ab16fe522a"
+    },
+    {
+      "name": "free access",
+      "definition": "With 'free access' selected, data and metadata are both released and become immediately available without any access restrictions.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/ProductAccessibility",
+      "@id": "https://kg.ebrains.eu/api/instances/b2ff7a47-b349-48d7-8ce4-cf51868675f1"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/6803bf35-b375-4266-9d69-e8f6d63922ac"
+      },
+      "lookupLabel": "KKL191",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL191",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/5389c58a-0306-4a49-9737-a6377e83c13b"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/7e11777b-3c95-412a-b4bf-f3b790171d21"
+      },
+      "lookupLabel": "KKL421",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL421",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/27b4b917-e824-4389-a90b-269b92fb1272"
+    },
+    {
+      "digitalIdentifier": {
+        "@id": "https://kg.ebrains.eu/api/instances/26085365-8703-410e-9b24-272627f83587"
+      },
+      "givenName": "Mark",
+      "contactInformation": {
+        "@id": "https://kg.ebrains.eu/api/instances/ddb40044-1edc-48f2-b4c2-1ab70d428cde"
+      },
+      "familyName": "Andermann",
+      "@type": "https://openminds.ebrains.eu/core/Person",
+      "@id": "https://kg.ebrains.eu/api/instances/06fc8a34-d4b8-497d-8f0c-a7668a62ec0c"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/777d6770-0758-4c54-ae34-44256d8193f1"
+      },
+      "lookupLabel": "KKL109",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL109",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/01fc223e-a35c-4599-8d60-d5f39bce3086"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/a4d70c13-b17f-4380-8a92-15339ccbd610"
+      },
+      "lookupLabel": "AS60",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "AS60",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/c67caa67-48a7-4b3d-b4b6-d3f0160970b6"
+    },
+    {
+      "name": "experimental data",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/SemanticDataType",
+      "@id": "https://kg.ebrains.eu/api/instances/f468ee45-37a6-4e71-8b70-0cbe66d367db"
+    },
+    {
+      "knowledgeSpaceLink": "https://knowledge-space.org/wiki/UBERON:0003881#ca1",
+      "preferredOntologyIdentifier": "http://purl.obolibrary.org/obo/UBERON_0003881",
+      "description": "Part of hippocampus proper bounded by CA2 and the subiculum, characterized by pyramidal neurons that receive projections from pyramidal neurons of CA3 via the Schaffer collaterals.",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0101520",
+      "name": "CA1 field of hippocampus",
+      "synonym": [
+        "Ammon's horn (Lorente de Ns)",
+        "CA1",
+        "CA1 field",
+        "CA1 field of Ammon's horn",
+        "CA1 field of cornu ammonis",
+        "CA1 field of hippocampus",
+        "CA1 field of the Ammon horn",
+        "CA1 field of the hippocampus",
+        "cornu ammonis 1",
+        "field CA1",
+        "field CA1 of hippocampus",
+        "hippocampus CA1",
+        "prosubiculum = distal ca1",
+        "regio i cornus ammonis",
+        "regio i hippocampi proprii",
+        "regio superior",
+        "regio superior of the hippocampus",
+        "region 1 of Ammon's horn",
+        "region CA1",
+        "region i of ammon's horn",
+        "region i of hippocampus proper"
+      ],
+      "definition": "'CA1 field of hippocampus' is a hippocampal field.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/UBERONParcellation",
+      "@id": "https://kg.ebrains.eu/api/instances/d77eb055-3ee9-484f-9c53-b2e621afcb45"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/9814c4bc-d3e8-4fc6-915c-b0b6496b96a8"
+      },
+      "lookupLabel": "IS26",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "IS26",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/ed62ad66-721c-48aa-9b46-ce368c57851b"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/2fdc4b19-80df-4519-9cd5-1077ce12172b"
+      },
+      "lookupLabel": "KKL442",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL442",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/1a1a8b9a-a6c0-43e8-96df-327a0433b063"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/3af1c517-b6c9-4bfe-a501-f767eac425a1"
+      },
+      "lookupLabel": "IS25",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "IS25",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/65f9eecf-d644-4167-a80c-fc4518f22143"
+    },
+    {
+      "name": "parvalbumin expressing neuron",
+      "synonym": [
+        "parvalbumin expressing cell",
+        "PV+ cell",
+        "PV+ neuron",
+        "PV-positive cell",
+        "PV-positive neuron"
+      ],
+      "definition": "Any neuron that expresses parvalbumin.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/CellType",
+      "@id": "https://kg.ebrains.eu/api/instances/8cc1219f-0353-4604-9854-104411ac060b"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/e45bf951-cb74-4395-9902-e5e930b57972"
+      },
+      "lookupLabel": "KKL190",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL190",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/5272c06a-6df8-41ba-a396-38c193b1f92c"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/f641aa5f-9197-4662-912f-31e38e514a3c"
+      },
+      "lookupLabel": "ING127",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "ING127",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/66d49b44-afe1-4c5e-a556-6096647637f4"
+    },
+    {
+      "identifier": "https://doi.org/10.1101/2024.10.28.620563",
+      "@type": "https://openminds.ebrains.eu/core/DOI",
+      "@id": "https://kg.ebrains.eu/api/instances/8b9794ad-087e-4659-8de6-775e35dbc848"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/192fd990-4340-4e54-a85a-ab07ce23cfc3"
+      },
+      "lookupLabel": "AGR40",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "AGR40",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/802828dd-ff62-4351-b6a1-06483f594378"
+    },
+    {
+      "description": "Mice were introduced to the behavioral apparatus on the imaging rigs across several sessions. Habituation consisted of being head-fixed on a custom 3D-printed plastic running wheel using optical posts that were mounted to the optical table, holding clamps, and modified ball joints, allowing for adjustments in AP elevation. Rewards of the high-calorie milkshake Ensure were delivered by hand every 4-5 minutes. As the mice became more comfortable, the period was extended to last from 15-20 minutes up to one hour. In the final two to three sessions before introducing the operant task, the mice were shown Pavlovian visual stimuli, where the “plus” cue was shown for 3 seconds and always followed by the delivery of a small drop of Ensure.\n\nThe mice were trained to discriminate full field, drifting sinusoidal gratings with a spatial frequency of 0.04 cycles per degree and a temporal frequency of 2 Hz. Each of the outcomes (delivery of 8 μL of Ensure, no outcome, or 5 μL of 0.1M quinine) was randomly assigned per animal to the different angled gratings (0°, 135° or 270°). The cues were shown on a 20” 3:4 LCD monitor (60Hz refresh rate) or a 16” 16:9 LED monitor (60 Hz refresh rate) positioned 25 cm from the mouse. The cues were presented for 3 seconds before a 2-second response window where licks were detected using a 3D-printed lick spout (printed in conductive filament) coupled to an MPR121 capacitive sensor. Licking in the response window resulted in a single delivery of Ensure or quinine at the detection of the first lick while licking outside the response window (e.g., during cue presentation) gave no outcome. Single trials were interleaved with a grey screen lasting for 5 seconds. \nEach 30-minute training session contained 54 presentations of each cue or 162 trials in total, and one\nsession consisted of three such 30-minute runs. In the first four days of training, 5% of random\n“plus” trials were Pavlovian to keep the mice engaged in the task. The outcome associated with\neach of the cues was randomized between animals.",
+      "name": "Visual Go/NoGo Task (Lensjø et al., 2025)",
+      "describedIn": {
+        "@id": "https://kg.ebrains.eu/api/instances/02e4445f-ad92-4b10-88f8-ed7cf250d7cd"
+      },
+      "@type": "https://openminds.ebrains.eu/core/BehavioralProtocol",
+      "@id": "https://kg.ebrains.eu/api/instances/25c4c12a-6aa3-4650-83c4-4b0bb3e20449"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/48a7fe95-1fa3-4828-9e64-20337cb53971"
+      },
+      "lookupLabel": "KKL365",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL365",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/282c5ec6-8a7b-44e9-901a-458acaf9d125"
+    },
+    {
+      "studiedState": {
+        "@id": "https://kg.ebrains.eu/api/instances/d794e774-29af-4d62-aa2a-91948da3c523"
+      },
+      "lookupLabel": "KKL197",
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+      },
+      "internalIdentifier": "KKL197",
+      "biologicalSex": {
+        "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+      },
+      "@type": "https://openminds.ebrains.eu/core/Subject",
+      "@id": "https://kg.ebrains.eu/api/instances/bb597695-2183-4a86-8cf2-d4053a69804d"
+    },
+    {
+      "additionalRemarks": "Expressing GCaMP6f + DIO-hM4Di, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL109-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL109-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/777d6770-0758-4c54-ae34-44256d8193f1"
+    },
+    {
+      "additionalRemarks": "Expressing hM4Di-mCherry, used for LFP recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL190-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL190-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/e45bf951-cb74-4395-9902-e5e930b57972"
+    },
+    {
+      "additionalRemarks": "Expressing flex-mRuby3, used for LFP recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL401-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL401-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/10ab1222-3374-4c6c-a658-e50303535d6c"
+    },
+    {
+      "lookupLabel": "all *.nwb equal application.vnd.nwb.nwbn+hdf",
+      "regex": ".+\\.nwb$",
+      "contentType": {
+        "@id": "https://kg.ebrains.eu/api/instances/d859fff0-f656-4f48-af2d-bbb584c0ce84"
+      },
+      "@type": "https://openminds.ebrains.eu/core/ContentTypePattern",
+      "@id": "https://kg.ebrains.eu/api/instances/56349b8f-b914-4fa2-96c7-039293e8d953"
+    },
+    {
+      "additionalRemarks": "Expressing hM4Di-mCherry, used for LFP recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL191-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL191-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/6803bf35-b375-4266-9d69-e8f6d63922ac"
+    },
+    {
+      "additionalRemarks": "Expressing flex-mRuby3, used for LFP recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL196-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL196-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/2427eb33-b39a-442f-9408-dd65dad8b2c3"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s +DIO-hM4Di, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "ING127-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "ING127-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/f641aa5f-9197-4662-912f-31e38e514a3c"
+    },
+    {
+      "lookupLabel": "all *.ipynb equal application/x-ipynb+json",
+      "regex": ".+\\.ipynb$",
+      "contentType": {
+        "@id": "https://kg.ebrains.eu/api/instances/dbd53129-2918-4ec8-aed4-0a2cd23a9f78"
+      },
+      "@type": "https://openminds.ebrains.eu/core/ContentTypePattern",
+      "@id": "https://kg.ebrains.eu/api/instances/9deb66dc-5207-49c0-933c-98ee0e6cb5c7"
+    },
+    {
+      "lookupLabel": "all *.pdf equal application/pdf",
+      "regex": ".+\\.pdf$",
+      "contentType": {
+        "@id": "https://kg.ebrains.eu/api/instances/25cc7d31-2dde-4b74-b40a-0188846b5e8e"
+      },
+      "@type": "https://openminds.ebrains.eu/core/ContentTypePattern",
+      "@id": "https://kg.ebrains.eu/api/instances/cf20dba7-19f5-4c0b-9be8-33e9ead6ee93"
+    },
+    {
+      "name": "Swift repository",
+      "definition": "A Swift repository uses the long-term cloud storage of the OpenStack Object Store project which is particularly designed for retrieving and updating large amounts of static data without the need of a central point of control.",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/FileRepositoryType",
+      "@id": "https://kg.ebrains.eu/api/instances/877e7f6b-b9e6-4a07-a8c9-01f9f5e4ca8b"
+    },
+    {
+      "preferredOntologyIdentifier": "http://purl.obolibrary.org/obo/PATO_0000384",
+      "description": "A male organism typically has the capacity to produce relatively small, usually mobile gametes (reproductive cells), called sperm cells (or spermatozoa). In the process of fertilization, these sperm cells fuse with a larger, usually immobile female gamete, called egg cell (or ovum).",
+      "name": "male",
+      "definition": "Biological sex that produces sperm cells (spermatozoa).",
+      "interlexIdentifier": "http://uri.interlex.org/base/ilx_0106489",
+      "@type": "https://openminds.ebrains.eu/controlledTerms/BiologicalSex",
+      "@id": "https://kg.ebrains.eu/api/instances/744c9204-4aea-4eff-a4f4-d79f008b355f"
+    },
+    {
+      "additionalRemarks": "Expressing flex-mRuby3, used for LFP recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL197-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL197-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/d794e774-29af-4d62-aa2a-91948da3c523"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s + flex-mRuby3, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL366-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL366-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/6e96b7ac-0137-47c9-9939-5aeb9a65bf49"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "IS19-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "IS19-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/2cd047b0-d5a7-4edd-b420-63e32ad69730"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "IS26-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "IS26-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/9814c4bc-d3e8-4fc6-915c-b0b6496b96a8"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "IS23-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "IS23-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/d0d7b440-4f38-4045-879f-dfe8039f3f6d"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s + flex-mRuby3, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL442-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL442-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/2fdc4b19-80df-4519-9cd5-1077ce12172b"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "AS59-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "AS59-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/60c8a315-c7dd-405f-8fd8-9088dc693eff"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s + flex-mRuby3, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL365-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL365-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/48a7fe95-1fa3-4828-9e64-20337cb53971"
+    },
+    {
+      "ontologyIdentifier": null,
+      "stockNumber": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/StockNumber"
+        ],
+        "https___openminds_ebrains_eu_vocab_vendor": {
+          "@id": "https://kg.ebrains.eu/api/instances/d9b559f2-041c-4a3c-9ae4-9b50982e1055"
+        },
+        "https___openminds_ebrains_eu_vocab_identifier": "017320"
+      },
+      "identifier": [
+        "JAX:017320",
+        "MGI:5504648"
+      ],
+      "description": "PV-Cre knock-in mice express Cre recombinase in parvalbumin-expressing neurons (such as interneurons in the brain and proprioceptive afferent sensory neurons in the dorsal root ganglia), without disrupting endogenous Pvalb expression. When crossed with a strain containing loxP site flanked sequence of interest, Cre-mediated recombination results in tissue-specific deletion of the target. Recombination occurs in more than 90% of neurons that express parvalbumin, such as interneurons in the brain and proprioceptive afferent sensory neurons in the dorsal root ganglia.",
+      "laboratoryCode": "Arbr",
+      "geneticStrainType": {
+        "@id": "https://kg.ebrains.eu/api/instances/fb61c6d5-a19d-4b99-8288-45a659025c3c"
+      },
+      "breedingType": {
+        "@id": "https://kg.ebrains.eu/api/instances/9b7d6052-53f4-428a-84e9-e5da04150af7"
+      },
+      "diseaseModel": null,
+      "backgroundStrain": {
+        "@id": "https://kg.ebrains.eu/api/instances/df8c82e5-3434-42fe-a11a-004afb67b6f4"
+      },
+      "species": {
+        "@id": "https://kg.ebrains.eu/api/instances/d9875ebd-260e-4337-a637-b62fed4aa91d"
+      },
+      "name": "B6.129P2-Pvalb<tm1(cre)Arbr>/J",
+      "synonym": [
+        "B6 PV-Cre"
+      ],
+      "@type": "https://openminds.ebrains.eu/core/Strain",
+      "@id": "https://kg.ebrains.eu/api/instances/b4d6b8a6-d788-4bb5-8240-b75668fc8699"
+    },
+    {
+      "relatedMediaType": "https://www.iana.org/assignments/media-types/application/pdf",
+      "fileExtension": ".pdf",
+      "name": "application/pdf",
+      "synonym": [
+        "Adobe Portable Document Format",
+        "PDF"
+      ],
+      "specification": "https://www.pdfa.org/resource/iso-32000-2-pdf-2-0/",
+      "@type": "https://openminds.ebrains.eu/core/ContentType",
+      "@id": "https://kg.ebrains.eu/api/instances/25cc7d31-2dde-4b74-b40a-0188846b5e8e"
+    },
+    {
+      "additionalRemarks": "Expressing flex-mRuby3, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "AGR40-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "AGR40-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/192fd990-4340-4e54-a85a-ab07ce23cfc3"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "IS20-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "IS20-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/b09efbef-0def-4265-a970-73d6276d425e"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s +DIO-hM4Di, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL415-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL415-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/0f6157e0-d3c6-447c-bc91-436a49ddef14"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s + flex-mRuby3, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL421-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL421-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/7e11777b-3c95-412a-b4bf-f3b790171d21"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "AS60-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "AS60-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/a4d70c13-b17f-4380-8a92-15339ccbd610"
+    },
+    {
+      "additionalRemarks": "Expressing RiboL1-jGCaMP8s +DIO-hM4Di, used for 2p Ca2+ imaging recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "KKL404-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "KKL404-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/d2f01b9e-59ba-47e4-a13e-d5e9e7f4f693"
+    },
+    {
+      "additionalRemarks": "Expressing DIO-hM4Di-mCherry, used for behavior recordings",
+      "attribute": [
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/1cc5a5c0-6d67-453a-94d1-b67ebf338fc0"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/574dcc84-1b42-4663-92a5-2ec7223816ca"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/85432b3c-59cb-4f6f-ae1c-6773217ea9e5"
+        },
+        {
+          "@id": "https://kg.ebrains.eu/api/instances/3710220e-bbf4-4fb3-8529-8c5e9859cad3"
+        }
+      ],
+      "weight": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 24,
+        "https___openminds_ebrains_eu_vocab_maxValue": 30,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/9cf99c79-fb70-4a4d-9806-c5fe1b5687a4"
+        }
+      },
+      "age": {
+        "@type": [
+          "https://openminds.ebrains.eu/core/QuantitativeValueRange"
+        ],
+        "https___openminds_ebrains_eu_vocab_minValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        },
+        "https___openminds_ebrains_eu_vocab_minValue": 3,
+        "https___openminds_ebrains_eu_vocab_maxValue": 5,
+        "https___openminds_ebrains_eu_vocab_maxValueUnit": {
+          "@id": "https://kg.ebrains.eu/api/instances/ddc5aeeb-d841-4d9f-86a8-b39a804ca1a3"
+        }
+      },
+      "internalIdentifier": "IS25-state_01",
+      "ageCategory": {
+        "@id": "https://kg.ebrains.eu/api/instances/584611b0-3c4b-418f-8617-127adafb0cea"
+      },
+      "lookupLabel": "IS25-state_01",
+      "@type": "https://openminds.ebrains.eu/core/SubjectState",
+      "@id": "https://kg.ebrains.eu/api/instances/3af1c517-b6c9-4bfe-a501-f767eac425a1"
+    },
+    {
+      "email": "manderma@bidmc.harvard.edu",
+      "@type": "https://openminds.ebrains.eu/core/ContactInformation",
+      "@id": "https://kg.ebrains.eu/api/instances/ddb40044-1edc-48f2-b4c2-1ab70d428cde"
+    },
+    {
+      "email": "kristin.tondel@nmbu.no",
+      "@type": "https://openminds.ebrains.eu/core/ContactInformation",
+      "@id": "https://kg.ebrains.eu/api/instances/56924d80-25f3-4b73-a157-bca728eadca6"
+    },
+    {
+      "fullName": "EBRAINS Association Internationale Sans But Lucratif",
+      "shortName": "EBRAINS AISBL",
+      "homepage": "https://ebrains.eu/",
+      "@type": "https://openminds.ebrains.eu/core/Organization",
+      "@id": "https://kg.ebrains.eu/api/instances/7dfdd91f-3d05-424a-80bd-6d1d5dc11cd3"
+    },
+    {
+      "identifier": "https://orcid.org/0000-0002-9882-933X",
+      "@type": "https://openminds.ebrains.eu/core/ORCID",
+      "@id": "https://kg.ebrains.eu/api/instances/26085365-8703-410e-9b24-272627f83587"
+    }
+  ]
+}
