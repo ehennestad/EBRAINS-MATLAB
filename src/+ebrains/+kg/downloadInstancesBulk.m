@@ -53,6 +53,7 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
         if response.StatusCode == "OK"
             [instanceData, missingIds] = processResponse(response);
             if ~isempty(missingIds)
+                instanceData(cellfun('isempty', instanceData))=[];
                 instanceDataInProgress = ebrains.kg.downloadInstancesBulk(missingIds, "IN_PROGRESS");
                 instanceData = [instanceData, instanceDataInProgress]; %#ok<AGROW>
             end
