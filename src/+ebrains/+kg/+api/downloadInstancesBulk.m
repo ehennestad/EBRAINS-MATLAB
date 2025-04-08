@@ -2,7 +2,7 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
 % downloadInstancesBulk - Download a set of metadata instances given their uuids
 % 
 % Syntax:
-%   metadataInstances = downloadInstancesBulk(identifier, stage, optionals)
+%   metadataInstances = ebrains.kg.api.downloadInstancesBulk(identifier, stage, optionals)
 %   Downloads a set of metadata instances from KG given a list of identifiers,
 %   stage, and optional parameters for additional configurations.
 %
@@ -39,7 +39,7 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
 
     if isscalar(identifiers)
         nvPairs = namedargs2cell(optionals);
-        metadataInstances = ebrains.kg.downloadInstance(identifiers, stage, nvPairs{:});
+        metadataInstances = ebrains.kg.api.downloadInstance(identifiers, stage, nvPairs{:});
         return
     end
 
@@ -77,7 +77,7 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
             metadataInstances(cellfun('isempty', metadataInstances)) = [];
 
             if numel(stage) == 2
-                metadataInstancesInProgress = ebrains.kg.downloadInstancesBulk(missingIds, "IN_PROGRESS");
+                metadataInstancesInProgress = ebrains.kg.api.downloadInstancesBulk(missingIds, "IN_PROGRESS");
                 metadataInstances = [metadataInstances, metadataInstancesInProgress];
             else
                 missingIdsConcatenated = strjoin("  " + string(missingIds), newline);

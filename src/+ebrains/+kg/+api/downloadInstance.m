@@ -2,7 +2,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals)
 % downloadInstance - Downloads KG metadata instance for the given identifier.
 %
 % Syntax:
-%   metadataInstance = downloadInstance(identifier, stage, optionals)
+%   metadataInstance = ebrains.kg.api.downloadInstance(identifier, stage, optionals)
 %   Downloads instance data from the API using the specified identifier,
 %   stage, and optional parameters for additional configurations.
 %
