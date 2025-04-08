@@ -1,6 +1,15 @@
 function downloadControlledInstanceIdentifiers()
 % downloadControlledInstanceIdentifiers - Download KG uuids and openMINDS
 % @ids for controlled instances
+%
+% Syntax:
+%   identifierMap = downloadControlledInstanceIdentifiers() 
+%   This function retrieves and compiles the identifiers of controlled
+%   instances from the EBRAINS knowledge graph.
+%
+% Output (save to file):
+%   identifierMap - A struct array containing the UUIDs of the controlled
+%   instances downloaded from the knowledge graph.
 
     % Use api client to list all controlled term types in the controlled space
     apiClient = ebrains.kgcore.api.Basic();
