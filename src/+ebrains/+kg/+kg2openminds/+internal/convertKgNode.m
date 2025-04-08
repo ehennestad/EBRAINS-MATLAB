@@ -1,5 +1,22 @@
 function omNode = convertKgNode(kgNode)
+% convertKgNode - Convert a knowledge graph node to an openMINDS formatted node.
+%
+% Syntax:
+%   omNode = ebrains.kg.kg2openminds.internal.convertKgNode(kgNode)
+%
+% Input Arguments:
+%   kgNode (1,:) - Struct or cell array of metadata nodes/instances returned from the 
+%       instances api endpoint.
+%
+% Output Arguments:
+%   omNode - Converted openMINDS node or an array of openMINDS nodes if
+%       multiple input kgNode structures are provided.
 
+    arguments
+        kgNode (1,:) {mustBeA(kgNode, ["struct", "cell"])} % Metadata node/instance returned from the instances api endpoint
+    end
+
+    % Loop through each node if a list is provided
     if numel(kgNode) > 1
         omNode = cell(1, numel(kgNode));
         if ~iscell(kgNode); kgNode = num2cell(kgNode); end
@@ -14,7 +31,7 @@ function omNode = convertKgNode(kgNode)
 
     [identifier, type] = ebrains.kg.internal.getNodeKeywords(kgNode, "@id", "@type");
     
-    omNode = ebrains.kg.kg2openminds.internal.filterData(kgNode);
+    omNode = ebrains.kg.kg2openminds.internal.filterProperties(kgNode);
     omNode = ebrains.kg.kg2openminds.internal.removeContextPrefix(omNode);
     
     propertyNames = fieldnames(omNode);
@@ -36,3 +53,4 @@ function omNode = convertKgNode(kgNode)
         omNode.at_id = identifier;
     end
 end
+
