@@ -2,7 +2,7 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
     
     % Todo: return response metadata as optional second arg
     arguments
-        identifiers (1,:) string {mustBeSpecifiedLength(identifiers, 2, 9999)}
+        identifiers (1,:) string
         stage (1,1) string { mustBeMember(stage,["IN_PROGRESS", "RELEASED", "ANY"]) } = "ANY"
         optionals.returnIncomingLinks logical %= false
         optionals.incomingLinksPageSize int64 %= 10
@@ -14,6 +14,12 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
 
     if stage == "ANY"
         stage = ["RELEASED", "IN_PROGRESS"];
+    end
+
+    if isscalar(identifiers)
+        nvPairs = namedargs2cell(optionals);
+        instanceData = ebrains.kg.downloadInstance(identifiers, stage, nvPairs{:});
+        return
     end
 
     BASE_API_URL = "https://core.kg.ebrains.eu/v3/instancesByIds/";
