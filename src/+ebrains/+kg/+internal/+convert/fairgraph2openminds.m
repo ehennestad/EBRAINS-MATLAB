@@ -21,7 +21,6 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
     omType = strjoin(omType, '.');
     omType = strrep(omType, '_', '');
 
-
     if startsWith( class(fgObject), 'py.fairgraph.openminds.controlled_terms')
         try
             omObject = feval(omType, string(fgObject.name));
@@ -133,11 +132,11 @@ function omObject = fairgraph2openminds(fgObject, fgClient, options)
         catch ME
             warning('openMINDS:Collection:CouldNotSetProperty', '%s', ME.message)
         end
-    end    
+    end
 end
 
 function pythonName = jsonicName2pythonicName(jsonName, isPlural)
-% jsonicName2pythonicName - Convert name    
+% jsonicName2pythonicName - Convert name
     import openminds.internal.vocab.getPropertyAlias
     if nargin < 2; isPlural = false; end
     label = getPropertyAlias(jsonName, 'Alias', 'label', "Plural", isPlural);

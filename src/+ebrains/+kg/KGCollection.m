@@ -1,33 +1,51 @@
 classdef KGCollection < openminds.Collection
     
-    % Todo: add method to resolve links...
-
+    % Todo:
+    % [ ] add method to resolve links
+    % [ ] create space if it does not exist
+    %
     properties (Dependent, Access = protected)
         FairgraphClient
+    end
+
+    properties (SetAccess = immutable)
+        KGServer (1,1) string {mustBeMember(KGServer, ["kg", "kg-ppd"])} = "kg"
+        Space (1,1) string = "myspace"
     end
 
     properties (Access = private)
         FairgraphClient_
     end
+
+    methods % Constructor
+        function obj = KGCollection(propertyValues)
+            arguments
+                propertyValues.KGServer (1,1) string {mustBeMember(propertyValues.KGServer, ["kg", "kg-ppd"])} = "kg"
+                propertyValues.Space (1,1) string = "myspace"
+            end
+            obj.KGServer = propertyValues.KGServer;
+            obj.Space = propertyValues.Space;
+        end
+    end
     
-    methods 
+    methods
         function wasSuccess = downloadRemoteInstances(obj, metadataType, options)
             
-            %Todo: how to apply custom property filters based on
-            %templates/configs, i.e only get strains for individual species
+            % Todo: how to apply custom property filters based on
+            % templates/configs, i.e only get strains for individual species
 
             arguments
                 obj
                 metadataType (1,1) openminds.enum.Types
                 options.ProgressDialog matlab.ui.dialog.ProgressDialog = matlab.ui.dialog.ProgressDialog.empty
                 options.Verbose (1,1) logical = false
-                %options.Filter struct
+                % options.Filter struct
             end
 
             wasSuccess = false;
 
             fgClient = obj.FairgraphClient;
-            fgInstance = obj.getFairgraphObject(metadataType);
+            fgInstance = obj.getEmptyFairgraphObject(metadataType);
 
             listedInstances = {};
 
@@ -67,7 +85,7 @@ classdef KGCollection < openminds.Collection
             % convert to openminds
             omInstances = feval(sprintf( '%s.empty', metadataType.ClassName) );
             for i = 1:numel(listedInstances)
-                %omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
+                % omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
 
                 try
                     omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
@@ -107,17 +125,29 @@ classdef KGCollection < openminds.Collection
             end
             
             fgClient = obj.FairgraphClient;
-            fgInstance = obj.getFairgraphObject(metadataType);
+            fgInstance = obj.getEmptyFairgraphObject(metadataType);
            
             instance = fgInstance.from_id(instanceId, fgClient, scope=scope, use_cache=false);
         end
+        
+        function uploadInstances(obj, options)
+            arguments
+                obj
+                options.ProgressDialog matlab.ui.dialog.ProgressDialog = matlab.ui.dialog.ProgressDialog.empty
+                options.Verbose (1,1) logical = false
+            end
+
+            fgClient = obj.FairgraphClient;
+            ds = obj.list("Dataset");
+            fgDataset = ebrains.kg.internal.convert.convertToFairgraphObject(ds, fgClient);
+            fgDataset.save(fgClient, 'myspace')
+            disp('Uploaded to KG')
+        end
 
         function downloadTypes(obj)
-
         end
 
         function resolve(obj)
-
         end
     end
 
@@ -126,12 +156,15 @@ classdef KGCollection < openminds.Collection
             if isempty(comp.FairgraphClient_)
                 comp.initializeFairgraphClient()
             end
+            if comp.isTokenExpired()
+                comp.refreshClient()
+            end
             fgClient = comp.FairgraphClient_;
         end
     end
 
     methods (Access = protected)
-        %Add an instance to the Node container.
+        % Add an instance to the Node container.
         function addNode(obj, instance, options)
     
             arguments
@@ -154,7 +187,7 @@ classdef KGCollection < openminds.Collection
 
             if isConfigured(obj.Nodes)
                 if isKey(obj.Nodes, instance.id)
-                    %warning('Node with id %s already exists in collection', instance.id)
+                    % warning('Node with id %s already exists in collection', instance.id)
                     if options.AbortIfNodeExists
                         return
                     end
@@ -164,13 +197,37 @@ classdef KGCollection < openminds.Collection
     end
 
     methods (Access = private)
-        function initializeFairgraphClient(comp)
-            % Todo: Get from singleton.
+        function tf = isTokenExpired(obj)
+            tf = false;
+
             authClient = ebrains.iam.AuthenticationClient.instance();
-            comp.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host="core.kg.ebrains.eu" ); 
+            fgToken = string(obj.FairgraphClient_.token);
+            if ~strcmp(authClient.AccessToken, fgToken)
+                tf = true; return
+            end
+               
+            if authClient.ExpiresIn < 0
+                tf = true;
+            end
         end
 
-        function fgInstance = getFairgraphObject(obj, metadataType)
+        function refreshClient(obj)
+            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient.refreshToken()
+            if ~isempty(obj.FairgraphClient_)
+                % pass
+            end
+            obj.initializeFairgraphClient()
+        end
+
+        function initializeFairgraphClient(obj)
+            % Todo: Get from singleton.
+            authClient = ebrains.iam.AuthenticationClient.instance();
+            hostName = sprintf("core.%s.ebrains.eu", obj.KGServer);
+            obj.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host=hostName );
+        end
+
+        function fgInstance = getEmptyFairgraphObject(obj, metadataType)
             arguments
                 obj (1,1) ebrains.kg.KGCollection
                 metadataType (1,1) openminds.enum.Types
@@ -179,5 +236,5 @@ classdef KGCollection < openminds.Collection
             fairgraphType = ebrains.kg.internal.convert.getFairgraphType(typeClassName);
             fgInstance = feval(fairgraphType);
         end
-    end 
+    end
 end
