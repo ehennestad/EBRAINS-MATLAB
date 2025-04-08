@@ -21,7 +21,7 @@ function omNode = convertKgNode(kgNode)
     for i = 1:numel(propertyNames)
         thisPropertyName = propertyNames{i};
         % Recursively process embedded nodes
-        if isstruct(omNode.(thisPropertyName)) 
+        if isstruct(omNode.(thisPropertyName))
             thisPropertyValue = omNode.(thisPropertyName);
             omNode.(thisPropertyName) = ebrains.kg.kg2openminds.internal.convertKgNode(thisPropertyValue);
         end

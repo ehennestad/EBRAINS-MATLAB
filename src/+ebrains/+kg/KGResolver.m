@@ -7,7 +7,7 @@ classdef KGResolver < handle
     methods
         function instance = resolve(obj, identifier, options)
             arguments
-                obj, 
+                obj,
                 identifier (1,1) string
                 options.NumLinksToResolve = 0
             end

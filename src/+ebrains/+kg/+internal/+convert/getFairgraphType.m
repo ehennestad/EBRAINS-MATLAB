@@ -6,7 +6,6 @@ function fgType = getFairgraphType(omType)
     nameMap("digitalidentifier") = "digital_identifier";
     nameMap("digitalidentifier") = "mathematical_shapes";
     nameMap("nonatlas") = "non_atlas";
-    
 
     type = strsplit( omType, '.');
 

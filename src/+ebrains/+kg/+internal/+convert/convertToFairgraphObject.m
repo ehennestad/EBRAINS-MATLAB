@@ -11,7 +11,6 @@ function fairgraphObject = convertToFairgraphObject(openMindsObject, fgClient)
 
     propNames = properties(openMindsObject);
 
-
     if isa(openMindsObject, 'openminds.abstract.ControlledTerm')
         fairgraphObject = fairgraphObject.by_name( openMindsObject.name, fgClient );
     else

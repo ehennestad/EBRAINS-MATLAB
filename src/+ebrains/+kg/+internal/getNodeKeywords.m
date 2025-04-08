@@ -7,7 +7,7 @@ function varargout = getNodeKeywords(node, keywords)
         keywords (1,1) string
     end
 
-    % Matlab will replace the @ used for jsonld keywords with x_, 
+    % Matlab will replace the @ used for jsonld keywords with x_,
     % e.g @id -> x_id
     keywords = "x_" + string(keywords);
 

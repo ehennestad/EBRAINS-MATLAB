@@ -22,7 +22,6 @@ classdef DatasetCollection < ebrains.kg.KGCollection
                     )} = "Dataset"
                 options.LinksToResolve (1,1) double = 1
             end
-            
 
             obj = obj@ebrains.kg.KGCollection('Space', 'dataset');
 

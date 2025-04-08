@@ -16,7 +16,6 @@ function instanceData = downloadInstance(identifier, stage, optionals)
 
     BASE_API_URL = "https://core.kg.ebrains.eu/v3/instances/";
 
-
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
 
@@ -28,7 +27,7 @@ function instanceData = downloadInstance(identifier, stage, optionals)
     
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);
-    queryNameValuePairs = [queryNames; queryValues]; 
+    queryNameValuePairs = [queryNames; queryValues];
 
     for i=1:numel(stage)
         fullApiURL = matlab.net.URI(apiURL, "stage", stage(i), queryNameValuePairs{:});

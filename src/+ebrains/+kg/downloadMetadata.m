@@ -2,7 +2,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
 
     arguments
         identifier (1,1) string
-        %metadataCollection (1,1) openminds.Collection = openminds.Collection()
+        % metadataCollection (1,1) openminds.Collection = openminds.Collection()
         options.NumLinksToResolve = 2
         options.CollectionTargetFile (1,1) string = missing
         options.Verbose (1,1) logical = true
@@ -50,7 +50,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     openminds.internal.utility.filewrite(filename, jsonInstance)
     
     metadataCollection = openminds.Collection(filename, 'LinkResolver', ebrains.kg.KGResolver());
-    metadataInstance = metadataCollection.Nodes(kgIRI); 
+    metadataInstance = metadataCollection.Nodes(kgIRI);
 end
 
 function result = orderStr(val)

@@ -1,6 +1,6 @@
 classdef KGCollection < openminds.Collection
     
-    % Todo: 
+    % Todo:
     % [ ] add method to resolve links
     % [ ] create space if it does not exist
     %
@@ -28,18 +28,18 @@ classdef KGCollection < openminds.Collection
         end
     end
     
-    methods 
+    methods
         function wasSuccess = downloadRemoteInstances(obj, metadataType, options)
             
-            %Todo: how to apply custom property filters based on
-            %templates/configs, i.e only get strains for individual species
+            % Todo: how to apply custom property filters based on
+            % templates/configs, i.e only get strains for individual species
 
             arguments
                 obj
                 metadataType (1,1) openminds.enum.Types
                 options.ProgressDialog matlab.ui.dialog.ProgressDialog = matlab.ui.dialog.ProgressDialog.empty
                 options.Verbose (1,1) logical = false
-                %options.Filter struct
+                % options.Filter struct
             end
 
             wasSuccess = false;
@@ -85,7 +85,7 @@ classdef KGCollection < openminds.Collection
             % convert to openminds
             omInstances = feval(sprintf( '%s.empty', metadataType.ClassName) );
             for i = 1:numel(listedInstances)
-                %omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
+                % omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
 
                 try
                     omInstances(i) = ebrains.kg.internal.convert.fairgraph2openminds(listedInstances{i}, fgClient);
@@ -145,11 +145,9 @@ classdef KGCollection < openminds.Collection
         end
 
         function downloadTypes(obj)
-
         end
 
         function resolve(obj)
-
         end
     end
 
@@ -166,7 +164,7 @@ classdef KGCollection < openminds.Collection
     end
 
     methods (Access = protected)
-        %Add an instance to the Node container.
+        % Add an instance to the Node container.
         function addNode(obj, instance, options)
     
             arguments
@@ -189,7 +187,7 @@ classdef KGCollection < openminds.Collection
 
             if isConfigured(obj.Nodes)
                 if isKey(obj.Nodes, instance.id)
-                    %warning('Node with id %s already exists in collection', instance.id)
+                    % warning('Node with id %s already exists in collection', instance.id)
                     if options.AbortIfNodeExists
                         return
                     end
@@ -212,7 +210,6 @@ classdef KGCollection < openminds.Collection
                 tf = true;
             end
         end
-        
 
         function refreshClient(obj)
             authClient = ebrains.iam.AuthenticationClient.instance();
@@ -227,7 +224,7 @@ classdef KGCollection < openminds.Collection
             % Todo: Get from singleton.
             authClient = ebrains.iam.AuthenticationClient.instance();
             hostName = sprintf("core.%s.ebrains.eu", obj.KGServer);
-            obj.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host=hostName ); 
+            obj.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host=hostName );
         end
 
         function fgInstance = getEmptyFairgraphObject(obj, metadataType)
@@ -239,5 +236,5 @@ classdef KGCollection < openminds.Collection
             fairgraphType = ebrains.kg.internal.convert.getFairgraphType(typeClassName);
             fgInstance = feval(fairgraphType);
         end
-    end 
+    end
 end

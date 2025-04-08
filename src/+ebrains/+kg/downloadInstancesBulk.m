@@ -48,7 +48,7 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
     
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);
-    queryNameValuePairs = [queryNames; queryValues]; 
+    queryNameValuePairs = [queryNames; queryValues];
 
     fullApiURL = matlab.net.URI(apiURL, "stage", stage(1), queryNameValuePairs{:});
     

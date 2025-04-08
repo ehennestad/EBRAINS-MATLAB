@@ -3,7 +3,7 @@ function downloadControlledInstanceIdentifiers()
 % @ids for controlled instances
 %
 % Syntax:
-%   identifierMap = downloadControlledInstanceIdentifiers() 
+%   identifierMap = downloadControlledInstanceIdentifiers()
 %   This function retrieves and compiles the identifiers of controlled
 %   instances from the EBRAINS knowledge graph.
 %
@@ -25,7 +25,7 @@ function downloadControlledInstanceIdentifiers()
         instanceUuidListing{i} = processInstanceResponse(response);
     end
 
-    identifierMap = [instanceUuidListing{:}]; 
+    identifierMap = [instanceUuidListing{:}];
 
     mapFilepath = fullfile(...
         ebrains.common.namespacedir('ebrains.kg'), ...

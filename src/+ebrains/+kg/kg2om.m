@@ -24,9 +24,9 @@ function omInstance = kg2om(kgNode, options)
     if isfield(kgNode, 'http___schema_org_identifier')
         schemaOrgIdentifier = kgNode.http___schema_org_identifier;
         if any(startsWith(schemaOrgIdentifier, "https://openminds"))
-            %omIdentifier = schemaOrgIdentifier{startsWith(schemaOrgIdentifier, "https://openminds")};
-            %omInstance = openminds.fromIdentifier(omIdentifier);
-            %return
+            % omIdentifier = schemaOrgIdentifier{startsWith(schemaOrgIdentifier, "https://openminds")};
+            % omInstance = openminds.fromIdentifier(omIdentifier);
+            % return
         end
     end
 
@@ -76,7 +76,6 @@ function omInstance = kg2om(kgNode, options)
             if openminds.utility.isMixedInstance( omInstance.(propertyName) )
     
             else
-                
             end
         catch
             keyboard
@@ -111,7 +110,7 @@ function resolvedNodes = resolveLinkedNodes(nodes, options)
         end
 
         if isControlledInstance(thisNode)
-            %linkedNodes{iNode} = resolveControlledInstance(thisNode);
+            % linkedNodes{iNode} = resolveControlledInstance(thisNode);
             fprintf('controlled\n')
             disp(propertyValue(iNode))
         else
@@ -125,7 +124,7 @@ function resolvedNodes = resolveLinkedNodes(nodes, options)
     try
         resolvedNodes = [resolvedNodes{:}];
     catch
-        %keyboard
+        % keyboard
     end
 end
 
@@ -158,5 +157,5 @@ end
 
 function tf = isControlledInstance(node)
     tf = false;
-    %isstruct(node) && isfield()
+    % isstruct(node) && isfield()
 end
