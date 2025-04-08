@@ -1,17 +1,17 @@
-function data = removeContextPrefix(data)
+function metadataNode = removeContextPrefix(metadataNode)
 % removeContextPrefix - Remove the openminds IRI context prefix from the property names
     arguments
-        data (1,1) struct
+        metadataNode (1,1) struct
     end
 
     OPENMINDS_IRI = "https___openminds_ebrains_eu_vocab_";
 
-    propertyNames = fieldnames(data);
+    propertyNames = fieldnames(metadataNode);
     for i = 1:numel(OPENMINDS_IRI)
         propertyNames = strrep(propertyNames, ...
             OPENMINDS_IRI(i), '');
     end
 
-    propertyValues = struct2cell(data);
-    data = cell2struct(propertyValues, propertyNames);
+    propertyValues = struct2cell(metadataNode);
+    metadataNode = cell2struct(propertyValues, propertyNames);
 end
