@@ -14,7 +14,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     % Download instance
     kgNode = ebrains.kg.downloadInstance(identifier);
     
-    kgIRI = ebrains.kg.internal.getNodeKeywords(kgNode, "id");
+    kgIRI = ebrains.kg.internal.getNodeKeywords(kgNode, "@id");
     rootNode = ebrains.kg.kg2openminds.internal.convertKgNode(kgNode);
     
     allNodes = {rootNode};

@@ -30,7 +30,7 @@ function omInstance = kg2om(kgNode, options)
         end
     end
 
-    [identifier, type] = ebrains.kg.internal.getNodeKeywords(kgNode, "id", "type");
+    [identifier, type] = ebrains.kg.internal.getNodeKeywords(kgNode, "@id", "@type");
     if ~isempty(options.Collection)
         if options.Collection.isKey(identifier)
             omInstance = options.Collection.get(identifier);

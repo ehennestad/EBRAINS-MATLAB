@@ -12,7 +12,7 @@ function omNode = convertKgNode(kgNode)
         return
     end
 
-    [identifier, type] = ebrains.kg.internal.getNodeKeywords(kgNode, "id", "type");
+    [identifier, type] = ebrains.kg.internal.getNodeKeywords(kgNode, "@id", "@type");
     
     omNode = ebrains.kg.kg2openminds.internal.filterData(kgNode);
     omNode = ebrains.kg.kg2openminds.internal.removeContextPrefix(omNode);
