@@ -1,5 +1,25 @@
-function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
-% downloadInstancesBulk - Download a set of instances given their uuids
+function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals)
+% downloadInstancesBulk - Download a set of metadata instances given their uuids
+% 
+% Syntax:
+%   metadataInstances = downloadInstancesBulk(identifier, stage, optionals)
+%   Downloads a set of metadata instances from KG given a list of identifiers,
+%   stage, and optional parameters for additional configurations.
+%
+% Input Arguments:
+%   identifiers string     - List of unique identifiers of the instances to be downloaded.
+%   stage (1,1) string     - The stage of the instances to retrieve; options include
+%                            "IN_PROGRESS", "RELEASED", or "ANY". Defaults to "ANY".
+%   optionals              - Optional structure with the following fields:
+%       returnIncomingLinks logical   - If true, return incoming links; default is false.
+%       incomingLinksPageSize int64   - Number of incoming links to return per page; default is 10.
+%       returnPayload logical         - If true, return the payload; default is true.
+%       returnPermissions logical     - If true, return permissions; default is false.
+%       returnAlternatives logical    - If true, return alternatives; default is false.
+%       returnEmbedded logical        - If true, return embedded data; default is true.
+%
+% Output Arguments:
+%   metadataInstances      - The downloded metadata instances.
 
     % Todo: return response metadata as optional second arg
     arguments
@@ -19,7 +39,7 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
 
     if isscalar(identifiers)
         nvPairs = namedargs2cell(optionals);
-        instanceData = ebrains.kg.downloadInstance(identifiers, stage, nvPairs{:});
+        metadataInstances = ebrains.kg.downloadInstance(identifiers, stage, nvPairs{:});
         return
     end
 
@@ -40,29 +60,25 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
     end
 
     method = matlab.net.http.RequestMethod.POST;
-    % body = matlab.net.http.MessageBody(identifiers);
-    % jsonData = jsonencode([identifiers,identifiers] );
-    
     body = matlab.net.http.MessageBody(identifiers);
-    apiURL = BASE_API_URL;
     
+    apiURL = BASE_API_URL;
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);
-    queryNameValuePairs = [queryNames; queryValues];
-
+    queryNameValuePairs = [queryNames'; queryValues'];
     fullApiURL = matlab.net.URI(apiURL, "stage", stage(1), queryNameValuePairs{:});
     
     req = matlab.net.http.RequestMessage(method, headers, body);
     response = req.send(fullApiURL);
 
     if response.StatusCode == "OK"
-        [instanceData, missingIds] = processResponse(response);
+        [metadataInstances, missingIds] = processResponse(response);
         if ~isempty(missingIds)
-            instanceData(cellfun('isempty', instanceData)) = [];
+            metadataInstances(cellfun('isempty', metadataInstances)) = [];
 
             if numel(stage) == 2
-                instanceDataInProgress = ebrains.kg.downloadInstancesBulk(missingIds, "IN_PROGRESS");
-                instanceData = [instanceData, instanceDataInProgress];
+                metadataInstancesInProgress = ebrains.kg.downloadInstancesBulk(missingIds, "IN_PROGRESS");
+                metadataInstances = [metadataInstances, metadataInstancesInProgress];
             else
                 missingIdsConcatenated = strjoin("  " + string(missingIds), newline);
                 otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
@@ -79,17 +95,18 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
     end
 end
 
-function [instanceData, missingIds] = processResponse(response)
+
+function [metadataInstances, missingIds] = processResponse(response)
     data = struct2cell(response.Body.Data.data);
 
     missingIds = string.empty;
     numInstances = numel(data);
-    instanceData = cell(1, numInstances);
+    metadataInstances = cell(1, numInstances);
     
     for i = 1:numInstances
         if ~isempty(data{i}.error)
             missingIds(end+1)=string(data{i}.error.message); %#ok<AGROW>
         end
-        instanceData{i} = data{i}.data;
+        metadataInstances{i} = data{i}.data;
     end
 end
