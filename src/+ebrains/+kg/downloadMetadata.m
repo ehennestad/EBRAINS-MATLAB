@@ -1,4 +1,19 @@
 function [metadataInstance, metadataCollection] = downloadMetadata(identifier, options)
+% downloadMetadata - Downloads metadata from KG given a unique identifier
+%
+% Syntax:
+%   [metadataInstance, metadataCollection] = ebrains.kg.downloadMetadata(identifier, options)
+%
+% Input Arguments:
+%   identifier (1,1) string - The unique identifier for the metadata
+%   options (1,1) struct - Struct containing options for downloading
+%       options.NumLinksToResolve (1,1) double - Number of links to resolve (default: 2)
+%       options.CollectionTargetFile (1,1) string - Target file for collection (default: missing)
+%       options.Verbose (1,1) logical - Flag for verbose output (default: true)
+%
+% Output Arguments:
+%   metadataInstance - The instance of the metadata corresponding to the identifier
+%   metadataCollection - The collection of all downloaded metadata instances
 
     arguments
         identifier (1,1) string
@@ -12,7 +27,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     controlledTermKgIds = controlledTermUuidMap.keys();
     
     % Download instance
-    kgNode = ebrains.kg.downloadInstance(identifier);
+    kgNode = ebrains.kg.api.downloadInstance(identifier);
     
     kgIRI = ebrains.kg.internal.getNodeKeywords(kgNode, "@id");
     rootNode = ebrains.kg.kg2openminds.internal.convertKgNode(kgNode);
@@ -32,7 +47,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
                 orderStr(i), numel(linkedIRIs));
         end
         
-        kgNodes = ebrains.kg.downloadInstancesBulk(linkedIRIs);
+        kgNodes = ebrains.kg.api.downloadInstancesBulk(linkedIRIs);
         newNodes = ebrains.kg.kg2openminds.internal.convertKgNode(kgNodes);
 
         allNodes = [allNodes, newNodes]; %#ok<AGROW>
@@ -47,7 +62,7 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     % Todo: serialize to temp file, if not target file is supplier
     jsonInstance = openminds.internal.serializer.struct2jsonld(allNodes);
     filename = sprintf('%s_kg_metadata_download.jsonld', identifier);
-    openminds.internal.utility.filewrite(filename, jsonInstance)
+    openminds.internal.utility.filewrite(filename, jsonInstance);
     
     metadataCollection = openminds.Collection(filename, 'LinkResolver', ebrains.kg.KGResolver());
     metadataInstance = metadataCollection.Nodes(kgIRI);
