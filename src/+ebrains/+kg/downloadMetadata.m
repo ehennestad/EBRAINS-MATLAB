@@ -65,14 +65,20 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     
     % Todo: serialize to temp file, if not target file is supplier
     jsonInstance = openminds.internal.serializer.struct2jsonld(allNodes);
-    filename = sprintf('%s_kg_metadata_download.jsonld', identifier);
-    openminds.internal.utility.filewrite(filename, jsonInstance);
+    if ismissing(options.CollectionTargetFile)
+        filename = sprintf('%s_kg_metadata.jsonld', identifier);
+        filePath = fullfile(tempdir, filename);
+        fileCleanup = onCleanup(@() deleteFile(filePath));
+    else
+        filePath = options.CollectionTargetFile;
+    end
+    openminds.internal.utility.filewrite(filePath, jsonInstance);
     
     if options.Verbose
-        fprintf('Creating a metadata collection with all instances. Please wait a moment...\n')
+        fprintf('Creating a metadata collection with all the instances. Please wait a moment...\n')
     end
 
-    metadataCollection = openminds.Collection(filename, 'LinkResolver', ebrains.kg.KGResolver());
+    metadataCollection = openminds.Collection(filePath, 'LinkResolver', ebrains.kg.KGResolver());
     metadataInstance = metadataCollection.Nodes(kgIRI);
 
     if options.Verbose
@@ -91,3 +97,10 @@ function result = orderStr(val)
         result = sprintf('%dth', val);
     end
 end
+
+function deleteFile(filePath)
+    if isfile(filePath)
+        delete(filePath)
+    end
+end
+
