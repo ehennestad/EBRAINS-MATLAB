@@ -80,6 +80,9 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
 
     metadataCollection = openminds.Collection(filePath, 'LinkResolver', ebrains.kg.KGResolver());
     metadataInstance = metadataCollection.Nodes(kgIRI);
+    if iscell(metadataInstance)
+        metadataInstance = metadataInstance{1};
+    end
 
     if options.Verbose
         fprintf('Done.\n');
