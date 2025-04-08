@@ -1,6 +1,6 @@
 function omInstance = kg2om(kgNode, options)
+% kg2om DEPRECATED - 1st iteration function for KG metadata download
 
-% todo: bulk download
     arguments
         kgNode
         options.ResolveLinksDepth = 0
