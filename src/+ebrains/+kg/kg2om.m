@@ -40,7 +40,7 @@ function omInstance = kg2om(kgNode, options)
 
     omInstance = openminds.fromTypeName(type, identifier);
 
-    omNode = ebrains.kg.kg2openminds.internal.filterData(kgNode);
+    omNode = ebrains.kg.kg2openminds.internal.filterProperties(kgNode);
     omNode = ebrains.kg.kg2openminds.internal.removeContextPrefix(omNode);
 
     propertyNames = fieldnames(omNode);
