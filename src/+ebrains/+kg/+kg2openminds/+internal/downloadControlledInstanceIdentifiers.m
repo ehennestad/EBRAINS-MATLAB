@@ -2,26 +2,17 @@ function downloadControlledInstanceIdentifiers()
 % downloadControlledInstanceIdentifiers - Download KG uuids and openMINDS
 % @ids for controlled instances
 
-    % Use api client to list all types in the controlled space
+    % Use api client to list all controlled term types in the controlled space
     apiClient = ebrains.kgcore.api.Basic();
     [~, response] = apiClient.listTypes("RELEASED", "space", "controlled");
-    
-    % Extract the type name, but only for controlled term types
-    controlledTermTypes = string.empty;
-    for i = 1:numel(response.data)
-        thisData = response.data{i};
-        if startsWith(thisData.http___schema_org_identifier, ...
-                "https://openminds.ebrains.eu/controlledTerms/")
-            controlledTermTypes(end+1) = thisData.http___schema_org_identifier; %#ok<AGROW>
-        end
-    end
-    
+    controlledTermTypeIRI = processTypeResponse(response);
+
     % Download all the instances of each type and retrieve the identifiers
-    numTypes = numel(controlledTermTypes);
+    numTypes = numel(controlledTermTypeIRI);
     instanceUuidListing = cell(1, numTypes);
     for i = 1:numTypes
-        fprintf('Fetching information for "%s"\n', controlledTermTypes{i})
-        [~, response] = apiClient.listInstances("RELEASED", controlledTermTypes{i}, "space", "controlled");
+        fprintf('Fetching information for "%s"\n', controlledTermTypeIRI{i})
+        [~, response] = apiClient.listInstances("RELEASED", controlledTermTypeIRI{i}, "space", "controlled");
         instanceUuidListing{i} = processInstanceResponse(response);
     end
 
@@ -33,6 +24,20 @@ function downloadControlledInstanceIdentifiers()
         'kg2om_identifier_loopkup.json');
 
     utility.filewrite(mapFilepath, jsonencode(identifierMap, 'PrettyPrint', true))
+end
+
+function result = processTypeResponse(response)
+% processTypeResponse - Extract the type name, but only for controlled term types
+%
+%   Returns a string array with names (@type IRI) of controlled term types
+    result = string.empty;
+    for i = 1:numel(response.data)
+        thisData = response.data{i};
+        if startsWith(thisData.http___schema_org_identifier, ...
+                "https://openminds.ebrains.eu/controlledTerms/")
+            result(end+1) = thisData.http___schema_org_identifier; %#ok<AGROW>
+        end
+    end
 end
 
 function result = processInstanceResponse(instanceResponse)
