@@ -1,21 +1,29 @@
-function map = getIdentifierMapping()
+function map = getIdentifierMapping(options)
+
+    arguments
+        options.Reverse (1,1) logical = false
+    end
 
     mapFilepath = fullfile(...
-        ebrains.kg.namespacedir(), ...
+        ebrains.common.namespacedir('ebrains.kg'), ...
         'resources', ...
         'kg2om_identifier_loopkup.json');
-    
     data = jsondecode(fileread(mapFilepath));
 
     keys = string({data.kg});
-
-    isEmpty = arrayfun(@(s) isempty(s.om), data);
-    [data(isEmpty).om] = '';
     values = string({data.om});
-    
-    if exist('dictionary', 'file')
-        map = dictionary(keys, values);
+
+    if options.Reverse
+        if exist('dictionary', 'file')
+            map = dictionary(values, keys);
+        else
+            map = containers.Map(values, keys);
+        end
     else
-        map = containers.Map(keys, values);
+        if exist('dictionary', 'file')
+            map = dictionary(keys, values);
+        else
+            map = containers.Map(keys, values);
+        end
     end
 end
