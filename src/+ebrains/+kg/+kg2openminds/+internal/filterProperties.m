@@ -1,4 +1,4 @@
-function metadataNodeOut = filterProperties(metadataNodeIn)
+function metadataNode = filterProperties(metadataNode)
 % filterProperties - Remove fields that do not represent openMINDS metadata properties
 %
 % Syntax:
@@ -15,10 +15,10 @@ function metadataNodeOut = filterProperties(metadataNodeIn)
 %   non-relevant fields removed
 
     arguments
-        metadataNodeIn (1,:) struct
+        metadataNode (1,:) struct
     end
 
-    fieldNames = fieldnames(metadataNodeIn);
+    fieldNames = fieldnames(metadataNode);
     
     doExclude = ...
         startsWith(fieldNames, 'https___core_kg_ebrains') ...
@@ -27,5 +27,5 @@ function metadataNodeOut = filterProperties(metadataNodeIn)
         | strcmp(fieldNames, 'x_type');
 
     fieldsToRemove = fieldNames(doExclude);
-    metadataNodeOut = rmfield(metadataNodeIn, fieldsToRemove);
+    metadataNode = rmfield(metadataNode, fieldsToRemove);
 end
