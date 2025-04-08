@@ -55,6 +55,10 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
         resolvedIRIs = [resolvedIRIs, linkedIRIs]; %#ok<AGROW>
     end
     
+    if options.Verbose
+        fprintf('Done.\n');
+    end
+
     % Replace all controlled instance uuids
     allNodes = ebrains.kg.kg2openminds.internal.replaceControlledInstanceIds(...
         allNodes, controlledTermUuidMap);
@@ -64,8 +68,16 @@ function [metadataInstance, metadataCollection] = downloadMetadata(identifier, o
     filename = sprintf('%s_kg_metadata_download.jsonld', identifier);
     openminds.internal.utility.filewrite(filename, jsonInstance);
     
+    if options.Verbose
+        fprintf('Creating a metadata collection with all instances. Please wait a moment...\n')
+    end
+
     metadataCollection = openminds.Collection(filename, 'LinkResolver', ebrains.kg.KGResolver());
     metadataInstance = metadataCollection.Nodes(kgIRI);
+
+    if options.Verbose
+        fprintf('Done.\n');
+    end
 end
 
 function result = orderStr(val)
