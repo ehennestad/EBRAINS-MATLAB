@@ -1,5 +1,6 @@
 function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
-    
+% downloadInstancesBulk - Download a set of instances given their uuids
+
     % Todo: return response metadata as optional second arg
     arguments
         identifiers (1,:) string
@@ -38,10 +39,9 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
         end
     end
 
-
     method = matlab.net.http.RequestMethod.POST;
-    %body = matlab.net.http.MessageBody(identifiers);
-    %jsonData = jsonencode([identifiers,identifiers] );
+    % body = matlab.net.http.MessageBody(identifiers);
+    % jsonData = jsonencode([identifiers,identifiers] );
     
     body = matlab.net.http.MessageBody(identifiers);
     apiURL = BASE_API_URL;
@@ -50,21 +50,28 @@ function instanceData = downloadInstancesBulk(identifiers, stage, optionals)
     queryValues = struct2cell(optionals);
     queryNameValuePairs = [queryNames; queryValues]; 
 
-    for i = 1:numel(stage)
-        fullApiURL = matlab.net.URI(apiURL, "stage", stage(i), queryNameValuePairs{:});
-        
-        req = matlab.net.http.RequestMessage(method, headers, body);
-        response = req.send(fullApiURL);
+    fullApiURL = matlab.net.URI(apiURL, "stage", stage(1), queryNameValuePairs{:});
     
-        if response.StatusCode == "OK"
-            [instanceData, missingIds] = processResponse(response);
-            if ~isempty(missingIds)
-                instanceData(cellfun('isempty', instanceData))=[];
+    req = matlab.net.http.RequestMessage(method, headers, body);
+    response = req.send(fullApiURL);
+
+    if response.StatusCode == "OK"
+        [instanceData, missingIds] = processResponse(response);
+        if ~isempty(missingIds)
+            instanceData(cellfun('isempty', instanceData)) = [];
+
+            if numel(stage) == 2
                 instanceDataInProgress = ebrains.kg.downloadInstancesBulk(missingIds, "IN_PROGRESS");
-                instanceData = [instanceData, instanceDataInProgress]; %#ok<AGROW>
+                instanceData = [instanceData, instanceDataInProgress];
+            else
+                missingIdsConcatenated = strjoin("  " + string(missingIds), newline);
+                otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
+                warning(['Failed to retrieve the following instances:\n%s\n', ...
+                    'Please try downloading using stage %s instead\n'], missingIdsConcatenated, otherStage)
             end
-            break
         end
+    else
+        error("%s: %s", response.StatusCode, response.Body)
     end
 
     if response.StatusCode ~= "OK"
@@ -74,7 +81,6 @@ end
 
 function [instanceData, missingIds] = processResponse(response)
     data = struct2cell(response.Body.Data.data);
-    instanceIdentifiers = fieldnames(response.Body.Data.data);
 
     missingIds = string.empty;
     numInstances = numel(data);
@@ -82,7 +88,6 @@ function [instanceData, missingIds] = processResponse(response)
     
     for i = 1:numInstances
         if ~isempty(data{i}.error)
-            warning('Something went wrong for instance: %s', instanceIdentifiers{i});
             missingIds(end+1)=string(data{i}.error.message); %#ok<AGROW>
         end
         instanceData{i} = data{i}.data;
