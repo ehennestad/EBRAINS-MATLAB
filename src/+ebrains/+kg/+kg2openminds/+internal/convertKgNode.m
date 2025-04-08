@@ -5,7 +5,7 @@ function omNode = convertKgNode(kgNode)
 %   omNode = ebrains.kg.kg2openminds.internal.convertKgNode(kgNode)
 %
 % Input Arguments:
-%   kgNode (1,:) - Struct or cell array of metadata nodes/instances returned from the 
+%   kgNode (1,:) - Struct or cell array of metadata nodes/instances returned from the
 %       instances api endpoint.
 %
 % Output Arguments:
@@ -53,4 +53,3 @@ function omNode = convertKgNode(kgNode)
         omNode.at_id = identifier;
     end
 end
-

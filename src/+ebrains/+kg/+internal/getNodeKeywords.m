@@ -2,10 +2,10 @@ function varargout = getNodeKeywords(node, keywords)
 % getNodeKeywords - Retrieve values of jsonld keywords from a node structure
 %
 % Syntax:
-%   varargout = ebrains.kg.internal.getNodeKeywords(node, keywords) retrieves 
-%    values associated with the specified jsonld keywords from the input node 
+%   varargout = ebrains.kg.internal.getNodeKeywords(node, keywords) retrieves
+%    values associated with the specified jsonld keywords from the input node
 %    structure.
-%   
+%
 % Input Arguments:
 %   node (1,1) struct: A structure containing node data.
 %   keywords (1,1) string: A list of jsonld keywords to retrieve
@@ -19,7 +19,7 @@ function varargout = getNodeKeywords(node, keywords)
 % Example:
 %   [id, type] = ebrains.kg.internal.getNodeKeywords(metadataNode, "@id", "@type")
 %
-% Note: As MATLAB does not support fieldnames that start with @, the @-symbol 
+% Note: As MATLAB does not support fieldnames that start with @, the @-symbol
 %   is replaced with the prefix x_. This function assumes @-keywords are
 %   represented with the prefix x_, e.g @type <-> x_type
 
@@ -44,4 +44,3 @@ function varargout = getNodeKeywords(node, keywords)
         end
     end
 end
-
