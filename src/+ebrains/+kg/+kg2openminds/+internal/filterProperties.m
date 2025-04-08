@@ -2,16 +2,16 @@ function metadataNode = filterProperties(metadataNode)
 % filterProperties - Remove fields that do not represent openMINDS metadata properties
 %
 % Syntax:
-%   metadataNodeOut = ebrains.kg.kg2openminds.internal.filterProperties(metadataNodeIn)
+%   metadataNode = ebrains.kg.kg2openminds.internal.filterProperties(metadataNode)
 %   This function filters out fields from a metadata node that are not 
 %   relevant to openMINDS metadata properties. For example, a KG metadata
 %   not carries extra information that is not part of openMINDS.
 %
 % Input Arguments: 
-%   metadataNodeIn (1,:) struct - The input struct containing metadata fields
+%   metadataNode (1,:) struct - The input struct containing metadata fields
 %
 % Output Arguments: 
-%   metadataNodeOut (1,:) struct - The filtered metadata struct with 
+%   metadataNode (1,:) struct - The filtered metadata struct with 
 %   non-relevant fields removed
 
     arguments
