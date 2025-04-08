@@ -1,4 +1,4 @@
-function downloadControlledInstanceIdentifiers()
+function identifierMap = downloadControlledInstanceIdentifiers()
 % downloadControlledInstanceIdentifiers - Download KG uuids and openMINDS
 % @ids for controlled instances
 %
@@ -7,7 +7,7 @@ function downloadControlledInstanceIdentifiers()
 %   This function retrieves and compiles the identifiers of controlled
 %   instances from the EBRAINS knowledge graph.
 %
-% Output (save to file):
+% Output (saves to file):
 %   identifierMap - A struct array containing the UUIDs of the controlled
 %   instances downloaded from the knowledge graph.
 
@@ -33,6 +33,9 @@ function downloadControlledInstanceIdentifiers()
         'kg2om_identifier_loopkup.json');
 
     utility.filewrite(mapFilepath, jsonencode(identifierMap, 'PrettyPrint', true))
+    if ~nargout
+        clear identifierMap
+    end
 end
 
 function result = processTypeResponse(response)
