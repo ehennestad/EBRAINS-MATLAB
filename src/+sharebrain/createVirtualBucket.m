@@ -30,7 +30,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
         filePath = strrep(filePath, ' ', '\ ');
-        [status, msg] = system( sprintf('touch %s', filePath ));
+        [status, msg] = system( sprintf('touch "%s"', filePath ));
         
         if mod(i, 100) == 0 || i == numel(S)
             if options.Verbose
