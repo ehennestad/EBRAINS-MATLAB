@@ -8,8 +8,6 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %       ebrains.bucket.createVirtualBucket(bucketName, virtualBucketRootPath)
 %           creates the virtual dataset for a bucket in the folder 
 %           specified by virtualBucketRootPath
-%
-%   See also: createVirtualDatasetBucket
 
     arguments
         bucketName (1,1) string
