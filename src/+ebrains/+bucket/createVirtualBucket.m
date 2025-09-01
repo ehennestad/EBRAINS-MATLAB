@@ -5,7 +5,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   for all objects in a bucket.
 %
 %   Syntax:
-%       sharebrain.createVirtualBucket(bucketName, virtualBucketRootPath)
+%       ebrains.bucket.createVirtualBucket(bucketName, virtualBucketRootPath)
 %           creates the virtual dataset for a bucket in the folder 
 %           specified by virtualBucketRootPath
 %
