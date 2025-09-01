@@ -19,7 +19,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals)
 %       returnEmbedded logical        - If true, return embedded data; default is true.
 %
 % Output Arguments:
-%   metadataInstance        - The downloded metadata instance.
+%   metadataInstance        - The downloaded metadata instance.
 
     arguments
         identifier string

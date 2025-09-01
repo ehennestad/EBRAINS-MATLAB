@@ -19,7 +19,7 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
 %       returnEmbedded logical        - If true, return embedded data; default is true.
 %
 % Output Arguments:
-%   metadataInstances      - The downloded metadata instances.
+%   metadataInstances      - The downloaded metadata instances.
 
     % Todo: return response metadata as optional second arg
     arguments
