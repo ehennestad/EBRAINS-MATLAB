@@ -43,8 +43,8 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
         return
     end
 
-    BASE_API_URL = "https://core.kg.ebrains.eu/v3/instancesByIds/";
-
+    BASE_API_URL = ebrains.common.constant.KGCoreApiBaseURL();
+    
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
     % Create header fields
@@ -62,7 +62,7 @@ function metadataInstances = downloadInstancesBulk(identifiers, stage, optionals
     method = matlab.net.http.RequestMethod.POST;
     body = matlab.net.http.MessageBody(identifiers);
     
-    apiURL = BASE_API_URL;
+    apiURL = BASE_API_URL + "instancesByIds/";
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);
     queryNameValuePairs = [queryNames'; queryValues'];

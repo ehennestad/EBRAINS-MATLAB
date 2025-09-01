@@ -36,7 +36,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals)
         stage = ["RELEASED", "IN_PROGRESS"];
     end
 
-    BASE_API_URL = "https://core.kg.ebrains.eu/v3/instances/";
+    BASE_API_URL = ebrains.common.constant.KGCoreApiBaseURL();
 
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
@@ -45,7 +45,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals)
          identifier = strrep(identifier, "https://kg.ebrains.eu/api/instances/", "");
     end
 
-    apiURL = BASE_API_URL + "/" + identifier;
+    apiURL = BASE_API_URL + "instances/" + identifier;
     
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);
