@@ -39,6 +39,9 @@ function out = createNewInstance(space, payloadJson, opts, serverOpts)
     import matlab.net.*
     import matlab.net.http.*
     import matlab.net.http.field.AuthorizationField
+
+    serverUrl = ebrains.common.constant.KGCoreApiBaseURL("Server", serverOpts.Server);
+    baseApiUrl = serverUrl + "/instances";
     
     % Assemble query parameters (required + present optionals)
     q = [ QueryParameter('space', space) ];
@@ -52,13 +55,8 @@ function out = createNewInstance(space, payloadJson, opts, serverOpts)
     if isfield(opts, 'returnAlternatives'),    q(end+1) = QueryParameter('returnAlternatives',    logical(opts.returnAlternatives)); end
     if isfield(opts, 'returnEmbedded'),        q(end+1) = QueryParameter('returnEmbedded',        logical(opts.returnEmbedded)); end
     
-    % Set the base api URL
-    if serverOpts.Server == "prod"
-        apiUrl = "https://core.kg.ebrains.eu/v3/instances";
-    else
-        apiUrl = "https://core.kg-ppd.ebrains.eu/v3/instances";
-    end
-    uri = URI(apiUrl, q);
+
+    uri = URI(baseApiUrl, q);
     
     authClient = ebrains.iam.AuthenticationClient.instance();
 
