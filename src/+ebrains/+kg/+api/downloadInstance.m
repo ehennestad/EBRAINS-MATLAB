@@ -1,4 +1,4 @@
-function metadataInstance = downloadInstance(identifier, stage, optionals)
+function metadataInstance = downloadInstance(identifier, stage, optionals, serverOpts)
 % downloadInstance - Downloads KG metadata instance for the given identifier.
 %
 % Syntax:
@@ -30,13 +30,20 @@ function metadataInstance = downloadInstance(identifier, stage, optionals)
         optionals.returnPermissions logical %= false
         optionals.returnAlternatives logical %= false
         optionals.returnEmbedded logical %= true
+        serverOpts.Server (1,1) string {mustBeMember(serverOpts.Server, ["prod", "preprod"])} = "prod"
     end
+
+    % Build the full URL safely
+    if serverOpts.Server == "prod"
+        BASE_API_URL = "https://core.kg.ebrains.eu/v3/instances";
+    else
+        BASE_API_URL = "https://core.kg-ppd.ebrains.eu/v3/instances";
+    end
+
 
     if stage == "ANY"
         stage = ["RELEASED", "IN_PROGRESS"];
     end
-
-    BASE_API_URL = "https://core.kg.ebrains.eu/v3/instances/";
 
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
