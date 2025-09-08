@@ -5,11 +5,9 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   for all objects in a bucket.
 %
 %   Syntax:
-%       sharebrain.createVirtualBucket(bucketName, virtualBucketRootPath)
+%       ebrains.bucket.createVirtualBucket(bucketName, virtualBucketRootPath)
 %           creates the virtual dataset for a bucket in the folder 
 %           specified by virtualBucketRootPath
-%
-%   See also: createVirtualDatasetBucket
 
     arguments
         bucketName (1,1) string
@@ -30,7 +28,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
         filePath = strrep(filePath, ' ', '\ ');
-        [status, msg] = system( sprintf('touch %s', filePath ));
+        [status, msg] = system( sprintf('touch "%s"', filePath ));
         
         if mod(i, 100) == 0 || i == numel(S)
             if options.Verbose

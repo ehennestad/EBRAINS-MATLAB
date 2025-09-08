@@ -14,12 +14,12 @@ function completeObjectList = listBucketObjects(bucketName, options)
         options.Verbose = false
     end
         
-    BASE_API_URL = "https://data-proxy.ebrains.eu/api/v1/buckets/";
+    BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
 
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
 
-    apiURL = BASE_API_URL + bucketName;
+    apiURL = BASE_API_URL + "buckets/" + bucketName;
 
     method = matlab.net.http.RequestMethod.GET;
     req = matlab.net.http.RequestMessage(method, authHeaderField, []);

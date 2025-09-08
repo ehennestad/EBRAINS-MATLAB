@@ -1,0 +1,16 @@
+{
+    "Namespace" : "ebrains",
+    "ToolboxOptions": {
+        "Identifier": "9de25e88-1616-4674-8c39-65ed257bbe22",
+        "ToolboxName": "EBRAINS Services Toolbox",
+        "AuthorName": "Eivind Hennestad",
+        "AuthorEmail": "eivihe@uio.no",
+        "AuthorCompany": "Nesys",
+        "Summary": "A collection of api clients and utility functions for interacting with EBRAINS services in MATLAB",
+        "Description": "",
+        "MinimumMatlabRelease": "R2022b",
+        "MaximumMatlabRelease": "",
+        "ToolboxImageFile": "",
+        "ToolboxGettingStartedGuide": ""
+    }
+}

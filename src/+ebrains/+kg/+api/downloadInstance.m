@@ -19,7 +19,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals, serve
 %       returnEmbedded logical        - If true, return embedded data; default is true.
 %
 % Output Arguments:
-%   metadataInstance        - The downloded metadata instance.
+%   metadataInstance        - The downloaded metadata instance.
 
     arguments
         identifier string
@@ -32,19 +32,14 @@ function metadataInstance = downloadInstance(identifier, stage, optionals, serve
         optionals.returnEmbedded logical %= true
         serverOpts.Server (1,1) string {mustBeMember(serverOpts.Server, ["prod", "preprod"])} = "prod"
     end
-
-    % Build the full URL safely
-    if serverOpts.Server == "prod"
-        BASE_API_URL = "https://core.kg.ebrains.eu/v3/instances";
-    else
-        BASE_API_URL = "https://core.kg-ppd.ebrains.eu/v3/instances";
-    end
-
-
+    
     if stage == "ANY"
         stage = ["RELEASED", "IN_PROGRESS"];
     end
 
+    serverUrl = ebrains.common.constant.KGCoreApiBaseURL("Server", serverOpts.Server);
+    baseApiUrl = serverUrl + "/instances";
+    
     authClient = ebrains.iam.AuthenticationClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
 
@@ -52,7 +47,7 @@ function metadataInstance = downloadInstance(identifier, stage, optionals, serve
          identifier = strrep(identifier, "https://kg.ebrains.eu/api/instances/", "");
     end
 
-    apiURL = BASE_API_URL + "/" + identifier;
+    apiURL = baseApiUrl + "/" + identifier;
     
     queryNames = fieldnames(optionals);
     queryValues = struct2cell(optionals);

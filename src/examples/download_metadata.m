@@ -1,3 +1,7 @@
+% Prerequisites: 
+%  - openMINDS Metadata Toolbox (install via Add-On Manager)
+%  - fairgraph (python package, installed into MATLAB's pyenv)
+
 % Set openminds version to 3, as this is currently used in the EBRAINS 
 % Knowledge Graph. Please note: it is important to run `clear all` whenever
 % changing the openMINDS version to avoid conflicts from class definitions of
