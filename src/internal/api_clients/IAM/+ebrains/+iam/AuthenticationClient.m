@@ -191,12 +191,8 @@ classdef AuthenticationClient < handle
 
         function tf = hasActiveToken(obj)
             tf = false;
-            if isnat(obj.ExpiresIn)
-                % Todo: decode token?
-                return
-            end
 
-            if ~ismissing(obj.AccessToken_)
+            if ~ismissing(obj.AccessToken_) && ~ismissing(obj.ExpiresIn)
                 tf = obj.ExpiresIn > seconds(0);
                 warnState = warning('off', 'backtrace');
                 warningCleanup = onCleanup(@() warning(warnState));
@@ -220,7 +216,7 @@ classdef AuthenticationClient < handle
     methods
         function remainingTime = get.ExpiresIn(obj)
             if isempty(obj.AccessTokenExpiresAt)
-                remainingTime = NaT;
+                remainingTime = duration(missing);
             else
                 currentTime = datetime("now");
                 remainingTime = obj.AccessTokenExpiresAt - currentTime;
