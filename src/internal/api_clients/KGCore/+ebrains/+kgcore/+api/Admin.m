@@ -450,7 +450,7 @@ classdef Admin < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Admin
               type string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.xglobal logical
             end
 
@@ -576,7 +576,7 @@ classdef Admin < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Admin
               property string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.xglobal logical
             end
 
@@ -704,7 +704,7 @@ classdef Admin < ebrains.kgcore.BaseClient
               obj ebrains.kgcore.api.Admin
               property string
               type string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.xglobal logical
             end
 
@@ -2069,7 +2069,7 @@ classdef Admin < ebrains.kgcore.BaseClient
               obj ebrains.kgcore.api.Admin
               role string { mustBeMember(role,["CONSUMER","REVIEWER","EDITOR","OWNER","ADMIN"]) }
               remove logical
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.space string
             end
 

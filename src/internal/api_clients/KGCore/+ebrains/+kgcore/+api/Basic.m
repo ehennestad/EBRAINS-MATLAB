@@ -145,7 +145,7 @@ classdef Basic < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Basic
               id string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.returnIncomingLinks logical
               optionals.incomingLinksPageSize int64
               optionals.returnPayload logical
@@ -294,7 +294,7 @@ classdef Basic < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Basic
               id string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.returnIncomingLinks logical
               optionals.incomingLinksPageSize int64
               optionals.returnPayload logical
@@ -443,7 +443,7 @@ classdef Basic < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Basic
               space string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.returnIncomingLinks logical
               optionals.incomingLinksPageSize int64
               optionals.returnPayload logical
@@ -594,7 +594,7 @@ classdef Basic < ebrains.kgcore.BaseClient
               obj ebrains.kgcore.api.Basic
               id string
               space string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.returnIncomingLinks logical
               optionals.incomingLinksPageSize int64
               optionals.returnPayload logical
@@ -853,7 +853,7 @@ classdef Basic < ebrains.kgcore.BaseClient
               optionals.returnTotalResults logical
               optionals.instanceId string
               optionals.restrictToSpaces string
-              optionals.allRequestParams ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.allRequestParams ebrains.kgcore.JSONMapperMap
             end
 
             % Create the request object
@@ -2037,7 +2037,7 @@ classdef Basic < ebrains.kgcore.BaseClient
 
             arguments
               obj ebrains.kgcore.api.Basic
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
             end
 
             % Create the request object
@@ -2382,13 +2382,13 @@ classdef Basic < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Basic
               stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.from int64
               optionals.size int64
               optionals.returnTotalResults logical
               optionals.instanceId string
               optionals.restrictToSpaces string
-              optionals.allRequestParams ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              optionals.allRequestParams ebrains.kgcore.JSONMapperMap
             end
 
             % Create the request object
@@ -2526,7 +2526,7 @@ classdef Basic < ebrains.kgcore.BaseClient
             arguments
               obj ebrains.kgcore.api.Basic
               queryId string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.space string
             end
 

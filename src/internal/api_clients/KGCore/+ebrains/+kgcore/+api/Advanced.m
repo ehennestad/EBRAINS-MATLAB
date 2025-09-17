@@ -1031,7 +1031,7 @@ classdef Advanced < ebrains.kgcore.BaseClient
               stage string { mustBeMember(stage,["IN_PROGRESS","RELEASED"]) }
               property string
               id string
-              request_body ebrains.kgcore.models.ebrains.kgcore.JSONMapperMap
+              request_body ebrains.kgcore.JSONMapperMap
               optionals.sourceType string
               optionals.targetType string
               optionals.search string
