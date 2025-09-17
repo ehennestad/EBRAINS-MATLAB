@@ -38,6 +38,10 @@ classdef AuthenticationClient < handle
         RefreshTokenExpiresAt
     end
 
+    properties (Access = private)
+        LastWarnTime uint64 = 0
+    end
+
     properties (Constant, Access = private)
         SINGLETON_NAME = "IAM_Authentication_Client"
 
@@ -187,10 +191,23 @@ classdef AuthenticationClient < handle
 
         function tf = hasActiveToken(obj)
             tf = false;
+            if isnat(obj.ExpiresIn)
+                % Todo: decode token?
+                return
+            end
+
             if ~ismissing(obj.AccessToken_)
                 tf = obj.ExpiresIn > seconds(0);
-                if obj.ExpiresIn < seconds(3600)
-                    warning("EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
+                warnState = warning('off', 'backtrace');
+                warningCleanup = onCleanup(@() warning(warnState));
+                if obj.ExpiresIn < 0
+                    warning("EBRAINS Access token expired %d minutes ago.", abs(round(seconds(obj.ExpiresIn)/60)))
+                elseif obj.ExpiresIn < seconds(3600)
+                    elapsed = toc(obj.LastWarnTime);
+                    if elapsed > 60*10 % 10 minutes
+                        warning("EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
+                        obj.LastWarnTime = tic;
+                    end
                 end
             end
         end
@@ -206,7 +223,6 @@ classdef AuthenticationClient < handle
                 remainingTime = NaT;
             else
                 currentTime = datetime("now");
-
                 remainingTime = obj.AccessTokenExpiresAt - currentTime;
             end
         end
