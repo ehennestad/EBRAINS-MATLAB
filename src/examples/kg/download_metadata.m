@@ -15,7 +15,7 @@ openminds.version(3);
 % fragment of the URL, the part after the "#" symbol in the full URL.
 
 % Example: Developmental mouse brain atlas (DeMBA)
-dsvIdentifier = '8f1f65bb-44cb-4312-afd4-10f623f929b8';
+dsvIdentifier = '08ab00ea-3e19-4300-9d9f-c0ef0ec8e445';
 
 % Specify the path for a jsonld to save all the metadata
 saveFolder = fullfile(pwd, 'kg_metadata_example');
@@ -29,6 +29,7 @@ savePath = fullfile(saveFolder, fileName);
     dsvIdentifier, ...
     "CollectionTargetFile", savePath, ...
     "NumLinksToResolve", 2);
+
 
 disp(instance)
 
