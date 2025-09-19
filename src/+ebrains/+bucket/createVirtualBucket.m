@@ -22,8 +22,11 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     for i = 1:numel(S)
         objectName = S(i).name;
         filePath = fullfile(virtualBucketRootPath, objectName);
-        parentFolderName = fileparts(objectName);
-        if ~isempty(parentFolderName)
+        [parentFolderName, name, fileExtension] = fileparts(objectName);
+        if isempty(fileExtension)
+            if ~isfolder(filePath); mkdir(filePath); end
+            continue
+        elseif ~isempty(parentFolderName)
             parentFolderPath = fileparts(filePath);
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
