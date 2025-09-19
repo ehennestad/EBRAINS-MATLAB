@@ -49,7 +49,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
             case "OK"
                 objectList = response.Body.Data.objects;
             otherwise
-                error('Unable to get file manifest for dataset "%s" with status code: %s', bucketName, resp.StatusCode )
+                error('Unable to get file manifest for dataset "%s" with status code: %s', bucketName, response.StatusCode )
         end
 
         if isempty(completeObjectList)
