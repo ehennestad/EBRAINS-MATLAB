@@ -12,7 +12,7 @@ classdef TestConstants < matlab.unittest.TestCase
 
             function testKGCoreApiBaseURL(testCase)
                 url = ebrains.common.constant.KGCoreApiBaseURL();
-                testCase.verifyEqual(url, "https://core.kg.ebrains.eu/v3/");
+                testCase.verifyEqual(url, "https://core.kg.ebrains.eu/v3");
             end
     end
 end
