@@ -231,6 +231,7 @@ classdef InstancesClient < handle %KGClient
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
+                if ~nargout; clear result; end
             else
                 obj.throwError("deleteInstance", resp, serverOptions.Server)
             end
