@@ -509,7 +509,7 @@ classdef InstancesClient < handle %KGClient
         end
     
         function headers = getDefaultHeader()
-            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient = ebrains.iam.DeviceFlowTokenClient.instance();
         
             headers = [ ...
                 matlab.net.http.HeaderField("Content-Type", "application/json"), ...

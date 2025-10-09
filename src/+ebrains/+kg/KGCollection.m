@@ -200,7 +200,7 @@ classdef KGCollection < openminds.Collection
         function tf = isTokenExpired(obj)
             tf = false;
 
-            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient = ebrains.iam.DeviceFlowTokenClient.instance();
             fgToken = string(obj.FairgraphClient_.token);
             if ~strcmp(authClient.AccessToken, fgToken)
                 tf = true; return
@@ -212,7 +212,7 @@ classdef KGCollection < openminds.Collection
         end
 
         function refreshClient(obj)
-            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient = ebrains.iam.DeviceFlowTokenClient.instance();
             authClient.refreshToken()
             if ~isempty(obj.FairgraphClient_)
                 % pass
@@ -222,7 +222,7 @@ classdef KGCollection < openminds.Collection
 
         function initializeFairgraphClient(obj)
             % Todo: Get from singleton.
-            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient = ebrains.iam.DeviceFlowTokenClient.instance();
             hostName = sprintf("core.%s.ebrains.eu", obj.KGServer);
             obj.FairgraphClient_ = py.fairgraph.KGClient( authClient.AccessToken, host=hostName );
         end

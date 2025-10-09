@@ -90,7 +90,7 @@ classdef (Abstract) BaseClient < handle & matlab.mixin.CustomDisplay
             end
 
             % Get the token for the iam auth client
-            authClient = ebrains.iam.AuthenticationClient.instance();
+            authClient = ebrains.iam.DeviceFlowTokenClient.instance();
             obj.AuthClient = authClient;
             obj.bearerToken = authClient.AccessToken;
         end

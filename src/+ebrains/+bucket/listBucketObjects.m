@@ -16,7 +16,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         
     BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
 
-    authClient = ebrains.iam.AuthenticationClient.instance();
+    authClient = ebrains.iam.DeviceFlowTokenClient.instance();
     authHeaderField = authClient.getAuthHeaderField();
 
     apiURL = BASE_API_URL + "buckets/" + bucketName;
