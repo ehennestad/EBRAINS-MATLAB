@@ -69,14 +69,14 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                 switch ME.identifier
                     case 'MATLAB:webservices:HTTP400StatusCodeError'
                         errorMessage = "Invalid client credentials. Please verify your client ID and secret.";
-                        errordlg(errorMessage, titleMessage)
+                        disp(errorMessage)
                         throwAsCaller(ME) 
                     case 'MATLAB:webservices:HTTP401StatusCodeError'
                         errorMessage = "Unauthorized. The client credentials are not valid.";
-                        errordlg(errorMessage, titleMessage)
+                        disp(errorMessage)
                         throwAsCaller(ME)
                     otherwise
-                        errordlg(ME.message, titleMessage)
+                        disp(ME.message)
                         throwAsCaller(ME) 
                 end
             end
@@ -108,8 +108,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
         %   Open question: Are there better ways to do this?
 
             arguments
-                clientId (1,1) string
-                clientSecret (1,1) string
+                clientId (1,1) string = ""
+                clientSecret (1,1) string = ""
             end
 
             authClientObject = [];
@@ -125,8 +125,9 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                         
                         % Verify credentials match
                         if isvalid(authClientObject)
-                            if authClientObject.ClientId ~= clientId || ...
-                               authClientObject.ClientSecret ~= clientSecret
+                            if clientId ~= "" && ...
+                               (authClientObject.ClientId ~= clientId || ...
+                               authClientObject.ClientSecret ~= clientSecret)
                                 warning('Different credentials provided. Creating new instance.');
                                 authClientObject = [];
                             end
@@ -138,7 +139,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
             end
 
             % - Construct the client if singleton instance is not present
-            if isempty(authClientObject)
+            if isempty(authClientObject) || ~isvalid(authClientObject)
                 authClientObject = ebrains.iam.ClientCredentialsFlowTokenClient(...
                     clientId, clientSecret);
                 
