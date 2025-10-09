@@ -1,4 +1,4 @@
-classdef (Abstract) OidcTokenClient < handle
+classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 % OidcTokenClient - Abstract base class for OIDC token authentication
 %
 %   This abstract class provides common functionality for OIDC token
@@ -104,6 +104,23 @@ classdef (Abstract) OidcTokenClient < handle
             obj.AccessTokenExpiresAt = ...
                 ebrains.internal.get_token_expiration(obj.AccessToken_);
             obj.AccessTokenExpiresAt.TimeZone = '';
+        end
+    end
+    
+    methods (Access = protected) % CustomDisplay override
+        function groups = getPropertyGroups(obj)
+            propNames = properties(obj);
+
+            s = struct();
+            for i = 1:numel(propNames)
+                if strcmp(propNames{i}, 'AccessToken')
+                    s.(propNames{i}) = categorical({'********'});
+                else
+                    s.(propNames{i}) = obj.(propNames{i});
+                end
+            end
+
+            groups = matlab.mixin.util.PropertyGroup(s);
         end
     end
 
