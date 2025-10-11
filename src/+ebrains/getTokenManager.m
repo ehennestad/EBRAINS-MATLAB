@@ -3,7 +3,7 @@ function tokenManager = getTokenManager()
 
     % First we check ClientCredentialsFlowTokenClient
     tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance();
-    if tokenClient.hasActiveToken()
+    if tokenClient.canAuthenticate()
         tokenManager = tokenClient;
         return
     end
