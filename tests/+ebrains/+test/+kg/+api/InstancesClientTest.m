@@ -14,7 +14,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     %   runtests('tests/+ebrains/+kg/+api/InstancesClientTest', 'Tag', 'HelperFunctions')
     
     properties
-        Client mocks.MockInstancesClient
+        Client ebrains.mocks.MockInstancesClient
         TestData
     end
     
@@ -35,7 +35,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     
     methods (TestMethodSetup)
         function createMockClient(testCase)
-            testCase.Client = mocks.MockInstancesClient();
+            testCase.Client = ebrains.mocks.MockInstancesClient();
         end
     end
     
@@ -48,8 +48,8 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     methods (Test)
         %% Constructor Tests
         function testConstructor(testCase)
-            client = mocks.MockInstancesClient();
-            testCase.verifyClass(client, 'mocks.MockInstancesClient');
+            client = ebrains.mocks.MockInstancesClient();
+            testCase.verifyClass(client, 'ebrains.mocks.MockInstancesClient');
             testCase.verifyInstanceOf(client, 'ebrains.kg.api.InstancesClient');
         end
         
