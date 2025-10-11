@@ -433,7 +433,7 @@ classdef InstancesClient < handle %KGClient
             end
         end
     
-        function runDynamicQuery(obj, jsonldPayload, requiredParams, optionalParams, serverOptions)
+        function result = runDynamicQuery(obj, jsonldPayload, requiredParams, optionalParams, serverOptions)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 jsonldPayload (1,1) string
