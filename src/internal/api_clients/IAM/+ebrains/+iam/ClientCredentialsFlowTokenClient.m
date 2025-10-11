@@ -150,5 +150,11 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
             % - Return the instance
             obj = authClientObject;
         end
+    
+        function reset()
+            className = string( mfilename('class') );
+            singletonName = eval( className + "." + "SINGLETON_NAME" );
+            ebrains.iam.OidcTokenClient.reset(singletonName)
+        end
     end
 end

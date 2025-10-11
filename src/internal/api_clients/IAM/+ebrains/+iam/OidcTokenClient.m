@@ -23,9 +23,6 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
     
     properties (Dependent, SetAccess = private)
         AccessToken
-    end
-
-    properties (Dependent)
         ExpiresIn
     end
 
@@ -200,7 +197,15 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 end
             end
         end
-    
+        
+        function tf = canAuthenticate(obj)
+        % canAuthenticate - Check if client can authenticate. 
+        %
+        % If AccessToken is not missing, we assume the client has already
+        % authenticated successfully before and that it can authenticate again.
+            tf = ~ismissing(obj.AccessToken_);
+        end
+
         function copyTokenToClipboard(obj)
             clipboard("copy", obj.AccessToken_)
         end
@@ -224,6 +229,26 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 obj.refreshToken()
             end
             accessToken = obj.AccessToken_;
+        end
+    end
+
+    methods (Static)
+        function reset(singletonName)
+            arguments
+                singletonName (1,1) string
+            end
+            rootUserData = get(0, 'UserData');
+            if isstruct(rootUserData)
+                if isfield(rootUserData, 'SingletonInstances')
+                    if isfield(rootUserData.SingletonInstances, singletonName)
+                        authClientObject = rootUserData.SingletonInstances.(singletonName);
+                        delete(authClientObject)
+                        rootUserData.SingletonInstances = ...
+                            rmfield(rootUserData.SingletonInstances, singletonName);
+                        set(0, 'UserData', rootUserData)
+                    end
+                end
+            end
         end
     end
 end
