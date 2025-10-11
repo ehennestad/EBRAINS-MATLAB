@@ -5,7 +5,7 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient
     % to return canned responses instead of making real HTTP calls.
     %
     % Example:
-    %   mockClient = mocks.MockInstancesClient();
+    %   mockClient = ebrains.mocks.MockInstancesClient();
     %   mockClient.addResponse('OK', struct('data', myData));
     %   result = mockClient.getInstance('some-id', 'RELEASED');
     
@@ -101,11 +101,18 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient
     end
     
     methods (Access = protected)
+        function headers = getDefaultHeader(~)
+            headers = [ ...
+                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
+                matlab.net.http.HeaderField("Accept", "application/json") ...
+                ];
+        end
+
         function response = sendRequest(obj, requestObj, apiURL, httpOpts)
             % Override sendRequest to return canned responses instead of making real HTTP calls
             
             arguments
-                obj (1,1) mocks.MockInstancesClient
+                obj (1,1) ebrains.mocks.MockInstancesClient
                 requestObj (1,1) matlab.net.http.RequestMessage
                 apiURL (1,1) matlab.net.URI
                 httpOpts matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
@@ -130,15 +137,6 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient
                     'No more canned responses available. Added %d, requested %d', ...
                     numel(obj.CannedResponses), obj.CurrentResponseIndex);
             end
-        end
-    end
-
-    methods (Static, Access = protected)
-        function headers = getDefaultHeader()
-            headers = [ ...
-                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
-                matlab.net.http.HeaderField("Accept", "application/json") ...
-                ];
         end
     end
 end

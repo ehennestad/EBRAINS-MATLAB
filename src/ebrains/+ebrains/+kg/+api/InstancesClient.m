@@ -468,8 +468,35 @@ classdef InstancesClient < handle %KGClient
     end
 
     methods (Access = protected)
-        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
+        function req = initializeRequestMessage(obj, operationName, options)
+            arguments
+                obj
+                operationName (1,1) string
+                options.JSONPayload (1,1) string = missing
+            end
 
+            headers = obj.getDefaultHeader();
+            req  = matlab.net.http.RequestMessage(char(operationName), headers);
+
+            if ~ismissing(options.JSONPayload)
+                % Todo: Add header with content-type json here...
+                body = matlab.net.http.MessageBody();
+                body.Payload = char(options.JSONPayload);
+                req.Body = body;
+            end
+        end
+
+        function headers = getDefaultHeader(~)
+            tokenManager = ebrains.getTokenManager();
+
+            headers = [ ...
+                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
+                matlab.net.http.HeaderField("Accept", "application/json") ...
+                matlab.net.http.field.AuthorizationField("Authorization", "Bearer " + tokenManager.AccessToken) ...
+                ];
+        end
+
+        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient %#ok<INUSA>
                 requestObj (1,1) matlab.net.http.RequestMessage
@@ -486,23 +513,6 @@ classdef InstancesClient < handle %KGClient
     end
 
     methods (Static, Access = protected)
-        function req = initializeRequestMessage(operationName, options)
-            arguments
-                operationName (1,1) string
-                options.JSONPayload (1,1) string = missing
-            end
-
-            headers = ebrains.kg.api.InstancesClient.getDefaultHeader();
-            req  = matlab.net.http.RequestMessage(char(operationName), headers);
-
-            if ~ismissing(options.JSONPayload)
-                % Todo: Add header with content-type json here...
-                body = matlab.net.http.MessageBody();
-                body.Payload = char(options.JSONPayload);
-                req.Body = body;
-            end
-        end
-
         function apiURL = buildApiURL(server, endpointPath, requiredParams, optionalParams)
             arguments
                 server (1,1) ebrains.kg.enum.KGServer
@@ -526,16 +536,6 @@ classdef InstancesClient < handle %KGClient
                 ];
 
             apiURL = matlab.net.URI(serverUrl + endpointPath, queryParameters);
-        end
-
-        function headers = getDefaultHeader()
-            tokenManager = ebrains.getTokenManager();
-
-            headers = [ ...
-                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
-                matlab.net.http.HeaderField("Accept", "application/json") ...
-                matlab.net.http.field.AuthorizationField("Authorization", "Bearer " + tokenManager.AccessToken) ...
-                ];
         end
 
         function httpOpts = getOptionsForRawResponse()
