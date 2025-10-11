@@ -146,6 +146,8 @@ classdef InstancesClient < handle %KGClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            identifier = normalizeIdentifiers(identifier);
+
             OPERATION = "POST";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
@@ -363,7 +365,7 @@ classdef InstancesClient < handle %KGClient
             requiredParams = struct('stage', stage(1));
             fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            response = req.send(fullApiURL);
+            response = obj.sendRequest(req, fullApiURL);
 
             if response.StatusCode == "OK"
                 [result, missingIds] = processBulkResponse(response);
@@ -465,7 +467,7 @@ classdef InstancesClient < handle %KGClient
         end
     end
 
-    methods (Access = private)
+    methods (Access = protected)
         function response = sendRequest(obj, requestObj, apiURL, httpOpts)
 
             arguments
