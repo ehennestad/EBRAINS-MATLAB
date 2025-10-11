@@ -1,10 +1,16 @@
 TYPES_IGNORE = "QuantitativeValue"; % For some reason, the whole program got stuck
 SPACE = "myspace";
-
+SERVER = "PREPROD";
 
 kgClient = ebrains.kg.api.InstancesClient();
 
-types = kgClient.listTypes("space", SPACE, "Server", "PROD");
+types = kgClient.listTypes("space", SPACE, "Server", SERVER);
+
+if isempty(types)
+    fprintf('No types found in space "%s" on server "%s"\n', SPACE, SERVER)
+    return
+end
+
 struct2table(types) % Display types
 
 % Fetch instances
@@ -15,7 +21,7 @@ for iType = 1:numel(types)
         continue
     end
     typeIRI = types(iType).http___schema_org_identifier;
-    instances{iType} = kgClient.listInstances(typeIRI, space=SPACE, stage="IN_PROGRESS", Server="PROD");
+    instances{iType} = kgClient.listInstances(typeIRI, space=SPACE, stage="IN_PROGRESS", Server=SERVER);
     fprintf('Retrieved instances for type %s\n', typeName)
 end
 
@@ -40,7 +46,7 @@ end
 for i = 1:numel(identifiers)
     try
         uuid = extractAfter(identifiers(i), ebrains.common.constant.KgInstanceIRIPrefix + "/");
-        kgClient.deleteInstance(uuid, "Server", "PROD")
+        kgClient.deleteInstance(uuid, "Server", SERVER)
         fprintf('Deleted instance  with identifier %s\n', identifiers(i))
     catch ME
         warning(ME.identifier, "Failed for instance with identifier '%s' with error: \n%s", identifiers(i), ME.message)
