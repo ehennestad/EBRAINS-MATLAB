@@ -60,7 +60,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.addResponse('OK', expectedData);
             
             % Act
-            result = testCase.Client.listInstances("Dataset");
+            result = testCase.Client.listInstances("https://openminds.ebrains.eu/core/Dataset");
             
             % Assert
             testCase.verifyEqual(result, testCase.TestData.instance);
@@ -74,7 +74,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.addResponse('OK', struct('data', []));
             
             % Act
-            testCase.Client.listInstances("Dataset", ...
+            testCase.Client.listInstances("https://openminds.ebrains.eu/core/Dataset", ...
                 space="myspace", ...
                 searchByLabel="test", ...
                 from=uint64(10), ...
@@ -94,7 +94,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             
             % Act & Assert
             testCase.verifyError(...
-                @() testCase.Client.listInstances("Dataset"), ...
+                @() testCase.Client.listInstances("https://openminds.ebrains.eu/core/Dataset"), ...
                 'EBRAINS:KG_API:listInstances:InternalServerError');
         end
         
