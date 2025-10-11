@@ -132,4 +132,13 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient
             end
         end
     end
+
+    methods (Static, Access = protected)
+        function headers = getDefaultHeader()
+            headers = [ ...
+                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
+                matlab.net.http.HeaderField("Accept", "application/json") ...
+                ];
+        end
+    end
 end
