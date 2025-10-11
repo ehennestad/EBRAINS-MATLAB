@@ -3,7 +3,7 @@ classdef InstancesClient < handle %KGClient
     methods
         function result = listInstances(obj, type, requiredParams, optionalParams, serverOptions)
         % listInstances - Returns a list of instances according to their types.
-        
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 type  (1,1) string
@@ -12,16 +12,16 @@ classdef InstancesClient < handle %KGClient
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.searchByLabel          string
                 optionalParams.filterProperty         string
-                optionalParams.filterValue            
+                optionalParams.filterValue
                 optionalParams.from                   uint64
                 optionalParams.size                   uint64
                 optionalParams.returnTotalResults     logical
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
-        
+
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances";
-                    
+
             req = obj.initializeRequestMessage(OPERATION);
 
             % Process input parameters and build full api url
@@ -29,7 +29,7 @@ classdef InstancesClient < handle %KGClient
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
             resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
@@ -59,7 +59,7 @@ classdef InstancesClient < handle %KGClient
         %
         % Output Arguments:
         %   metadataInstance        - The downloaded metadata instance.
-        
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -68,14 +68,14 @@ classdef InstancesClient < handle %KGClient
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
-                responseOptions.RawOutput (1,1) logical = false 
+                responseOptions.RawOutput (1,1) logical = false
             end
 
             identifier = normalizeIdentifiers(identifier);
 
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
-            
+
             req = obj.initializeRequestMessage(OPERATION);
 
             if stage == "ANY" % todo: should move to another layer
@@ -86,7 +86,7 @@ classdef InstancesClient < handle %KGClient
                 requiredParams = struct('stage', stage(i));
 
                 apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
-                
+
                 if responseOptions.RawOutput
                     resp = req.send(apiURL, obj.getOptionsForRawResponse());
                 else
@@ -114,26 +114,26 @@ classdef InstancesClient < handle %KGClient
                 payloadJson       (1,1) string {mustBeNonzeroLengthText}
                 requiredParams.space                  (1,1) string {mustBeNonzeroLengthText} = "dataset"
                 optionalParams.?ebrains.kg.query.ReturnOptions
-                optionalParams.returnIncomingLinks    logical 
-                optionalParams.incomingLinksPageSize  int64 
+                optionalParams.returnIncomingLinks    logical
+                optionalParams.incomingLinksPageSize  int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
             OPERATION = "POST";
             ENDPOINT_PATH = "/instances";
-            
+
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
-            
+
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
             resp = req.send(apiURL, obj.getOptionsForRawResponse());
-        
+
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
             else
                 obj.throwError("createNewInstance", resp, serverOptions.Server)
             end
         end
-        
+
         function result = createNewInstanceWithId(obj, identifier, payloadJson, requiredParams, optionalParams, serverOptions)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -141,8 +141,8 @@ classdef InstancesClient < handle %KGClient
                 payloadJson       (1,1) string {mustBeNonzeroLengthText}
                 requiredParams.space                  (1,1) string {mustBeNonzeroLengthText} = "dataset"
                 optionalParams.?ebrains.kg.query.ReturnOptions
-                optionalParams.returnIncomingLinks    logical 
-                optionalParams.incomingLinksPageSize  int64 
+                optionalParams.returnIncomingLinks    logical
+                optionalParams.incomingLinksPageSize  int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
@@ -150,10 +150,10 @@ classdef InstancesClient < handle %KGClient
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
-            
+
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
             resp = req.send(apiURL, obj.getOptionsForRawResponse());
-        
+
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
             else
@@ -176,10 +176,10 @@ classdef InstancesClient < handle %KGClient
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
-            
+
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
             resp = req.send(apiURL, obj.getOptionsForRawResponse());
-        
+
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
             else
@@ -202,10 +202,10 @@ classdef InstancesClient < handle %KGClient
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
-            
+
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
             resp = req.send(apiURL, obj.getOptionsForRawResponse());
-        
+
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
             else
@@ -236,9 +236,9 @@ classdef InstancesClient < handle %KGClient
                 obj.throwError("deleteInstance", resp, serverOptions.Server)
             end
         end
-    
+
         function result = moveInstance(obj, identifier, space, optionalParams, serverOptions)
-        
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier  (1,1) string
@@ -248,22 +248,22 @@ classdef InstancesClient < handle %KGClient
                 optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
-        
+
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/spaces/" + space;
-            
-            % Sending a put request without body/payload will display a warning. 
+
+            % Sending a put request without body/payload will display a warning.
             % We are doing this on purpose, so suppress warning temporarily.
             warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
             warningCleanup = onCleanup(@() warning(warnState));
-            
+
             req = obj.initializeRequestMessage(OPERATION);
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
 
             resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
@@ -272,7 +272,7 @@ classdef InstancesClient < handle %KGClient
         end
 
         function result = releaseInstance(obj, identifier, optionalParams, serverOptions)
-        
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -285,17 +285,17 @@ classdef InstancesClient < handle %KGClient
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/release";
 
-            % Sending a put request without body/payload will display a warning. 
+            % Sending a put request without body/payload will display a warning.
             % We are doing this on purpose, so suppress warning temporarily.
             warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
             warningCleanup = onCleanup(@() warning(warnState));
-            
+
             req = obj.initializeRequestMessage(OPERATION);
-            
+
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
             resp = req.send(apiURL);
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
@@ -304,7 +304,7 @@ classdef InstancesClient < handle %KGClient
         end
 
         function result = getReleaseStatus(obj, identifier, requiredParams, serverOptions)
-        
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -316,13 +316,13 @@ classdef InstancesClient < handle %KGClient
 
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances/" + identifier + "/release/status";
-            
+
             req = obj.initializeRequestMessage(OPERATION);
-            
+
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, struct.empty);
             resp = req.send(apiURL);
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
@@ -352,29 +352,29 @@ classdef InstancesClient < handle %KGClient
             ENDPOINT_PATH = "/instancesByIds";
 
             req = obj.initializeRequestMessage(OPERATION);
-            
+
             identifiers = normalizeIdentifiers(identifiers);
             req.Body = matlab.net.http.MessageBody(identifiers);
 
             if stage == "ANY"
                 stage = ["RELEASED", "IN_PROGRESS"];
             end
-        
+
             requiredParams = struct('stage', stage(1));
             fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
             response = req.send(fullApiURL);
-        
+
             if response.StatusCode == "OK"
                 [result, missingIds] = processBulkResponse(response);
                 if ~isempty(missingIds)
                     result(cellfun('isempty', result)) = [];
-        
+
                     if numel(stage) == 2 % Call other stage
                         nvPairs = namedargs2cell(optionalParams);
                         metadataInstancesInProgress = obj.getInstancesBulk(missingIds, ...
                             "IN_PROGRESS", nvPairs{:}, "Server", serverOptions.Server);
-                        result = [result, metadataInstancesInProgress]; 
+                        result = [result, metadataInstancesInProgress];
                     else
                         missingIdsConcatenated = strjoin("  " + string(missingIds), newline);
                         otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
@@ -388,11 +388,11 @@ classdef InstancesClient < handle %KGClient
 
             function [metadataInstances, missingIds] = processBulkResponse(response)
                 data = struct2cell(response.Body.Data.data);
-            
+
                 missingIds = string.empty;
                 numInstances = numel(data);
                 metadataInstances = cell(1, numInstances);
-                
+
                 for iInstance = 1:numInstances
                     if ~isempty(data{iInstance}.error)
                         missingIds(end+1)=string(data{iInstance}.error.message); %#ok<AGROW>
@@ -401,9 +401,9 @@ classdef InstancesClient < handle %KGClient
                 end
             end
         end
-    
+
         function result = listTypes(obj, requiredParams, optionalParams, serverOptions)
-            
+
            arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "IN_PROGRESS"
@@ -415,24 +415,24 @@ classdef InstancesClient < handle %KGClient
                 optionalParams.returnTotalResults     logical
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
-            
+
             OPERATION = "GET";
             ENDPOINT_PATH = "/types";
-                    
+
             req = obj.initializeRequestMessage(OPERATION);
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
             resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
                 obj.throwError("listTypes", resp, serverOptions.Server)
             end
         end
-    
+
         function result = runDynamicQuery(obj, jsonldPayload, requiredParams, optionalParams, serverOptions)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -456,7 +456,7 @@ classdef InstancesClient < handle %KGClient
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
             resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
-        
+
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
             else
@@ -504,13 +504,13 @@ classdef InstancesClient < handle %KGClient
                 matlab.net.QueryParameter(requiredParams), ...
                 matlab.net.QueryParameter(optionalParams) ...
                 ];
-        
+
             apiURL = matlab.net.URI(serverUrl + endpointPath, queryParameters);
         end
-    
+
         function headers = getDefaultHeader()
             tokenManager = ebrains.getTokenManager();
-        
+
             headers = [ ...
                 matlab.net.http.HeaderField("Content-Type", "application/json"), ...
                 matlab.net.http.HeaderField("Accept", "application/json") ...
@@ -521,16 +521,16 @@ classdef InstancesClient < handle %KGClient
         function httpOpts = getOptionsForRawResponse()
             httpOpts = matlab.net.http.HTTPOptions('ConvertResponse', false);
         end
-    
+
         function throwError(operationName, responseObject, server)
             arguments
                 operationName (1,1) string
                 responseObject
                 server (1,1) ebrains.kg.enum.KGServer
             end
-        
+
             errorID = sprintf('EBRAINS:KG_API:%s:%s', operationName, responseObject.StatusCode);
-        
+
             errorDescription = '';
 
             if responseObject.StatusCode == 500
@@ -548,7 +548,7 @@ classdef InstancesClient < handle %KGClient
             else
                 errorMessage = sprintf('%s: %s', char(responseObject.StatusCode), errorDescription);
             end
-        
+
             ME = MException(errorID, errorMessage);
             throwAsCaller(ME)
         end

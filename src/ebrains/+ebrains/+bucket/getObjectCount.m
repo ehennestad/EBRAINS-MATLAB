@@ -1,11 +1,11 @@
 function n = getObjectCount(bucketName, options)
 % getObjectCount - Get count for number of objects in bucket.
-    
+
     arguments
         bucketName (1,1) string
         options.Verbose = false
     end
-        
+
     BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
 
     authClient = ebrains.iam.DeviceFlowTokenClient.instance();

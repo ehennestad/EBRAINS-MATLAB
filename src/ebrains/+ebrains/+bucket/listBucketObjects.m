@@ -3,7 +3,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
 %
 %   Syntax:
 %       S = ebrains.bucket.listBucketObjects(bucketName) returns a struct
-%           array where each element contains info about a bucket object 
+%           array where each element contains info about a bucket object
 %           (i.e a file)
 %
 %   Input Arguments
@@ -13,7 +13,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         bucketName (1,1) string
         options.Verbose = false
     end
-        
+
     BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
 
     authClient = ebrains.iam.DeviceFlowTokenClient.instance();
@@ -32,13 +32,13 @@ function completeObjectList = listBucketObjects(bucketName, options)
 
     finished = false;
     completeObjectList = struct.empty;
-        
-    tBegin = tic; 
+
+    tBegin = tic;
     while ~finished
 
         QP = matlab.net.QueryParameter('limit', pageSize, 'marker', marker);
         apiURI = matlab.net.URI(apiURL, QP);
-        
+
         if options.Verbose
             fprintf('Sending request for bucket objects... ')
         end
@@ -57,7 +57,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         else
             completeObjectList = cat(1, completeObjectList, objectList);
         end
-            
+
         if options.Verbose
             fprintf('Retrieved %d/%d objects.\n', numel(completeObjectList), nTotalObjects)
         end
@@ -65,7 +65,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         if isempty(objectList)
             return
         end
-        
+
         marker = objectList(end).name;
 
         if numel(objectList) < pageSize

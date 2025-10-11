@@ -2,7 +2,7 @@ function pathName = namespacedir(namespaceName)
 % namespacedir - Retrieves the directory path name of the given namespace
 %
 % Syntax:
-%   folderPathName = ebrains.common.namespacedir(namespace) Returns the 
+%   folderPathName = ebrains.common.namespacedir(namespace) Returns the
 %   directory path name (location) of the given namespace.
 %
 % Output Arguments:
@@ -11,7 +11,7 @@ function pathName = namespacedir(namespaceName)
     arguments
         namespaceName (1,1) string
     end
-    
+
     namespaceParts = strsplit(namespaceName, '.');
     namespaceParts = "+" + namespaceParts;
     namespaceRelativePath = fullfile(namespaceParts{:});

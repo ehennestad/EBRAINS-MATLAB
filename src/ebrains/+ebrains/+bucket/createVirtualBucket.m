@@ -6,7 +6,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %
 %   Syntax:
 %       ebrains.bucket.createVirtualBucket(bucketName, virtualBucketRootPath)
-%           creates the virtual dataset for a bucket in the folder 
+%           creates the virtual dataset for a bucket in the folder
 %           specified by virtualBucketRootPath
 
     arguments
@@ -18,7 +18,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     S = ebrains.bucket.listBucketObjects(bucketName, "Verbose", options.Verbose);
 
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
-    
+
     for i = 1:numel(S)
         objectName = S(i).name;
         filePath = fullfile(virtualBucketRootPath, objectName);
@@ -31,14 +31,14 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
         filePath = strrep(filePath, ' ', '\ ');
-        
+
         [status, msg] = system( sprintf('touch "%s"', filePath ));
         if status ~= 0
             error(...
                 'EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
                 'Failed to create virtual file for %s with error:\n%s', filePath, msg)
         end
-    
+
         if mod(i, 100) == 0 || i == numel(S)
             if options.Verbose
                 fprintf("Created %d/%d virtual files\n", i, numel(S))

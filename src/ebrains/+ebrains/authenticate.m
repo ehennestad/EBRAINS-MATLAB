@@ -21,7 +21,7 @@ function authenticate(mode, options, oidcOptions)
         case "ClientCredentialsFlow"
             nvPairs = struct2cell(oidcOptions);
             tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance(nvPairs{:});
-        
+
         otherwise
             error('Unsupported flow type: "%s"', string(options.OAuthFlow))
     end

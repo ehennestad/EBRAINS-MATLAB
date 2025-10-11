@@ -12,7 +12,7 @@ function filePath = getBucketObject(bucketName, objectName, options)
     arguments
         bucketName (1,1) string
         objectName (1,1) string
-        %options.Verbose (1,1) logical = false
+        % options.Verbose (1,1) logical = false
         options.TargetFolder (1,1) string {mustBeFolder} = pwd()
     end
 

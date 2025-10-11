@@ -34,7 +34,7 @@ function renameObject(bucketName, objectName, targetName)
         else
             errorMessage = sprintf('%s: %s', char(response.StatusCode), errorDescription);
         end
-    
+
         error(errorID, errorMessage);
     end
 end

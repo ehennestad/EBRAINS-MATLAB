@@ -2,7 +2,7 @@ function type = ensureExpandedTypeName(type)
 % ensureExpandedTypeName - Expands the type name to its full IRI
 %
 % Syntax:
-%   type = ebrains.kg.api.internal.ensureExpandedTypeName(type) expands the 
+%   type = ebrains.kg.api.internal.ensureExpandedTypeName(type) expands the
 %   type name to the full IRI if it is not already in the correct format.
 %
 % Input Arguments:
