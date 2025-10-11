@@ -63,9 +63,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                 
                 disp("Access token successfully retrieved using client credentials.");
                 
-            catch ME
-                titleMessage = "Authentication failed";
-                
+            catch ME                
                 switch ME.identifier
                     case 'MATLAB:webservices:HTTP400StatusCodeError'
                         errorMessage = "Invalid client credentials. Please verify your client ID and secret.";

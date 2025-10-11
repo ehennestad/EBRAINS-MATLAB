@@ -1372,9 +1372,9 @@ classdef Advanced < ebrains.kgcore.BaseClient
             
             % Set JSON Body
             requiredProperties = [...
-            ];
+            ]; %#ok<NASGU>
             optionalProperties = [...
-            ];
+            ]; %#ok<NASGU>
             %request.Body(1).Payload = request_body.getPayload(requiredProperties,optionalProperties);
             request.Body(1).Data = cellstr(request_body);
 

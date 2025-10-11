@@ -6,7 +6,7 @@
 % Knowledge Graph. Please note: it is important to run `clear all` whenever
 % changing the openMINDS version to avoid conflicts from class definitions of
 % metadata types from other versions being loaded in memory.
-clear all;
+clear all; %#ok<CLALL>
 openminds.version(3);
 
 % Enter the UUID of a dataset version of interest. To find a dataset, go

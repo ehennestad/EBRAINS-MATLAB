@@ -22,7 +22,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     for i = 1:numel(S)
         objectName = S(i).name;
         filePath = fullfile(virtualBucketRootPath, objectName);
-        [parentFolderName, name, fileExtension] = fileparts(objectName);
+        [parentFolderName, ~, fileExtension] = fileparts(objectName);
         if isempty(fileExtension)
             if ~isfolder(filePath); mkdir(filePath); end
             continue
@@ -31,8 +31,14 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
         filePath = strrep(filePath, ' ', '\ ');
-        [status, msg] = system( sprintf('touch "%s"', filePath ));
         
+        [status, msg] = system( sprintf('touch "%s"', filePath ));
+        if status ~= 0
+            error(...
+                'EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
+                'Failed to create virtual file for %s with error:\n%s', filePath, msg)
+        end
+    
         if mod(i, 100) == 0 || i == numel(S)
             if options.Verbose
                 fprintf("Created %d/%d virtual files\n", i, numel(S))

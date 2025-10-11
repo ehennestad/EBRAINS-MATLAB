@@ -17,6 +17,24 @@ function renameObject(bucketName, objectName, targetName)
         ebrains.dataproxy.models.RenameObjectSetting('target_name', targetName));
 
     bucketApiClient = ebrains.dataproxy.api.Buckets();
-    [code, result, response] = bucketApiClient.renameObject(...
+    [code, ~, response] = bucketApiClient.renameObject(...
         bucketName, objectName, requiredArgs);
+
+    if string(code) ~= "OK"
+        errorID = 'EBRAINS:Bucket:ObjectRenameFailed';
+
+        if isfield(response, 'Body')
+            if isfield(response.Body, 'Data') && ~isempty(response.Body.Data)
+                errorDescription = response.Body.Data;
+            end
+        end
+
+        if isempty(errorDescription)
+            errorMessage = char(response.StatusCode);
+        else
+            errorMessage = sprintf('%s: %s', char(response.StatusCode), errorDescription);
+        end
+    
+        error(errorID, errorMessage);
+    end
 end

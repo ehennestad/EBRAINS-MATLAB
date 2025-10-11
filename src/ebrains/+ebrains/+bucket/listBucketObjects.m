@@ -55,7 +55,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         if isempty(completeObjectList)
             completeObjectList = objectList;
         else
-            completeObjectList = cat(1, completeObjectList, objectList); %#ok<AGROW>
+            completeObjectList = cat(1, completeObjectList, objectList);
         end
             
         if options.Verbose
