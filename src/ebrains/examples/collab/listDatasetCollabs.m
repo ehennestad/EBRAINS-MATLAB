@@ -26,7 +26,7 @@ bucketSize = zeros(size(collabId));
 for i = 1:numel(collabId)
     try
         bucketSize(i) = ebrains.bucket.getBucketSize(collabId(i));
-        sizeWithUnitAsString = getDataSizeLabel( bucketSize(i) );
+        sizeWithUnitAsString = ebrains.util.getDataSizeLabel( bucketSize(i) );
     
         fprintf("%s: %s\n", collabId(i), sizeWithUnitAsString)
     catch
