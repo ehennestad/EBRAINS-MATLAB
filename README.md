@@ -1,7 +1,7 @@
 # EBRAINS Services Toolbox for MATLAB
 
 [![Version Number](https://img.shields.io/github/v/release/ehennestad/EBRAINS-MATLAB?label=version)](https://github.com/ehennestad/EBRAINS-MATLAB/releases/latest)
-[![View {{cookiecutter.toolbox_name}} on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)]({{cookiecutter.fex_url}})
+[![View EBRAINS Services Toolbox on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://se.mathworks.com/matlabcentral/fileexchange/182284-ebrains-services-toolbox)
 [![MATLAB Tests](.github/badges/tests.svg)](https://github.com/ehennestad/EBRAINS-MATLAB/actions/workflows/test-code.yml)
 [![codecov](https://codecov.io/gh/ehennestad/EBRAINS-MATLAB/graph/badge.svg?token=H8GE1A76YI)](https://codecov.io/gh/ehennestad/EBRAINS-MATLAB)
 [![MATLAB Code Issues](.github/badges/code_issues.svg)](https://github.com/ehennestad/EBRAINS-MATLAB/security/code-scanning)
