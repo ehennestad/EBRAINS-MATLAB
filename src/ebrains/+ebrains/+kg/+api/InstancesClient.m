@@ -28,7 +28,7 @@ classdef InstancesClient < handle %KGClient
             requiredParams.type = ebrains.kg.api.internal.ensureExpandedTypeName(type);
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
+            resp = obj.sendRequest(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -88,9 +88,9 @@ classdef InstancesClient < handle %KGClient
                 apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
                 if responseOptions.RawOutput
-                    resp = req.send(apiURL, obj.getOptionsForRawResponse());
+                    resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
                 else
-                    resp = req.send(apiURL);
+                    resp = obj.sendRequest(req, apiURL);
                 end
 
                 if resp.StatusCode == "OK"
@@ -125,7 +125,7 @@ classdef InstancesClient < handle %KGClient
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
 
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
-            resp = req.send(apiURL, obj.getOptionsForRawResponse());
+            resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
 
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
@@ -146,13 +146,15 @@ classdef InstancesClient < handle %KGClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            identifier = normalizeIdentifiers(identifier);
+
             OPERATION = "POST";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
 
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
-            resp = req.send(apiURL, obj.getOptionsForRawResponse());
+            resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
 
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
@@ -178,7 +180,7 @@ classdef InstancesClient < handle %KGClient
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
 
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
-            resp = req.send(apiURL, obj.getOptionsForRawResponse());
+            resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
 
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
@@ -204,7 +206,7 @@ classdef InstancesClient < handle %KGClient
             req = obj.initializeRequestMessage(OPERATION, "JSONPayload", payloadJson);
 
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
-            resp = req.send(apiURL, obj.getOptionsForRawResponse());
+            resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
 
             if resp.StatusCode == "OK"
                 result = jsondecode(char(resp.Body.Data));
@@ -227,7 +229,7 @@ classdef InstancesClient < handle %KGClient
 
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, struct.empty);
 
-            resp = req.send(apiURL);
+            resp = obj.sendRequest(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -262,7 +264,7 @@ classdef InstancesClient < handle %KGClient
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
 
-            resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
+            resp = obj.sendRequest(req, apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -294,7 +296,7 @@ classdef InstancesClient < handle %KGClient
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
-            resp = req.send(apiURL);
+            resp = obj.sendRequest(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -321,7 +323,7 @@ classdef InstancesClient < handle %KGClient
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, struct.empty);
-            resp = req.send(apiURL);
+            resp = obj.sendRequest(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -363,7 +365,7 @@ classdef InstancesClient < handle %KGClient
             requiredParams = struct('stage', stage(1));
             fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            response = req.send(fullApiURL);
+            response = obj.sendRequest(req, fullApiURL);
 
             if response.StatusCode == "OK"
                 [result, missingIds] = processBulkResponse(response);
@@ -424,7 +426,7 @@ classdef InstancesClient < handle %KGClient
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
+            resp = obj.sendRequest(req, apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -455,7 +457,7 @@ classdef InstancesClient < handle %KGClient
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            resp = req.send(apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
+            resp = obj.sendRequest(req, apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -465,14 +467,15 @@ classdef InstancesClient < handle %KGClient
         end
     end
 
-    methods (Static, Access = protected)
-        function req = initializeRequestMessage(operationName, options)
+    methods (Access = protected)
+        function req = initializeRequestMessage(obj, operationName, options)
             arguments
+                obj
                 operationName (1,1) string
                 options.JSONPayload (1,1) string = missing
             end
 
-            headers = ebrains.kg.api.InstancesClient.getDefaultHeader();
+            headers = obj.getDefaultHeader();
             req  = matlab.net.http.RequestMessage(char(operationName), headers);
 
             if ~ismissing(options.JSONPayload)
@@ -483,6 +486,33 @@ classdef InstancesClient < handle %KGClient
             end
         end
 
+        function headers = getDefaultHeader(~)
+            tokenManager = ebrains.getTokenManager();
+
+            headers = [ ...
+                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
+                matlab.net.http.HeaderField("Accept", "application/json") ...
+                matlab.net.http.field.AuthorizationField("Authorization", "Bearer " + tokenManager.AccessToken) ...
+                ];
+        end
+
+        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
+            arguments
+                obj (1,1) ebrains.kg.api.InstancesClient %#ok<INUSA>
+                requestObj (1,1) matlab.net.http.RequestMessage
+                apiURL (1,1) matlab.net.URI
+                httpOpts matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
+            end
+
+            if isempty(httpOpts)
+                response = requestObj.send(apiURL);
+            else
+                response = requestObj.send(apiURL, httpOpts);
+            end
+        end
+    end
+
+    methods (Static, Access = protected)
         function apiURL = buildApiURL(server, endpointPath, requiredParams, optionalParams)
             arguments
                 server (1,1) ebrains.kg.enum.KGServer
@@ -506,16 +536,6 @@ classdef InstancesClient < handle %KGClient
                 ];
 
             apiURL = matlab.net.URI(serverUrl + endpointPath, queryParameters);
-        end
-
-        function headers = getDefaultHeader()
-            tokenManager = ebrains.getTokenManager();
-
-            headers = [ ...
-                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
-                matlab.net.http.HeaderField("Accept", "application/json") ...
-                matlab.net.http.field.AuthorizationField("Authorization", "Bearer " + tokenManager.AccessToken) ...
-                ];
         end
 
         function httpOpts = getOptionsForRawResponse()
