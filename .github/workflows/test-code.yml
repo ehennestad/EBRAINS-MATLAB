@@ -26,3 +26,5 @@ jobs:
     with:
       matlab_release: latest
       matlab_use_cache: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
