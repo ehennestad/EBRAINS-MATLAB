@@ -12,7 +12,7 @@
 Lightweight MATLAB helpers and API clients to work with EBRAINS services (authentication, Data Proxy buckets, and KG metadata).
 
 ## Features
-- Authenticate to EBRAINS using device flow
+- Authenticate to EBRAINS using **device flow** or **client credentials flow**
 - List bucket objects and compute bucket sizes (Data Proxy)
 - Download Knowledge Graph (KG) metadata into OpenMINDS collections
 - Interact with the Collaboratory API
