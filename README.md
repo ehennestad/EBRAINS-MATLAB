@@ -14,7 +14,7 @@ Lightweight MATLAB helpers and API clients to work with EBRAINS services (authen
 ## Features
 - Authenticate to EBRAINS using **device flow** or **client credentials flow**
 - List bucket objects and compute bucket sizes (Data Proxy)
-- Download Knowledge Graph (KG) metadata into OpenMINDS collections
+- Download Knowledge Graph (KG) metadata
 - Interact with the Collaboratory API
 
 ## Requirements
@@ -52,6 +52,10 @@ fprintf('Objects: %d, Size: %.2f GB\n', numel(objs), double(bytes)/1e9);
 [instance, collection] = ebrains.kg.downloadMetadata("kg:YOUR_IDENTIFIER", ...
 	struct('NumLinksToResolve', 1, 'Verbose', true));
 ```
+
+## See Also
+### [openMINDS KG Sync](https://github.com/ehennestad/openminds-kg-sync)
+A MATLAB toolbox that builds upon the EBRAINS MATLAB KG API to provide high-level functions for synchronizing [openMINDS](https://openminds.docs.om-i.org/en/latest/) metadata to and from the [EBRAINS Knowledge Graph](https://docs.kg.ebrains.eu). It offers convenient methods like `kglist`, `kgpull`, and `kgsave` for working with [openMINDS metadata types](https://github.com/openMetadataInitiative/openMINDS_MATLAB), handling serialization and deserialization of instances. If you need to work with structured neuroscience metadata using the openMINDS standard, this toolbox provides a streamlined interface on top of the lower-level `ebrains.kg.api.InstanceClient` functionality.
 
 ## Contributing
 - Open an issue to discuss ideas/bugs.
