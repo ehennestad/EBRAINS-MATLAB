@@ -26,7 +26,7 @@ function authenticate(mode, options, oidcOptions)
             error('Unsupported flow type: "%s"', string(options.OAuthFlow))
     end
 
-    if ~tokenClient.hasActiveToken() || mode == "refresh"
-        tokenClient.refreshToken()
+    if mode == "refresh" || ~tokenClient.hasActiveToken()
+        tokenClient.authenticate()
     end
 end

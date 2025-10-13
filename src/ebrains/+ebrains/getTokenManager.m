@@ -19,7 +19,7 @@ function tokenManager = getTokenManager()
     % Fall back to use DeviceFlowTokenClient
     tokenManager = ebrains.iam.DeviceFlowTokenClient.instance();
     if ~tokenManager.hasActiveToken()
-        tokenManager.refreshToken()
+        tokenManager.authenticate()
     end
 
     % If token manager does not have a valid token after refresh, we throw error

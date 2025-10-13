@@ -59,6 +59,14 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         %   Returns a string describing the authentication flow type
             flowName = obj.FLOW_NAME;
         end
+    
+        function authenticate(obj)
+            if ~obj.hasActiveToken()
+                obj.fetchToken()
+            else
+                obj.refreshToken()
+            end
+        end
     end
     
     methods (Access = protected)
@@ -102,6 +110,48 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 ebrains.internal.get_token_expiration(obj.AccessToken_);
             obj.AccessTokenExpiresAt.TimeZone = '';
         end
+    
+        function refreshToken(obj)
+            % refreshToken - Refresh the access token using the refresh token
+        
+            % Check if refresh token exists
+            if obj.RefreshToken == "" || ismissing(obj.RefreshToken)
+                obj.fetchToken()
+            end
+        
+            try
+                % Request a new access token using the refresh token
+                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
+                    "grant_type", "refresh_token", ...
+                    "client_id", obj.ClientId, ...
+                    "refresh_token", obj.RefreshToken ...
+                );
+        
+                % Update object properties with new token values
+                obj.AccessToken_ = tokenResponse.access_token;
+                obj.RefreshToken = tokenResponse.refresh_token;
+        
+                obj.AccessTokenExpiresAt = ...
+                    datetime("now") + seconds(tokenResponse.expires_in);
+        
+                obj.RefreshTokenExpiresAt = ...
+                    datetime("now") + seconds(tokenResponse.refresh_expires_in);
+        
+                % Log success
+                disp("Access token successfully refreshed.");
+        
+            catch ME
+                titleMessage = "Token Refresh Failed";
+                switch ME.identifier
+                    case 'MATLAB:webservices:HTTP400StatusCodeError'
+                        % Re-authenticate if refresh token is invalid
+                        obj.fetchToken()
+                    otherwise
+                        errordlg(ME.message, titleMessage);
+                        throwAsCaller(ME);
+                end
+            end
+        end
     end
     
     methods (Access = protected) % CustomDisplay override
@@ -135,48 +185,6 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         function authField = getAuthHeaderField(obj)
             authField = matlab.net.http.field.AuthorizationField(...
                 'Authorization', sprintf('Bearer %s', obj.AccessToken));
-        end
-
-        function refreshToken(obj)
-            % refreshToken - Refresh the access token using the refresh token
-        
-            % Check if refresh token exists
-            if obj.RefreshToken == "" || ismissing(obj.RefreshToken)
-                obj.fetchToken()
-            end
-        
-            try
-                % Request a new access token using the refresh token
-                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
-                    "grant_type", "refresh_token", ...
-                    "client_id", obj.ClientId, ...
-                    "refresh_token", obj.RefreshToken ...
-                );
-        
-                % Update object properties with new token values
-                obj.AccessToken_ = tokenResponse.access_token;
-                obj.RefreshToken = tokenResponse.refresh_token;
-        
-                obj.AccessTokenExpiresAt = ...
-                    datetime("now") + seconds(tokenResponse.expires_in);
-        
-                obj.RefreshTokenExpiresAt = ...
-                    datetime("now") + seconds(tokenResponse.refresh_expires_in);
-        
-                % Log success
-                disp("Token refreshed successfully.");
-        
-            catch ME
-                titleMessage = "Token Refresh Failed";
-                switch ME.identifier
-                    case 'MATLAB:webservices:HTTP400StatusCodeError'
-                        % Re-authenticate if refresh token is invalid
-                        obj.fetchToken()
-                    otherwise
-                        errordlg(ME.message, titleMessage);
-                        throwAsCaller(ME);
-                end
-            end
         end
 
         function tf = hasActiveToken(obj)
