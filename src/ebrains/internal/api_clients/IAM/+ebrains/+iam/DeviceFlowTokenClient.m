@@ -32,51 +32,115 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
     methods (Access = protected)
         function fetchToken(obj)
-        % fetchToken - Fetch token using device flow
+        % fetchToken - Fetch token using OAuth 2.0 Device Authorization Grant
 
-            % openid-connect/auth/device
-            endpointUrl = obj.OpenIdConfig.device_authorization_endpoint;
+            endpointUrl = obj.OpenIdConfig.device_authorization_endpoint; % openid-connect/auth/device
             
-            responseDevice = webwrite(endpointUrl, ...
+            deviceResponse = webwrite(endpointUrl, ...
                 'client_id', obj.ClientId, ...
                 'scope', strjoin( obj.Scope, " ") );
 
             message = "Redirecting to web browser to authenticate...";
             f = msgbox(message, "Authenticating...");
+            figureCleanup = onCleanup(@() safeDeleteFigure(f)); % ensure cleanup on any exit
+
             reformatMessageBoxBeforeRedirecting(f)
+            setMessage(f, "Redirecting to web browser to authenticate...");
             pause(1)
+            setMessage(f, "Waiting for device login...");
             
             % Open browser
-            web(responseDevice.verification_uri_complete)
+            web(deviceResponse.verification_uri_complete)
             
-            pause(1)
-            reformatMessageBoxAfterRedirecting(f)
-            uiwait(f)
+            pollingInterval = deviceResponse.interval;
+            pause(pollingInterval)
             
-            % openid-connect/token
-            try
-                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
-                    "grant_type", "urn:ietf:params:oauth:grant-type:device_code", ...
-                    "client_id", obj.ClientId,...
-                    "device_code", responseDevice.device_code ...
-                    );
+            isFinished = false;
+            while ~isFinished % Poll loop
 
-                showSuccess(f)
-            catch ME
-                delete(f)
-                titleMessage = "Authentication failed";
+                response = obj.sendTokenRequest(deviceResponse);
+                
+                switch response.StatusCode
+                    case matlab.net.http.StatusCode.OK
+                        obj.handleTokenResponse(response.Body.Data)
+                        showSuccess(f)
+                        isFinished = true;
 
-                switch ME.identifier
-                    case 'MATLAB:webservices:HTTP400StatusCodeError'
-                        errorMessage = "Make sure the log in to EBRAINS in your web browser and grant access rights to SHAREbrain before pressing the continue button.";
-                        errordlg(errorMessage, titleMessage)
-                        throwAsCaller(ME) 
+                    case matlab.net.http.StatusCode.BadRequest
+                        errorData = response.Body.Data;
+
+                        switch string(errorData.error)
+                            case "authorization_pending"
+                                pause(pollingInterval)
+
+                            case "slow_down"
+                                pollingInterval = pollingInterval + deviceResponse.interval;
+                                pause(pollingInterval)
+
+                            case "expired_token"
+                                delete(f)
+                                errordlg('The device code has expired. Please try connecting again.', 'Authentication Failed.')
+                                error('EBRAINS:DeviceFlow:DeviceCodeExpired', ...
+                                    'The device code has expired. Please try connecting again.')
+                            
+                            case "access_denied"
+                                if strcmp(errorData.error_description, 'The end user denied the authorization request')
+                                    titleMessage = "Authentication failed";
+                                    errorMessage = sprintf(...
+                                        ['Make sure the log in to EBRAINS in your web browser and grant access ', ...
+                                        'rights to %s before pressing the continue button.'], obj.ClientId);
+                                    errordlg(errorMessage, titleMessage)
+                                    error('EBRAINS:DeviceFlow:AccessDenied', errorMessage) %#ok<SPERR>
+                                else
+                                    obj.handleUnspecifiedBadRequestError(errorData)
+                                end
+                            otherwise
+                                obj.handleUnspecifiedBadRequestError(errorData)
+                        end
                     otherwise
-                        errordlg(ME.message, titleMessage)
-                        throwAsCaller(ME) 
+                        msg = sprintf('Unexpected HTTP status: %s', string(response.StatusCode));
+                        if ~isempty(response.Body) && ~isempty(response.Body.Data)
+                            try
+                                serverMsg = jsonencode(response.Body.Data);
+                                msg = msg + " | " + serverMsg;
+                            catch
+                                % ignore JSON errors
+                            end
+                        end
+                        errordlg(msg, 'Authentication Failed');
+                        error('EBRAINS:DeviceFlow:UnexpectedHTTPStatus', '%s', msg);
                 end
             end
-            
+        end
+    end
+
+    methods (Access = private)
+        function response = sendTokenRequest(obj, deviceResponse)
+            try
+                endpointURI = matlab.net.URI(obj.OpenIdConfig.token_endpoint);
+                
+                % Define request body (form data)
+                formData = struct( ...
+                    'grant_type', 'urn:ietf:params:oauth:grant-type:device_code', ...
+                    'client_id', obj.ClientId, ...
+                    'device_code', deviceResponse.device_code);
+        
+                % Create POST request
+                req = matlab.net.http.RequestMessage('POST', ...
+                    [matlab.net.http.HeaderField('Content-Type', 'application/x-www-form-urlencoded')], ...
+                    matlab.net.http.io.FormProvider(formData));
+                
+                % Send request
+                response = req.send(endpointURI);
+            catch MECause
+                ME = MException('EBRAINS:DeviceFlow:AuthenticationFailed', ...
+                    'Failed to send token request.');
+                ME = ME.addCause(MECause);
+                throw(ME)
+            end
+        end
+        
+        function handleTokenResponse(obj, tokenResponse)
             obj.AccessToken_ = tokenResponse.access_token;
             obj.RefreshToken = tokenResponse.refresh_token;
             
@@ -85,6 +149,13 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
     
             obj.RefreshTokenExpiresAt = ...
                 datetime("now") + seconds(tokenResponse.refresh_expires_in);
+        end
+
+        function handleUnspecifiedBadRequestError(~, errorData)
+            titleMessage = errorData.error;
+            errorMessage = errorData.error_description;
+            errordlg(errorMessage, titleMessage)
+            error(errorMessage)
         end
     end
 
@@ -98,7 +169,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         %   Open question: Are there better ways to do this?
 
             arguments
-                OIDCClientID (1,1) string = "sharebrain"
+                OIDCClientID (1,1) string = ebrains.common.constant.OIDCClientID
             end
 
             authClientObject = [];
@@ -170,6 +241,10 @@ function reformatMessageBoxBeforeRedirecting(hFigure)
     centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
 end
 
+function setMessage(hFigure, message)
+    hFigure.Children(2).Children(1).String = message;
+end
+
 function reformatMessageBoxAfterRedirecting(hFigure)
     message = "Press Continue to complete authentication.";
     hFigure.Children(1).Visible = 'on';
@@ -196,4 +271,10 @@ function centerHorizontally(hFigure, component)
     
     xLeft = W/2 - componentPosition(3)/2;
     component.Position(1)=xLeft;
+end
+
+function safeDeleteFigure(f)
+    if isvalid(f)
+        try delete(f); catch, end
+    end
 end
