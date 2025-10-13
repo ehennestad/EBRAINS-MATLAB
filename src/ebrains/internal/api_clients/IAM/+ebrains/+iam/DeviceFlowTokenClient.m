@@ -55,8 +55,10 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
             pollingInterval = deviceResponse.interval;
             pause(pollingInterval)
             
+            deadline = datetime("now") + seconds(double(deviceResponse.expires_in));
+
             isFinished = false;
-            while ~isFinished % Poll loop
+            while ~isFinished && datetime("now") < deadline % Poll loop
 
                 response = obj.sendTokenRequest(deviceResponse);
                 
@@ -110,6 +112,11 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                         errordlg(msg, 'Authentication Failed');
                         error('EBRAINS:DeviceFlow:UnexpectedHTTPStatus', '%s', msg);
                 end
+            end
+
+            if ~isFinished
+                errordlg('The device authorization session timed out. Please try again.', 'Authentication Timeout');
+                error('EBRAINS:DeviceFlow:Timeout', 'Polling exceeded device authorization window.');
             end
         end
     end
