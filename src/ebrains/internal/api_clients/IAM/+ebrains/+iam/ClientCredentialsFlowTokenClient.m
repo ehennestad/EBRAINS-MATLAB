@@ -78,9 +78,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                 end
             end
         end
-    end
-
-    methods
+    
         function refreshToken(obj)
             % refreshToken - For client credentials flow, just fetch a new token
             %
