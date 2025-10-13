@@ -80,7 +80,6 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                                 pause(pollingInterval)
 
                             case "expired_token"
-                                delete(f)
                                 errordlg('The device code has expired. Please try connecting again.', 'Authentication Failed.')
                                 error('EBRAINS:DeviceFlow:DeviceCodeExpired', ...
                                     'The device code has expired. Please try connecting again.')
@@ -162,7 +161,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
             titleMessage = errorData.error;
             errorMessage = errorData.error_description;
             errordlg(errorMessage, titleMessage)
-            error(errorMessage)
+            error('EBRAINS:DeviceFlow:BadRequest', errorMessage)
         end
     end
 
