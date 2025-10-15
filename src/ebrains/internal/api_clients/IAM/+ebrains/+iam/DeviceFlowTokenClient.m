@@ -175,7 +175,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         %   Open question: Are there better ways to do this?
 
             arguments
-                OIDCClientID (1,1) string = ebrains.common.constant.OIDCClientID
+                OIDCClientID (1,1) string = missing
             end
 
             authClientObject = [];
@@ -192,11 +192,18 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 end
             end
 
+            if isempty(authClientObject) && ismissing(OIDCClientID)
+                % Create token client using this toolbox' default OIDC Client
+                OIDCClientID = ebrains.common.constant.OIDCClientID;
+            end
+
             % Create new singleton if we are getting a new client id
             if ~isempty(authClientObject) && isvalid(authClientObject)
-                if authClientObject.ClientId ~= OIDCClientID
-                    delete(authClientObject)
-                    authClientObject = [];
+                if ~ismissing(OIDCClientID)
+                    if authClientObject.ClientId ~= OIDCClientID
+                        delete(authClientObject)
+                        authClientObject = [];
+                    end
                 end
             end
 
