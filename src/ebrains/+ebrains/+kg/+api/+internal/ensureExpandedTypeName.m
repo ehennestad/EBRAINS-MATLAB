@@ -18,7 +18,8 @@ function typeIRI = ensureExpandedTypeName(type)
         type (1,1) string
     end
 
-    openMINDSNamespaceIRI = "https://openminds.ebrains.eu"; % Todo: Get from constant
+    % Get version dependent namespace IRI
+    openMINDSNamespaceIRI = openminds.constant.BaseURI;
 
     if ~startsWith(type, openMINDSNamespaceIRI)
         if exist('openminds.enum.Types', 'class') == 8 % openMINDS_MATLAB on path?
@@ -33,10 +34,14 @@ function typeIRI = ensureExpandedTypeName(type)
                     'spelled the type name correctly.'], type)
             end
         else
-            exampleTypeIRI = sprintf("%s/core/Person", openMINDSNamespaceIRI);
+            if openminds.getModelVersion("VersionNumber") <= 3
+                exampleTypeIRI = sprintf("%s/core/Person", openMINDSNamespaceIRI);
+            else
+                exampleTypeIRI = sprintf("%s/types/Person", openMINDSNamespaceIRI);
+            end
             error(...
                 ['Type name must be specified with the openMINDS type ', ...
-                 'namespace prefix, e.g "%s"'], exampleTypeIRI) %#ok<SPERR>
+                 'namespace prefix, e.g "%s"'], exampleTypeIRI)
         end
     else
         typeIRI = type;
