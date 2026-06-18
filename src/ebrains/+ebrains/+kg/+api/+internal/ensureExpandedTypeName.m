@@ -18,8 +18,7 @@ function typeIRI = ensureExpandedTypeName(type)
         type (1,1) string
     end
 
-    % Get version dependent namespace IRI
-    openMINDSNamespaceIRI = openminds.constant.BaseURI;
+    openMINDSNamespaceIRI = ebrains.common.constant.openMINDS.TypePrefix;
 
     if ~startsWith(type, openMINDSNamespaceIRI)
         if exist('openminds.enum.Types', 'class') == 8 % openMINDS_MATLAB on path?
