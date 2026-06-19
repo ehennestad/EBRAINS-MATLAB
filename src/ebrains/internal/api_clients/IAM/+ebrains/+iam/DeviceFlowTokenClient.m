@@ -131,10 +131,17 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                     'client_id', obj.ClientId, ...
                     'device_code', deviceResponse.device_code);
         
+                % Hold the content provider in a named variable. FormProvider is
+                % a handle object; as an unnamed temporary it is released at the
+                % end of the construction statement (R2025b), leaving
+                % RequestMessage.Body pointing at a deleted object and causing
+                % send() to fail with "Invalid or deleted object".
+                bodyProvider = matlab.net.http.io.FormProvider(formData);
+
                 % Create POST request
                 req = matlab.net.http.RequestMessage('POST', ...
                     [matlab.net.http.HeaderField('Content-Type', 'application/x-www-form-urlencoded')], ...
-                    matlab.net.http.io.FormProvider(formData));
+                    bodyProvider);
                 
                 % Send request
                 response = req.send(endpointURI);
