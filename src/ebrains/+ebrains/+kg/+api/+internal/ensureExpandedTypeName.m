@@ -24,7 +24,7 @@ function typeIRI = ensureExpandedTypeName(type)
         if exist('openminds.enum.Types', 'class') == 8 % openMINDS_MATLAB on path?
             try
                 typeEnum = openminds.enum.Types(type);
-                typeIRI = typeEnum.TypeURI;
+                typeIRI = typeEnum.TypeIRI;
             catch
                 error(...
                     ['The type with name "%s" was not identified as a ' ...
@@ -33,11 +33,9 @@ function typeIRI = ensureExpandedTypeName(type)
                     'spelled the type name correctly.'], type)
             end
         else
-            if openminds.getModelVersion("VersionNumber") <= 3
-                exampleTypeIRI = sprintf("%s/core/Person", openMINDSNamespaceIRI);
-            else
-                exampleTypeIRI = sprintf("%s/types/Person", openMINDSNamespaceIRI);
-            end
+            % openMINDS_MATLAB is not available, so the name cannot be
+            % expanded here. Build the example from the local constant only.
+            exampleTypeIRI = openMINDSNamespaceIRI + "Person";
             error(...
                 ['Type name must be specified with the openMINDS type ', ...
                  'namespace prefix, e.g "%s"'], exampleTypeIRI)
