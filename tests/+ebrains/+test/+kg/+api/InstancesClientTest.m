@@ -374,6 +374,44 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(2, 'stage=IN_PROGRESS');
         end
         
+        function testGetInstancesBulkMissingInBothStagesWarnsOnce(testCase)
+            % Arrange - id2 is missing in RELEASED and in IN_PROGRESS
+            bulkResponse1 = struct();
+            bulkResponse1.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse1.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse1);
+
+            bulkResponse2 = struct();
+            bulkResponse2.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse2);
+
+            % Act
+            result = testCase.verifyWarning(...
+                @() testCase.Client.getInstancesBulk(["id1", "id2"], "ANY"), ...
+                'EBRAINS:KG_API:InstancesNotFound');
+
+            % Assert
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(result{1}.id, 'id1');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testGetInstancesBulkReturnsMissingIdsWithoutWarning(testCase)
+            % Arrange - id2 is missing in the only stage that is searched
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            % Act
+            [result, missingIds] = testCase.verifyWarningFree(...
+                @() testCase.Client.getInstancesBulk(["id1", "id2"], "RELEASED"));
+
+            % Assert
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(missingIds, "id2");
+        end
+
         %% listTypes Tests
         function testListTypesSuccess(testCase)
             % Arrange

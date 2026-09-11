@@ -332,7 +332,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             end
         end
 
-        function result = getInstancesBulk(obj, identifiers, stage, optionalParams, serverOptions)
+        function [result, missingIds] = getInstancesBulk(obj, identifiers, stage, optionalParams, serverOptions)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifiers (1,:) string
@@ -343,64 +343,24 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            nvPairs = namedargs2cell(optionalParams);
+
             if isscalar(identifiers)
-                nvPairs = namedargs2cell(optionalParams);
                 result = obj.getInstance(...
                     identifiers, stage, nvPairs{:}, "Server", serverOptions.Server);
+                missingIds = string.empty; % getInstance errors when it finds nothing
                 return
             end
 
-            OPERATION = "POST";
-            ENDPOINT_PATH = "/instancesByIds";
+            [result, missingIds, advice] = obj.fetchInstancesByIds(...
+                identifiers, stage, nvPairs{:}, "Server", serverOptions.Server);
 
-            req = obj.initializeRequestMessage(OPERATION);
-
-            identifiers = normalizeIdentifiers(identifiers);
-            req.Body = matlab.net.http.MessageBody(identifiers);
-
-            if stage == "ANY"
-                stage = ["RELEASED", "IN_PROGRESS"];
-            end
-
-            requiredParams = struct('stage', stage(1));
-            fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
-
-            response = obj.sendRequest(req, fullApiURL);
-
-            if response.StatusCode == "OK"
-                [result, missingIds] = processBulkResponse(response);
-                if ~isempty(missingIds)
-                    result(cellfun('isempty', result)) = [];
-
-                    if numel(stage) == 2 % Call other stage
-                        nvPairs = namedargs2cell(optionalParams);
-                        metadataInstancesInProgress = obj.getInstancesBulk(missingIds, ...
-                            "IN_PROGRESS", nvPairs{:}, "Server", serverOptions.Server);
-                        result = [result, metadataInstancesInProgress];
-                    else
-                        missingIdsConcatenated = strjoin("  " + string(missingIds), newline);
-                        otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
-                        warning(['Failed to retrieve the following instances:\n%s\n', ...
-                            'Please try downloading using stage %s instead\n'], missingIdsConcatenated, otherStage)
-                    end
-                end
-            else
-                obj.throwError("getInstancesBulk", response, serverOptions.Server)
-            end
-
-            function [metadataInstances, missingIds] = processBulkResponse(response)
-                data = struct2cell(response.Body.Data.data);
-
-                missingIds = string.empty;
-                numInstances = numel(data);
-                metadataInstances = cell(1, numInstances);
-
-                for iInstance = 1:numInstances
-                    if ~isempty(data{iInstance}.error)
-                        missingIds(end+1)=string(data{iInstance}.error.message); %#ok<AGROW>
-                    end
-                    metadataInstances{iInstance} = data{iInstance}.data;
-                end
+            % A caller that asks for the missing ids handles them itself.
+            if ~isempty(missingIds) && nargout < 2
+                missingIdsConcatenated = strjoin("  " + missingIds, newline);
+                warning("EBRAINS:KG_API:InstancesNotFound", ...
+                    "Failed to retrieve the following instances:\n%s\n%s\n", ...
+                    missingIdsConcatenated, advice)
             end
         end
 
@@ -463,6 +423,81 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 result = resp.Body.Data.data;
             else
                 obj.throwError("runDynamicQuery", resp, serverOptions.Server)
+            end
+        end
+    end
+
+    methods (Access = private)
+        function [result, missingIds, advice] = fetchInstancesByIds(obj, identifiers, stage, optionalParams, serverOptions)
+        % fetchInstancesByIds - Request instances by id, trying both stages for "ANY"
+        %
+        %   Always posts to the bulk endpoint, also for a single id, so that
+        %   an id that is missing in one stage can be looked for in the
+        %   other without erroring. The advice output says what a caller
+        %   can do about the ids that are still missing.
+
+            arguments
+                obj (1,1) ebrains.kg.api.InstancesClient
+                identifiers (1,:) string
+                stage (1,1) string { mustBeMember(stage,["IN_PROGRESS", "RELEASED", "ANY"]) } = "ANY"
+                optionalParams.?ebrains.kg.query.ReturnOptions
+                optionalParams.returnIncomingLinks logical
+                optionalParams.incomingLinksPageSize int64
+                serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
+            end
+
+            OPERATION = "POST";
+            ENDPOINT_PATH = "/instancesByIds";
+
+            req = obj.initializeRequestMessage(OPERATION);
+
+            identifiers = normalizeIdentifiers(identifiers);
+            req.Body = matlab.net.http.MessageBody(identifiers);
+
+            if stage == "ANY"
+                stage = ["RELEASED", "IN_PROGRESS"];
+            end
+
+            requiredParams = struct('stage', stage(1));
+            fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
+
+            response = obj.sendRequest(req, fullApiURL);
+
+            if response.StatusCode ~= "OK"
+                obj.throwError("getInstancesBulk", response, serverOptions.Server)
+            end
+
+            [result, missingIds] = processBulkResponse(response);
+            advice = "";
+
+            if ~isempty(missingIds)
+                result(cellfun('isempty', result)) = [];
+
+                if numel(stage) == 2 % Look for the missing ids in the other stage
+                    nvPairs = namedargs2cell(optionalParams);
+                    [metadataInstancesInProgress, missingIds] = obj.fetchInstancesByIds(...
+                        missingIds, "IN_PROGRESS", nvPairs{:}, "Server", serverOptions.Server);
+                    result = [result, metadataInstancesInProgress];
+                    advice = "They were not found in stage RELEASED or IN_PROGRESS.";
+                else
+                    otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
+                    advice = sprintf("Please try downloading using stage %s instead.", otherStage);
+                end
+            end
+
+            function [metadataInstances, missingIds] = processBulkResponse(response)
+                data = struct2cell(response.Body.Data.data);
+
+                missingIds = string.empty(1, 0);
+                numInstances = numel(data);
+                metadataInstances = cell(1, numInstances);
+
+                for iInstance = 1:numInstances
+                    if ~isempty(data{iInstance}.error)
+                        missingIds(end+1) = string(data{iInstance}.error.message); %#ok<AGROW>
+                    end
+                    metadataInstances{iInstance} = data{iInstance}.data;
+                end
             end
         end
     end
