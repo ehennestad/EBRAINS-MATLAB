@@ -62,14 +62,15 @@ function completeObjectList = listBucketObjects(bucketName, options)
             fprintf('Retrieved %d/%d objects.\n', numel(completeObjectList), nTotalObjects)
         end
 
+        % The data proxy returns fewer objects per page than requested, so
+        % a short page does not mean the last one. The listing is complete
+        % when it holds as many objects as the bucket reports, or when a
+        % page comes back empty.
         if isempty(objectList)
-            return
-        end
-
-        marker = objectList(end).name;
-
-        if numel(objectList) < pageSize
             finished = true;
+        else
+            marker = objectList(end).name;
+            finished = numel(completeObjectList) >= nTotalObjects;
         end
     end
 
