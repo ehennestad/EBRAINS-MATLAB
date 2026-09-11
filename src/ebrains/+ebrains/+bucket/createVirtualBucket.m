@@ -30,14 +30,16 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             parentFolderPath = fileparts(filePath);
             if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
-        filePath = strrep(filePath, ' ', '\ ');
-
-        [status, msg] = system( sprintf('touch "%s"', filePath ));
-        if status ~= 0
+        % Create the empty file from MATLAB rather than via a shell command,
+        % so object names with spaces or shell metacharacters need no quoting
+        % and the function also works on Windows.
+        [fileID, errorMessage] = fopen(filePath, "w");
+        if fileID == -1
             error(...
                 'EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
-                'Failed to create virtual file for %s with error:\n%s', filePath, msg)
+                'Failed to create virtual file for %s with error:\n%s', filePath, errorMessage)
         end
+        fclose(fileID);
 
         if mod(i, 100) == 0 || i == numel(S)
             if options.Verbose
