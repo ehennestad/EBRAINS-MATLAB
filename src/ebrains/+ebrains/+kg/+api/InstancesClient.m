@@ -71,14 +71,14 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 responseOptions.RawOutput (1,1) logical = false
             end
 
-            identifier = normalizeIdentifiers(identifier);
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION);
 
-            if stage == "ANY" % todo: should move to another layer
+            if stage == "ANY"
                 stage = ["RELEASED", "IN_PROGRESS"];
             end
 
@@ -93,6 +93,12 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                     resp = obj.sendRequest(req, apiURL);
                 end
 
+                % Only a miss in one stage justifies looking in the next one.
+                % Any other failure (authorization, server error) applies to
+                % every stage and is reported right away.
+                isMissingInStage = resp.StatusCode == "NotFound";
+                hasMoreStages = i < numel(stage);
+
                 if resp.StatusCode == "OK"
                     if isfield(resp.Body.Data, 'data')
                         result = resp.Body.Data.data;
@@ -100,10 +106,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                         result = resp.Body.Data;
                     end
                     break
-                else
-                    if i == numel(stage)
-                        obj.throwError("getInstance", resp, serverOptions.Server)
-                    end
+                elseif ~(isMissingInStage && hasMoreStages)
+                    obj.throwError("getInstance", resp, serverOptions.Server)
                 end
             end
         end
@@ -146,7 +150,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
-            identifier = normalizeIdentifiers(identifier);
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "POST";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
@@ -174,6 +178,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
+
             OPERATION = "PATCH";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
@@ -200,6 +206,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
+
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
@@ -218,9 +226,11 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         function result = deleteInstance(obj, identifier, serverOptions)
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string % Todo: must be uuid or strip KG prefix
+                identifier string
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
+
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "DELETE";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
@@ -250,6 +260,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
+
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/spaces/" + space;
@@ -282,7 +294,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
-            identifier = normalizeIdentifiers(identifier);
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/release";
@@ -314,7 +326,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
-            identifier = normalizeIdentifiers(identifier);
+            identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
 
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances/" + identifier + "/release/status";
@@ -451,8 +463,11 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             req = obj.initializeRequestMessage(OPERATION);
 
-            identifiers = normalizeIdentifiers(identifiers);
-            req.Body = matlab.net.http.MessageBody(identifiers);
+            identifiers = ebrains.kg.api.internal.normalizeIdentifiers(identifiers);
+
+            % A scalar string would be encoded as a JSON string, but the
+            % endpoint expects a JSON array even for a single identifier.
+            req.Body = matlab.net.http.MessageBody(cellstr(identifiers));
 
             if stage == "ANY"
                 stage = ["RELEASED", "IN_PROGRESS"];
@@ -499,15 +514,6 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                     metadataInstances{iInstance} = data{iInstance}.data;
                 end
             end
-        end
-    end
-end
-
-function identifiers = normalizeIdentifiers(identifiers)
-    iriPrefix = ebrains.common.constant.KgInstanceIRIPrefix + "/";
-    for i = 1:numel(identifiers)
-        if startsWith(identifiers(i), iriPrefix)
-             identifiers(i) = strrep(identifiers(i), iriPrefix, "");
         end
     end
 end

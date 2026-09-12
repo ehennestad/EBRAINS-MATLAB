@@ -77,22 +77,18 @@ classdef BaseClient < handle %KGClient
         function throwError(operationName, responseObject, server)
             arguments
                 operationName (1,1) string
-                responseObject
+                responseObject (1,1) matlab.net.http.ResponseMessage
                 server (1,1) ebrains.kg.enum.KGServer
             end
 
             errorID = sprintf('EBRAINS:KG_API:%s:%s', operationName, responseObject.StatusCode);
 
-            errorDescription = '';
-
             if responseObject.StatusCode == 500
-                errorDescription = sprintf('Something went wrong. Please verify that the KG server (%s) is working.', server.Name);
+                errorDescription = sprintf(...
+                    'Something went wrong. Please verify that the KG server (%s) is working.', ...
+                    server.Name);
             else
-                if isfield(responseObject, 'Body')
-                    if isfield(responseObject.Body, 'Data') && ~isempty(responseObject.Body.Data)
-                        errorDescription = responseObject.Body.Data;
-                    end
-                end
+                errorDescription = getResponseBodyDescription(responseObject);
             end
 
             if isempty(errorDescription)
@@ -104,5 +100,25 @@ classdef BaseClient < handle %KGClient
             ME = MException(errorID, errorMessage);
             throwAsCaller(ME)
         end
+    end
+end
+
+function description = getResponseBodyDescription(responseObject)
+% getResponseBodyDescription - Text of a response body, or '' if there is none
+
+    description = '';
+
+    if isempty(responseObject.Body) || isempty(responseObject.Body.Data)
+        return
+    end
+
+    % The body is decoded JSON when the request asked for conversion, and
+    % raw text otherwise. Struct bodies are re-encoded so that the error
+    % message still shows what the server said.
+    data = responseObject.Body.Data;
+    if ischar(data) || isstring(data) || isa(data, 'uint8')
+        description = char(data);
+    elseif isstruct(data)
+        description = jsonencode(data);
     end
 end

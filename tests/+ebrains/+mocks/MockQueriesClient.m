@@ -1,13 +1,13 @@
-classdef MockInstancesClient < ebrains.kg.api.InstancesClient & ebrains.mocks.MockHttpTransport
-    % MockInstancesClient - Test double that mocks HTTP responses
+classdef MockQueriesClient < ebrains.kg.api.QueriesClient & ebrains.mocks.MockHttpTransport
+    % MockQueriesClient - Test double that mocks HTTP responses
     %
-    % This mock client subclasses InstancesClient and overrides sendRequest
+    % This mock client subclasses QueriesClient and overrides sendRequest
     % to return canned responses instead of making real HTTP calls.
     %
     % Example:
-    %   mockClient = ebrains.mocks.MockInstancesClient();
-    %   mockClient.addResponse('OK', struct('data', myData));
-    %   result = mockClient.getInstance('some-id', 'RELEASED');
+    %   mockClient = ebrains.mocks.MockQueriesClient();
+    %   mockClient.addResponse('OK', struct('data', myQuery));
+    %   query = mockClient.getQuery('some-id');
 
     methods (Access = protected)
         function headers = getDefaultHeader(obj)
@@ -16,7 +16,7 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient & ebrains.mocks.Mo
 
         function response = sendRequest(obj, requestObj, apiURL, httpOpts)
             arguments
-                obj (1,1) ebrains.mocks.MockInstancesClient
+                obj (1,1) ebrains.mocks.MockQueriesClient
                 requestObj (1,1) matlab.net.http.RequestMessage
                 apiURL (1,1) matlab.net.URI
                 httpOpts matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
