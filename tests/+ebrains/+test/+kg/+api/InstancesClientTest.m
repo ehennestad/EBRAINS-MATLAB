@@ -67,6 +67,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
             testCase.Client.verifyRequestMethod(1, 'GET');
             testCase.Client.verifyRequestURL(1, '/instances');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
         end
         
         function testListInstancesWithOptionalParams(testCase)
@@ -98,6 +99,15 @@ classdef InstancesClientTest < matlab.unittest.TestCase
                 'EBRAINS:KG_API:listInstances:InternalServerError');
         end
         
+        function testListInstancesRejectsAnyStage(testCase)
+            % The KG server only knows RELEASED and IN_PROGRESS; "ANY" is a
+            % client-side convenience of getInstance and getInstancesBulk.
+            testCase.verifyError(...
+                @() testCase.Client.listInstances("https://openminds.om-i.org/types/Dataset", stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+        
         %% getInstance Tests
         function testGetInstanceSuccess(testCase, Stage)
             % Arrange
@@ -112,13 +122,24 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
         end
         
-        function testGetInstanceANYStage_FirstSucceeds(testCase)
+        function testGetInstanceDefaultStageIsReleasedOnly(testCase)
+            % Consumers get published metadata unless they ask for drafts
+            testCase.Client.addResponse('NotFound', "missing");
+            
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier), ...
+                'EBRAINS:KG_API:getInstance:NotFound');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+        
+        function testGetInstanceBothStages_FirstSucceeds(testCase)
             % Arrange - RELEASED stage succeeds
             testCase.Client.addResponse('OK', ...
                 struct('data', testCase.TestData.instance));
             
             % Act
-            result = testCase.Client.getInstance(testCase.TestData.identifier, "ANY");
+            result = testCase.Client.getInstance(testCase.TestData.identifier, ["RELEASED", "IN_PROGRESS"]);
             
             % Assert
             testCase.verifyEqual(result.id, testCase.TestData.identifier);
@@ -126,14 +147,14 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
         end
         
-        function testGetInstanceANYStage_SecondSucceeds(testCase)
+        function testGetInstanceBothStages_SecondSucceeds(testCase)
             % Arrange - RELEASED fails, IN_PROGRESS succeeds
             testCase.Client.addResponse('NotFound', struct('error', 'Not found'));
             testCase.Client.addResponse('OK', ...
                 struct('data', testCase.TestData.instance));
             
             % Act
-            result = testCase.Client.getInstance(testCase.TestData.identifier, "ANY");
+            result = testCase.Client.getInstance(testCase.TestData.identifier, ["RELEASED", "IN_PROGRESS"]);
             
             % Assert
             testCase.verifyEqual(result.id, testCase.TestData.identifier);
@@ -142,25 +163,70 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(2, 'stage=IN_PROGRESS');
         end
         
-        function testGetInstanceANYStage_MissingInBothStages(testCase)
+        function testGetInstanceBothStages_MissingInBoth(testCase)
             testCase.Client.addResponse('NotFound', "missing");
             testCase.Client.addResponse('NotFound', "missing");
             
             testCase.verifyError(...
-                @() testCase.Client.getInstance(testCase.TestData.identifier, "ANY"), ...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, ["RELEASED", "IN_PROGRESS"]), ...
                 'EBRAINS:KG_API:getInstance:NotFound');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
         end
         
-        function testGetInstanceANYStage_DoesNotRetryAfterOtherErrors(testCase)
+        function testGetInstanceBothStages_NoRetryAfterOtherErrors(testCase)
             % A failure that is not a miss applies to both stages, so the
             % second stage must not be tried.
             testCase.Client.addResponse('Forbidden', "no access");
             
             testCase.verifyError(...
-                @() testCase.Client.getInstance(testCase.TestData.identifier, "ANY"), ...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, ["RELEASED", "IN_PROGRESS"]), ...
                 'EBRAINS:KG_API:getInstance:Forbidden');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+        
+        function testGetInstanceStageOrderIsRespected(testCase)
+            % The caller chooses which version wins when both stages hold it
+            testCase.Client.addResponse('OK', struct('data', testCase.TestData.instance));
+            
+            testCase.Client.getInstance(testCase.TestData.identifier, ["IN_PROGRESS", "RELEASED"]);
+            
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.Client.verifyRequestURL(1, 'stage=IN_PROGRESS');
+        end
+        
+        function testGetInstanceAcceptsEnumVector(testCase)
+            testCase.Client.addResponse('NotFound', "missing");
+            testCase.Client.addResponse('OK', struct('data', testCase.TestData.instance));
+            
+            stages = [ebrains.kg.enum.KGStage.RELEASED, ebrains.kg.enum.KGStage.IN_PROGRESS];
+            result = testCase.Client.getInstance(testCase.TestData.identifier, stages);
+            
+            testCase.verifyEqual(result.id, testCase.TestData.identifier);
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+        
+        function testGetInstanceDuplicateStagesAreRequestedOnce(testCase)
+            testCase.Client.addResponse('NotFound', "missing");
+            
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, ["RELEASED", "RELEASED"]), ...
+                'EBRAINS:KG_API:getInstance:NotFound');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+        
+        function testGetInstanceRejectsAnyStage(testCase)
+            % "ANY" is not a KG stage; pass a vector of stages instead
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, "ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+        
+        function testGetInstanceRejectsEmptyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, string.empty), ...
+                'MATLAB:validators:mustBeNonempty');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
         
         function testGetInstanceNormalizesIRI(testCase)
@@ -412,7 +478,21 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, '/instancesByIds');
         end
         
-        function testGetInstancesBulkWithMissingIds_ANY_Stage(testCase)
+        function testGetInstancesBulkDefaultStageIsReleasedOnly(testCase)
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            [result, missingIds] = testCase.Client.getInstancesBulk(["id1", "id2"]);
+
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(missingIds, "id2");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+        
+        function testGetInstancesBulkWithMissingIds_BothStages(testCase)
             % Arrange - First call has missing IDs, second call retrieves them
             bulkResponse1 = struct();
             bulkResponse1.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
@@ -424,7 +504,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.addResponse('OK', bulkResponse2);
             
             % Act
-            result = testCase.Client.getInstancesBulk(["id1", "id2"], "ANY");
+            result = testCase.Client.getInstancesBulk(["id1", "id2"], ["RELEASED", "IN_PROGRESS"]);
             
             % Assert
             testCase.verifyLength(result, 2);
@@ -446,7 +526,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
 
             % Act
             result = testCase.verifyWarning(...
-                @() testCase.Client.getInstancesBulk(["id1", "id2"], "ANY"), ...
+                @() testCase.Client.getInstancesBulk(["id1", "id2"], ["RELEASED", "IN_PROGRESS"]), ...
                 'EBRAINS:KG_API:InstancesNotFound');
 
             % Assert
@@ -494,9 +574,40 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             bulkResponse2.data.id2 = struct('data', struct('id', 'id2'), 'error', []);
             testCase.Client.addResponse('OK', bulkResponse2);
 
-            testCase.Client.getInstancesBulk(["id1", "id2"], "ANY");
+            testCase.Client.getInstancesBulk(["id1", "id2"], ["RELEASED", "IN_PROGRESS"]);
 
             testCase.verifyEqual(testCase.Client.getRequestPayload(2), '["id2"]');
+        end
+
+        function testGetInstancesBulkStageOrderIsRespected(testCase)
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            testCase.Client.getInstancesBulk(["id1", "id2"], ["IN_PROGRESS", "RELEASED"]);
+
+            testCase.Client.verifyRequestURL(1, 'stage=IN_PROGRESS');
+        end
+
+        function testGetInstancesBulkSingleStageAdvisesOtherStage(testCase)
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            testCase.verifyWarning(...
+                @() testCase.Client.getInstancesBulk(["id1", "id2"], "RELEASED"), ...
+                'EBRAINS:KG_API:InstancesNotFound');
+            [~, warningId] = lastwarn();
+            testCase.verifyEqual(warningId, 'EBRAINS:KG_API:InstancesNotFound');
+            testCase.verifySubstring(lastwarn(), 'try stage IN_PROGRESS');
+        end
+
+        function testGetInstancesBulkRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.getInstancesBulk(["id1", "id2"], "ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
         %% listTypes Tests
@@ -512,6 +623,14 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyLength(result, 2);
             testCase.Client.verifyRequestMethod(1, 'GET');
             testCase.Client.verifyRequestURL(1, '/types');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+        
+        function testListTypesRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.listTypes(stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
         
         %% runDynamicQuery Tests
@@ -528,8 +647,15 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyLength(result, 2);
             testCase.Client.verifyRequestMethod(1, 'POST');
             testCase.Client.verifyRequestURL(1, '/queries');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
         end
         
+        function testRunDynamicQueryRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.runDynamicQuery('{"query": {}}', stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
     end
     
     methods (Test, TestTags = {'IdentifierNormalization'})

@@ -4,7 +4,7 @@ SERVER = "PREPROD";
 
 kgClient = ebrains.kg.api.InstancesClient();
 
-types = kgClient.listTypes("space", SPACE, "Server", SERVER);
+types = kgClient.listTypes("space", SPACE, "stage", "IN_PROGRESS", "Server", SERVER);
 
 if isempty(types)
     fprintf('No types found in space "%s" on server "%s"\n', SPACE, SERVER)
