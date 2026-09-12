@@ -47,8 +47,10 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         %
         % Input Arguments:
         %   identifier string      - The unique identifier of the instance to be downloaded.
-        %   stage (1,1) string     - The stage of the instance to retrieve; options include
-        %                            "IN_PROGRESS", "RELEASED", or "ANY". Defaults to "ANY".
+        %   stage (1,:) KGStage    - Stages to look in, in order of preference. The
+        %                            first stage that holds the instance wins. Defaults
+        %                            to ["RELEASED", "IN_PROGRESS"], i.e. prefer the
+        %                            released version and fall back to the draft.
         %   optionals              - Optional structure with the following fields:
         %       returnIncomingLinks logical   - If true, return incoming links; default is false.
         %       incomingLinksPageSize int64   - Number of incoming links to return per page; default is 10.
@@ -63,7 +65,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
-                stage (1,1) string { mustBeMember(stage, ["IN_PROGRESS", "RELEASED", "ANY"]) } = "ANY"
+                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = ["RELEASED", "IN_PROGRESS"]
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
@@ -72,15 +74,12 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             end
 
             identifier = ebrains.kg.api.internal.normalizeIdentifiers(identifier);
+            stage = removeDuplicateStages(stage);
 
             OPERATION = "GET";
             ENDPOINT_PATH = "/instances" + "/" + identifier;
 
             req = obj.initializeRequestMessage(OPERATION);
-
-            if stage == "ANY"
-                stage = ["RELEASED", "IN_PROGRESS"];
-            end
 
             for i = 1:numel(stage)
                 requiredParams = struct('stage', stage(i));
@@ -348,10 +347,10 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifiers (1,:) string
-                stage (1,1) string { mustBeMember(stage,["IN_PROGRESS", "RELEASED", "ANY"]) } = "ANY"
+                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = ["RELEASED", "IN_PROGRESS"]
                 optionalParams.?ebrains.kg.query.ReturnOptions
-                optionalParams.returnIncomingLinks logical %= false
-                optionalParams.incomingLinksPageSize int64 %= 10
+                optionalParams.returnIncomingLinks logical
+                optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
@@ -441,79 +440,99 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
     methods (Access = private)
         function [result, missingIds, advice] = fetchInstancesByIds(obj, identifiers, stage, optionalParams, serverOptions)
-        % fetchInstancesByIds - Request instances by id, trying both stages for "ANY"
+        % fetchInstancesByIds - Request instances by id from each stage in turn
         %
-        %   Always posts to the bulk endpoint, also for a single id, so that
-        %   an id that is missing in one stage can be looked for in the
-        %   other without erroring. The advice output says what a caller
-        %   can do about the ids that are still missing.
+        %   Posts to the bulk endpoint for the first stage, then looks for
+        %   the ids that were not found in the next stage, and so on. Ids
+        %   missing from every stage are returned, together with advice on
+        %   what a caller can do about them.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifiers (1,:) string
-                stage (1,1) string { mustBeMember(stage,["IN_PROGRESS", "RELEASED", "ANY"]) } = "ANY"
+                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty}
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            stage = removeDuplicateStages(stage);
+            missingIds = ebrains.kg.api.internal.normalizeIdentifiers(identifiers);
+            result = cell(1, 0);
+
+            for iStage = 1:numel(stage)
+                [found, missingIds] = obj.requestInstancesByIds(...
+                    missingIds, stage(iStage), optionalParams, serverOptions.Server);
+                result = [result, found]; %#ok<AGROW> One append per stage
+                if isempty(missingIds)
+                    break
+                end
+            end
+
+            if isempty(missingIds)
+                advice = "";
+            else
+                advice = getAdviceForMissingIds(stage);
+            end
+        end
+
+        function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
+        % requestInstancesByIds - One bulk request against a single stage
+
             OPERATION = "POST";
             ENDPOINT_PATH = "/instancesByIds";
 
             req = obj.initializeRequestMessage(OPERATION);
 
-            identifiers = ebrains.kg.api.internal.normalizeIdentifiers(identifiers);
-
             % A scalar string would be encoded as a JSON string, but the
             % endpoint expects a JSON array even for a single identifier.
             req.Body = matlab.net.http.MessageBody(cellstr(identifiers));
 
-            if stage == "ANY"
-                stage = ["RELEASED", "IN_PROGRESS"];
-            end
-
-            requiredParams = struct('stage', stage(1));
-            fullApiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
+            requiredParams = struct('stage', stage);
+            fullApiURL = obj.buildApiURL(server, ENDPOINT_PATH, requiredParams, optionalParams);
 
             response = obj.sendRequest(req, fullApiURL);
 
             if response.StatusCode ~= "OK"
-                obj.throwError("getInstancesBulk", response, serverOptions.Server)
+                obj.throwError("getInstancesBulk", response, server)
             end
 
-            [result, missingIds] = processBulkResponse(response);
-            advice = "";
+            % The response holds one entry per requested id, with either
+            % data or an error whose message names the id.
+            entries = reshape(struct2cell(response.Body.Data.data), 1, []);
+            hasError = cellfun(@(entry) ~isempty(entry.error), entries);
 
-            if ~isempty(missingIds)
-                result(cellfun('isempty', result)) = [];
-
-                if numel(stage) == 2 % Look for the missing ids in the other stage
-                    nvPairs = namedargs2cell(optionalParams);
-                    [metadataInstancesInProgress, missingIds] = obj.fetchInstancesByIds(...
-                        missingIds, "IN_PROGRESS", nvPairs{:}, "Server", serverOptions.Server);
-                    result = [result, metadataInstancesInProgress];
-                    advice = "They were not found in stage RELEASED or IN_PROGRESS.";
-                else
-                    otherStage = setdiff(["RELEASED", "IN_PROGRESS"], stage);
-                    advice = sprintf("Please try downloading using stage %s instead.", otherStage);
-                end
-            end
-
-            function [metadataInstances, missingIds] = processBulkResponse(response)
-                data = struct2cell(response.Body.Data.data);
-
-                missingIds = string.empty(1, 0);
-                numInstances = numel(data);
-                metadataInstances = cell(1, numInstances);
-
-                for iInstance = 1:numInstances
-                    if ~isempty(data{iInstance}.error)
-                        missingIds(end+1) = string(data{iInstance}.error.message); %#ok<AGROW>
-                    end
-                    metadataInstances{iInstance} = data{iInstance}.data;
-                end
-            end
+            found = cellfun(@(entry) entry.data, entries(~hasError), 'UniformOutput', false);
+            missingIds = string(cellfun(@(entry) entry.error.message, entries(hasError), 'UniformOutput', false));
         end
+    end
+end
+
+function stages = removeDuplicateStages(stages)
+% removeDuplicateStages - Keep the first occurrence of each stage
+%
+%   unique does not support enumerations, so the duplicates are found
+%   by hand. A duplicate would only repeat a request that already missed.
+
+    keep = true(size(stages));
+    for i = 2:numel(stages)
+        keep(i) = ~ismember(stages(i), stages(1:i-1));
+    end
+    stages = stages(keep);
+end
+
+function advice = getAdviceForMissingIds(searchedStages)
+% getAdviceForMissingIds - Tell the caller which stages are left to try
+
+    allStages = enumeration("ebrains.kg.enum.KGStage");
+    otherStages = allStages(~ismember(allStages, searchedStages));
+
+    searched = strjoin(string(searchedStages), " or ");
+    if isempty(otherStages)
+        advice = sprintf("They were not found in stage %s.", searched);
+    else
+        advice = sprintf("They were not found in stage %s. Please try stage %s instead.", ...
+            searched, strjoin(string(otherStages), " or "));
     end
 end
