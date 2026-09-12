@@ -2,7 +2,6 @@ classdef KGStage
     enumeration
         RELEASED("released")
         IN_PROGRESS("in progress")
-        ANY("any")
     end
     properties
         Name

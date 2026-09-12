@@ -98,6 +98,15 @@ classdef InstancesClientTest < matlab.unittest.TestCase
                 'EBRAINS:KG_API:listInstances:InternalServerError');
         end
         
+        function testListInstancesRejectsAnyStage(testCase)
+            % The KG server only knows RELEASED and IN_PROGRESS; "ANY" is a
+            % client-side convenience of getInstance and getInstancesBulk.
+            testCase.verifyError(...
+                @() testCase.Client.listInstances("https://openminds.om-i.org/types/Dataset", stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+        
         %% getInstance Tests
         function testGetInstanceSuccess(testCase, Stage)
             % Arrange
@@ -514,6 +523,13 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, '/types');
         end
         
+        function testListTypesRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.listTypes(stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+        
         %% runDynamicQuery Tests
         function testRunDynamicQuerySuccess(testCase)
             % Arrange
@@ -530,6 +546,12 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, '/queries');
         end
         
+        function testRunDynamicQueryRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.runDynamicQuery('{"query": {}}', stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
     end
     
     methods (Test, TestTags = {'IdentifierNormalization'})
