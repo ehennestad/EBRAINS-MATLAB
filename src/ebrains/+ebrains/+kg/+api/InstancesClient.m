@@ -49,8 +49,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         %   identifier string      - The unique identifier of the instance to be downloaded.
         %   stage (1,:) KGStage    - Stages to look in, in order of preference. The
         %                            first stage that holds the instance wins. Defaults
-        %                            to ["RELEASED", "IN_PROGRESS"], i.e. prefer the
-        %                            released version and fall back to the draft.
+        %                            to "RELEASED". Pass ["RELEASED", "IN_PROGRESS"] to
+        %                            fall back to the draft of an unreleased instance.
         %   optionals              - Optional structure with the following fields:
         %       returnIncomingLinks logical   - If true, return incoming links; default is false.
         %       incomingLinksPageSize int64   - Number of incoming links to return per page; default is 10.
@@ -65,7 +65,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
-                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = ["RELEASED", "IN_PROGRESS"]
+                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = "RELEASED"
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
@@ -347,7 +347,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifiers (1,:) string
-                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = ["RELEASED", "IN_PROGRESS"]
+                stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = "RELEASED"
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
@@ -379,7 +379,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
            arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "IN_PROGRESS"
+                requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "RELEASED"
                 optionalParams.space (1,1) string {mustBeNonzeroLengthText} = "dataset"
                 optionalParams.withProperties         logical
                 optionalParams.withIncomingLinks      logical
@@ -410,7 +410,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 jsonldPayload (1,1) string
-                requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "IN_PROGRESS"
+                requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "RELEASED"
                 optionalParams.from int64
                 optionalParams.size int64
                 optionalParams.returnTotalResults logical
