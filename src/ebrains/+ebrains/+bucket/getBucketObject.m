@@ -21,6 +21,14 @@ function filePath = getBucketObject(bucketName, objectName, options)
         'redirect', false); % Redirect is deprecated, need to set it to false
 
     filePath = fullfile(options.TargetFolder, objectName);
+
+    % Object names can contain "/" (folders within the bucket), so the
+    % folder that will hold the file may not exist yet.
+    targetFileFolder = fileparts(filePath);
+    if ~isfolder(targetFileFolder)
+        mkdir(targetFileFolder)
+    end
+
     downloadFile(filePath, result.url)
     if nargout == 0
         clear filePath

@@ -4,8 +4,6 @@ function bucketSizeBytes = getBucketSize(bucketName)
         bucketName (1,1) string
     end
 
-    % Run command to list all objects of the bucket
-    bucketObjects = ebrains.bucket.listBucketObjects(bucketName);
-
-    bucketSizeBytes = sum([bucketObjects.bytes]);
+    bucketStat = ebrains.bucket.internal.getBucketStat(bucketName);
+    bucketSizeBytes = bucketStat.bytes;
 end
