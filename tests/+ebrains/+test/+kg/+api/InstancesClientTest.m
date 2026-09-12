@@ -142,6 +142,27 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(2, 'stage=IN_PROGRESS');
         end
         
+        function testGetInstanceANYStage_MissingInBothStages(testCase)
+            testCase.Client.addResponse('NotFound', "missing");
+            testCase.Client.addResponse('NotFound', "missing");
+            
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, "ANY"), ...
+                'EBRAINS:KG_API:getInstance:NotFound');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+        
+        function testGetInstanceANYStage_DoesNotRetryAfterOtherErrors(testCase)
+            % A failure that is not a miss applies to both stages, so the
+            % second stage must not be tried.
+            testCase.Client.addResponse('Forbidden', "no access");
+            
+            testCase.verifyError(...
+                @() testCase.Client.getInstance(testCase.TestData.identifier, "ANY"), ...
+                'EBRAINS:KG_API:getInstance:Forbidden');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+        
         function testGetInstanceNormalizesIRI(testCase)
             % Arrange
             iriPrefix = "https://kg.ebrains.eu/api/instances/";
@@ -180,6 +201,44 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyError(...
                 @() testCase.Client.getInstance(testCase.TestData.identifier, "RELEASED"), ...
                 'EBRAINS:KG_API:getInstance:NotFound');
+        end
+        
+        function testErrorMessageIncludesTextResponseBody(testCase)
+            % A real ResponseMessage is an object, so the body must be read
+            % through properties rather than struct fields.
+            testCase.Client.addResponse('NotFound', "Instance abc does not exist");
+            
+            try
+                testCase.Client.getInstance("abc", "RELEASED");
+                testCase.verifyFail('Expected getInstance to throw');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'EBRAINS:KG_API:getInstance:NotFound');
+                testCase.verifySubstring(ME.message, 'Instance abc does not exist');
+            end
+        end
+        
+        function testErrorMessageIncludesJsonResponseBody(testCase)
+            % A decoded JSON error body is a struct and must still be shown
+            testCase.Client.addResponse('Forbidden', struct('error', 'no access to space'));
+            
+            try
+                testCase.Client.getInstance("abc", "RELEASED");
+                testCase.verifyFail('Expected getInstance to throw');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'EBRAINS:KG_API:getInstance:Forbidden');
+                testCase.verifySubstring(ME.message, 'no access to space');
+            end
+        end
+        
+        function testInternalServerErrorMentionsServer(testCase)
+            testCase.Client.addResponse('InternalServerError', "stack trace");
+            
+            try
+                testCase.Client.getInstance("abc", "RELEASED", Server="preprod");
+                testCase.verifyFail('Expected getInstance to throw');
+            catch ME
+                testCase.verifySubstring(ME.message, 'preprod');
+            end
         end
         
         %% createNewInstance Tests
@@ -412,6 +471,34 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(missingIds, "id2");
         end
 
+        function testGetInstancesBulkSendsIdsAsJsonArray(testCase)
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', struct('id', 'id2'), 'error', []);
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            testCase.Client.getInstancesBulk(["id1", "id2"], "RELEASED");
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(1), '["id1","id2"]');
+        end
+
+        function testGetInstancesBulkSingleMissingIdIsRetriedAsJsonArray(testCase)
+            % One id missing in RELEASED leaves a scalar for the IN_PROGRESS
+            % retry, which must still be posted as a JSON array.
+            bulkResponse1 = struct();
+            bulkResponse1.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse1.data.id2 = struct('data', [], 'error', struct('message', 'id2'));
+            testCase.Client.addResponse('OK', bulkResponse1);
+
+            bulkResponse2 = struct();
+            bulkResponse2.data.id2 = struct('data', struct('id', 'id2'), 'error', []);
+            testCase.Client.addResponse('OK', bulkResponse2);
+
+            testCase.Client.getInstancesBulk(["id1", "id2"], "ANY");
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(2), '["id2"]');
+        end
+
         %% listTypes Tests
         function testListTypesSuccess(testCase)
             % Arrange
@@ -442,6 +529,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestMethod(1, 'POST');
             testCase.Client.verifyRequestURL(1, '/queries');
         end
+        
     end
     
     methods (Test, TestTags = {'IdentifierNormalization'})
@@ -497,6 +585,51 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             actualURL = char(request.URL.EncodedURI);
             testCase.verifySubstring(actualURL, '/instances/' + rawId);
             testCase.verifyTrue(~contains(actualURL, iriPrefix));
+        end
+        
+        function testUpdateInstanceNormalizesIRI(testCase)
+            testCase.Client.addResponse('OK', matlab.net.http.MessageBody('{"updated": true}'));
+            
+            testCase.Client.updateInstance(testCase.fullIri("uuid-1"), '{"name": "x"}');
+            
+            testCase.verifyRequestUsesBareUuid(1, "uuid-1", '/instances/uuid-1');
+        end
+        
+        function testReplaceInstanceNormalizesIRI(testCase)
+            testCase.Client.addResponse('OK', matlab.net.http.MessageBody('{"replaced": true}'));
+            
+            testCase.Client.replaceInstance(testCase.fullIri("uuid-1"), '{"name": "x"}');
+            
+            testCase.verifyRequestUsesBareUuid(1, "uuid-1", '/instances/uuid-1');
+        end
+        
+        function testMoveInstanceNormalizesIRI(testCase)
+            testCase.Client.addResponse('OK', struct('data', struct('moved', true)));
+            
+            testCase.Client.moveInstance(testCase.fullIri("uuid-1"), "newspace");
+            
+            testCase.verifyRequestUsesBareUuid(1, "uuid-1", '/instances/uuid-1/spaces/newspace');
+        end
+        
+        function testDeleteInstanceNormalizesIRI(testCase)
+            testCase.Client.addResponse('OK', struct('data', struct('deleted', true)));
+            
+            testCase.Client.deleteInstance(testCase.fullIri("uuid-1"));
+            
+            testCase.verifyRequestUsesBareUuid(1, "uuid-1", '/instances/uuid-1');
+        end
+    end
+    
+    methods (Access = private)
+        function iri = fullIri(~, uuid)
+            iri = ebrains.common.constant.KgInstanceIRIPrefix + "/" + uuid;
+        end
+        
+        function verifyRequestUsesBareUuid(testCase, requestIndex, uuid, expectedPath)
+            request = testCase.Client.getRequest(requestIndex);
+            actualURL = char(request.URL.EncodedURI);
+            testCase.verifySubstring(actualURL, expectedPath);
+            testCase.verifyFalse(contains(actualURL, testCase.fullIri(uuid)));
         end
     end
 end

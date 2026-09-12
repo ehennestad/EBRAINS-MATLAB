@@ -77,25 +77,21 @@ classdef BaseClient < handle %KGClient
         function throwError(operationName, responseObject, server)
             arguments
                 operationName (1,1) string
-                responseObject
+                responseObject (1,1) matlab.net.http.ResponseMessage
                 server (1,1) ebrains.kg.enum.KGServer
             end
 
             errorID = sprintf('EBRAINS:KG_API:%s:%s', operationName, responseObject.StatusCode);
 
-            errorDescription = '';
-
             if responseObject.StatusCode == 500
-                errorDescription = sprintf('Something went wrong. Please verify that the KG server (%s) is working.', server.Name);
+                errorDescription = sprintf(...
+                    'Something went wrong. Please verify that the KG server (%s) is working.', ...
+                    server.Name);
             else
-                if isfield(responseObject, 'Body')
-                    if isfield(responseObject.Body, 'Data') && ~isempty(responseObject.Body.Data)
-                        errorDescription = responseObject.Body.Data;
-                    end
-                end
+                errorDescription = ebrains.common.internal.getResponseBodyText(responseObject);
             end
 
-            if isempty(errorDescription)
+            if strlength(errorDescription) == 0
                 errorMessage = char(responseObject.StatusCode);
             else
                 errorMessage = sprintf('%s: %s', char(responseObject.StatusCode), errorDescription);
@@ -106,3 +102,4 @@ classdef BaseClient < handle %KGClient
         end
     end
 end
+
