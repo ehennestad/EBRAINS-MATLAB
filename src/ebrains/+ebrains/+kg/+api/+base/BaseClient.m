@@ -88,10 +88,10 @@ classdef BaseClient < handle %KGClient
                     'Something went wrong. Please verify that the KG server (%s) is working.', ...
                     server.Name);
             else
-                errorDescription = getResponseBodyDescription(responseObject);
+                errorDescription = ebrains.common.internal.getResponseBodyText(responseObject);
             end
 
-            if isempty(errorDescription)
+            if strlength(errorDescription) == 0
                 errorMessage = char(responseObject.StatusCode);
             else
                 errorMessage = sprintf('%s: %s', char(responseObject.StatusCode), errorDescription);
@@ -103,22 +103,3 @@ classdef BaseClient < handle %KGClient
     end
 end
 
-function description = getResponseBodyDescription(responseObject)
-% getResponseBodyDescription - Text of a response body, or '' if there is none
-
-    description = '';
-
-    if isempty(responseObject.Body) || isempty(responseObject.Body.Data)
-        return
-    end
-
-    % The body is decoded JSON when the request asked for conversion, and
-    % raw text otherwise. Struct bodies are re-encoded so that the error
-    % message still shows what the server said.
-    data = responseObject.Body.Data;
-    if ischar(data) || isstring(data) || isa(data, 'uint8')
-        description = char(data);
-    elseif isstruct(data)
-        description = jsonencode(data);
-    end
-end
