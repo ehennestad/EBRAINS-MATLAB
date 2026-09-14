@@ -1,40 +1,42 @@
-collabClient = ebrains.collaboratory.api.Collab();
+% List the dataset collabs (names starting with "d-") and write an
+% overview of the size of their buckets.
 
-isFinished = false;
+PAGE_SIZE = 200;
+
+collabClient = ebrains.collab.api.CollabsClient();
+
+collabs = struct.empty;
 offset = 0;
-
-result = ebrains.collaboratory.models.CollabSearchResult.empty;
+isFinished = false;
 
 while ~isFinished
-    [status, thisResult] = collabClient.searchCollab("limit", 200, "offset", offset);
-    result = [result, thisResult]; %#ok<AGROW>
-    offset = numel(result);
-    
-    if isempty(thisResult)
+    page = collabClient.searchCollabs(limit=PAGE_SIZE, offset=offset);
+    if isempty(page)
         isFinished = true;
+    else
+        collabs = [collabs; page(:)]; %#ok<AGROW>
+        offset = numel(collabs);
     end
 end
 
-keep = startsWith([result.name], 'd-');
+collabNames = string({collabs.name});
+datasetCollabNames = collabNames(startsWith(collabNames, "d-"));
 
-datasetCollabs = result(keep);
+fprintf('Number of dataset collabs: %d\n', numel(datasetCollabNames))
 
-fprintf('Number of dataset collabs: %d\n', numel(datasetCollabs))
-
-collabId = [datasetCollabs.name];
-bucketSize = zeros(size(collabId));
-for i = 1:numel(collabId)
+bucketSize = zeros(size(datasetCollabNames));
+for i = 1:numel(datasetCollabNames)
     try
-        bucketSize(i) = ebrains.bucket.getBucketSize(collabId(i));
-        sizeWithUnitAsString = ebrains.util.getDataSizeLabel( bucketSize(i) );
-    
-        fprintf("%s: %s\n", collabId(i), sizeWithUnitAsString)
+        bucketSize(i) = ebrains.bucket.getBucketSize(datasetCollabNames(i));
+        sizeWithUnitAsString = ebrains.util.getDataSizeLabel(bucketSize(i));
+
+        fprintf("%s: %s\n", datasetCollabNames(i), sizeWithUnitAsString)
     catch
-        fprintf('Could not get bucket size for collab %s\n', collabId(i))
+        fprintf('Could not get bucket size for collab %s\n', datasetCollabNames(i))
     end
 end
 
-T = table(collabId', bucketSize', 'VariableNames', {'Bucket Name', 'Bucket Size (bytes)'});
+T = table(datasetCollabNames', bucketSize', 'VariableNames', {'Bucket Name', 'Bucket Size (bytes)'});
 
 writetable(T, 'bucket_size_overview')
 writetable(T, 'bucket_size_overview.xlsx')

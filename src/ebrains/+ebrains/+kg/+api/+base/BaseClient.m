@@ -1,51 +1,47 @@
-classdef BaseClient < handle %KGClient
+classdef BaseClient < ebrains.common.internal.HttpClient
+% BaseClient - Knowledge Graph specifics shared by the KG API clients
+%
+%   Resolves the KG server of a request to its base URL and names the
+%   server in the report of a server error. Request building, sending and
+%   error formatting are inherited from ebrains.common.internal.HttpClient.
+%
+%   See also ebrains.kg.api.InstancesClient, ebrains.kg.api.QueriesClient
+
+    properties (Constant, Access = protected)
+        ErrorIdPrefix = "EBRAINS:KG_API"
+    end
+
     methods (Access = protected)
-        function req = initializeRequestMessage(obj, operationName, options)
+        function throwError(obj, operationName, response, server)
+        % throwError - Throw the error for a failed KG response
             arguments
-                obj
+                obj (1,1) ebrains.kg.api.base.BaseClient
                 operationName (1,1) string
-                options.JSONPayload (1,1) string = missing
+                response (1,1) matlab.net.http.ResponseMessage
+                server (1,1) ebrains.kg.enum.KGServer
             end
 
-            headers = obj.getDefaultHeader();
-            req  = matlab.net.http.RequestMessage(char(operationName), headers);
-
-            if ~ismissing(options.JSONPayload)
-                % Todo: Add header with content-type json here...
-                body = matlab.net.http.MessageBody();
-                body.Payload = char(options.JSONPayload);
-                req.Body = body;
-            end
-        end
-
-        function headers = getDefaultHeader(~)
-            tokenManager = ebrains.getTokenManager();
-
-            headers = [ ...
-                matlab.net.http.HeaderField("Content-Type", "application/json"), ...
-                matlab.net.http.HeaderField("Accept", "application/json") ...
-                matlab.net.http.field.AuthorizationField("Authorization", "Bearer " + tokenManager.AccessToken) ...
-                ];
-        end
-
-        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
-            arguments
-                obj (1,1) ebrains.kg.api.base.BaseClient %#ok<INUSA>
-                requestObj (1,1) matlab.net.http.RequestMessage
-                apiURL (1,1) matlab.net.URI
-                httpOpts matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
-            end
-
-            if isempty(httpOpts)
-                response = requestObj.send(apiURL);
+            if response.StatusCode == 500
+                % The body of a server error rarely explains anything, so
+                % the message points at the server that failed instead.
+                description = sprintf(...
+                    'Something went wrong. Please verify that the KG server (%s) is working.', ...
+                    server.Name);
+                exception = obj.createResponseError(operationName, response, ...
+                    Description=description);
             else
-                response = requestObj.send(apiURL, httpOpts);
+                exception = obj.createResponseError(operationName, response);
             end
+
+            % Thrown as caller so that the error points at the API method
+            % the user called rather than at this helper.
+            throwAsCaller(exception)
         end
     end
 
     methods (Static, Access = protected)
         function apiURL = buildApiURL(server, endpointPath, requiredParams, optionalParams)
+        % buildApiURL - URI of an endpoint on the given KG server
             arguments
                 server (1,1) ebrains.kg.enum.KGServer
                 endpointPath (1,1) string
@@ -55,51 +51,12 @@ classdef BaseClient < handle %KGClient
 
             serverUrl = ebrains.common.constant.KGCoreApiBaseURL("Server", server);
 
-            if ~isempty(requiredParams) && isempty(fieldnames(requiredParams))
-                requiredParams = struct.empty;
-            end
-            if ~isempty(optionalParams) && isempty(fieldnames(optionalParams))
-                optionalParams = struct.empty;
-            end
+            % The path is given as text ("/instances/<id>"); each part
+            % between the slashes becomes one segment of the URI.
+            pathSegments = split(strip(endpointPath, "left", "/"), "/")';
 
-            queryParameters = [...
-                matlab.net.QueryParameter(requiredParams), ...
-                matlab.net.QueryParameter(optionalParams) ...
-                ];
-
-            apiURL = matlab.net.URI(serverUrl + endpointPath, queryParameters);
-        end
-
-        function httpOpts = getOptionsForRawResponse()
-            httpOpts = matlab.net.http.HTTPOptions('ConvertResponse', false);
-        end
-
-        function throwError(operationName, responseObject, server)
-            arguments
-                operationName (1,1) string
-                responseObject (1,1) matlab.net.http.ResponseMessage
-                server (1,1) ebrains.kg.enum.KGServer
-            end
-
-            errorID = sprintf('EBRAINS:KG_API:%s:%s', operationName, responseObject.StatusCode);
-
-            if responseObject.StatusCode == 500
-                errorDescription = sprintf(...
-                    'Something went wrong. Please verify that the KG server (%s) is working.', ...
-                    server.Name);
-            else
-                errorDescription = ebrains.common.internal.getResponseBodyText(responseObject);
-            end
-
-            if strlength(errorDescription) == 0
-                errorMessage = char(responseObject.StatusCode);
-            else
-                errorMessage = sprintf('%s: %s', char(responseObject.StatusCode), errorDescription);
-            end
-
-            ME = MException(errorID, errorMessage);
-            throwAsCaller(ME)
+            apiURL = ebrains.common.internal.buildApiUri(...
+                serverUrl, pathSegments, requiredParams, optionalParams);
         end
     end
 end
-
