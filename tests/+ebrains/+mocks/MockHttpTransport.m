@@ -1,7 +1,7 @@
 classdef MockHttpTransport < handle
-    % MockHttpTransport - Canned responses and request recording for KG client mocks
+    % MockHttpTransport - Canned responses and request recording for API client mocks
     %
-    % Mix this class into a subclass of a KG API client and forward the
+    % Mix this class into a subclass of an API client and forward the
     % client's protected sendRequest to recordAndRespond. The mock then
     % returns queued matlab.net.http.ResponseMessage objects instead of
     % contacting the server, and keeps every request for later assertions.
