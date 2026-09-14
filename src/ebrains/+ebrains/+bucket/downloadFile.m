@@ -6,7 +6,7 @@ function downloadFile(filePath, relativeFilePath, bucketName, progressDisplay)
         relativeFilePath = relativeFilePath(2:end);
     end
 
-    BASE_API_URL = nansen.module.sharebrain.constant.DataProxyBaseUrl;
+    BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
     endpointPath = sprintf("buckets/%s/%s", bucketName, relativeFilePath);
 
     apiURL = BASE_API_URL + endpointPath;
@@ -17,20 +17,45 @@ function downloadFile(filePath, relativeFilePath, bucketName, progressDisplay)
 
     % TODO: 
 
+    % Resolve the expected size before the transfer so the cleanup below can
+    % tell a partial download from one that completed before the error.
+    webFileSize = ebrains.bucket.getFileSize(relativeFilePath, bucketName);
+
     try
-        webFileSize = nansen.module.sharebrain.internal.fileio.getWebFileSize(apiURL);
         [filePath] = downloadFile(filePath, apiURL, ShowFilename=true);
     catch ME
-        fileSize = nansen.module.sharebrain.internal.fileio.getLocalFileSize(filePath);
-        if fileSize ~= webFileSize
+        % A failed transfer can leave a partial file behind. Replace it with
+        % an empty placeholder so a virtual bucket keeps its file listing.
+        if isfile(filePath) && getLocalFileSize(filePath) ~= webFileSize
             delete(filePath)
-            filePath = strrep(filePath, ' ', '\ ');
-            [status, msg] = system( sprintf('touch %s', filePath ));
+            createEmptyFile(filePath)
         end
         rethrow(ME)
     end
 
     %task.concrete.downloadFile(filePath, apiURL, 'ProgressDisplay', progressDisplay)
+end
+
+function fileSizeBytes = getLocalFileSize(filePath)
+    fileInfo = dir(filePath);
+    fileSizeBytes = fileInfo.bytes;
+end
+
+function createEmptyFile(filePath)
+% createEmptyFile - Create an empty placeholder file
+%
+%   Uses fopen rather than a shell command so paths with spaces or shell
+%   metacharacters need no quoting and the function also works on Windows.
+
+    [fileID, errorMessage] = fopen(filePath, "w");
+    if fileID == -1
+        % Warn rather than error: the caller is about to rethrow the download
+        % error, which is the one the user needs to see.
+        warning('EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
+            'Failed to recreate the placeholder file %s:\n%s', filePath, errorMessage)
+        return
+    end
+    fclose(fileID);
 end
 
 function downloadURL = getDownloadUrl(apiURL, options)
