@@ -133,6 +133,66 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 @() ebrains.bucket.getBucketObject("my-bucket", "file.txt", Client=testCase.Client), ...
                 'EBRAINS:Bucket:getDownloadUrl:NotFound');
         end
+
+        %% getFileSize
+        function testGetFileSizeReturnsBytesOfExactMatch(testCase)
+            % The prefix listing also returns longer names, which must not
+            % be mistaken for the object.
+            testCase.Client.addResponse('OK', makeSizedPage(["a.txt.bak", "a.txt"], [1, 2048]));
+
+            fileSizeBytes = ebrains.bucket.getFileSize("my-bucket", "/a.txt", Client=testCase.Client);
+
+            testCase.verifyEqual(fileSizeBytes, 2048);
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket?prefix=a.txt');
+        end
+
+        function testGetFileSizeMissingObject(testCase)
+            testCase.Client.addResponse('OK', makeSizedPage(string.empty, []));
+            testCase.verifyError(...
+                @() ebrains.bucket.getFileSize("my-bucket", "a.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:ObjectNotFound');
+        end
+
+        function testGetFileSizeListErrorPropagates(testCase)
+            testCase.Client.addResponse('NotFound', 'Bucket not found');
+            testCase.verifyError(...
+                @() ebrains.bucket.getFileSize("my-bucket", "a.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:listObjects:NotFound');
+        end
+
+        %% uploadFile
+        function testUploadFileErrorPropagatesBeforeUpload(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            testCase.Client.addResponse('Forbidden', 'No write access');
+
+            testCase.verifyError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "/file.txt", sourceFile, Client=testCase.Client), ...
+                'EBRAINS:Bucket:getUploadUrl:Forbidden');
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/file.txt');
+        end
+
+        %% downloadFile
+        function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
+            % The size lookup comes first, so a missing object is reported
+            % before a download URL is requested.
+            testCase.Client.addResponse('OK', makeSizedPage(string.empty, []));
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", "target.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:ObjectNotFound');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+
+        function testDownloadFileUrlErrorPropagatesBeforeDownload(testCase)
+            testCase.Client.addResponse('OK', makeSizedPage("file.txt", 10));
+            testCase.Client.addResponse('Forbidden', 'No read access');
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", "target.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:getDownloadUrl:Forbidden');
+            testCase.Client.verifyRequestURL(2, '/buckets/my-bucket/file.txt');
+        end
     end
 end
 
@@ -144,4 +204,11 @@ function page = makePage(objectNames)
     % One column struct per object, as jsondecode returns a JSON array
     names = cellstr(reshape(string(objectNames), [], 1));
     page = struct('objects', struct('name', names));
+end
+
+function page = makeSizedPage(objectNames, byteSizes)
+    % Listing page whose objects carry their size, as the Data Proxy reports it
+    names = cellstr(reshape(string(objectNames), [], 1));
+    sizes = num2cell(reshape(byteSizes, [], 1));
+    page = struct('objects', struct('name', names, 'bytes', sizes));
 end

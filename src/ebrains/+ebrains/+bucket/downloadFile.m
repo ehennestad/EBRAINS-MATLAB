@@ -1,39 +1,76 @@
-function downloadFile(filePath, relativeFilePath, bucketName, progressDisplay)
-% downloadFile - Download a file from an EBRAINS bucket (swift object storage)
-    
-    if strncmp(char(relativeFilePath), filesep, 1)
-        relativeFilePath = char(relativeFilePath);
-        relativeFilePath = relativeFilePath(2:end);
+function downloadFile(bucketName, objectName, targetFile, options)
+% downloadFile - Download an object (file) of an EBRAINS Data Proxy bucket to a given path
+%
+%   Syntax:
+%       ebrains.bucket.downloadFile(bucketName, objectName, targetFile)
+%       downloads the object to the local path targetFile, replacing the
+%       file if it exists. Unlike getBucketObject, the caller chooses the
+%       full path of the file. This is what a virtual bucket needs: its
+%       empty placeholder files are already in place and are filled in.
+%
+%       ebrains.bucket.downloadFile(..., Client=client) sends the requests
+%       through the given client instead of a default one.
+%
+%   Input Arguments
+%       bucketName : Name of the bucket that holds the object
+%       objectName : Name of the object, relative to the bucket root; a
+%                    leading "/" is ignored.
+%       targetFile : Path of the local file to write. Its folder is
+%                    created if it does not exist.
+%
+%   Name-Value Arguments
+%       Client : ebrains.bucket.api.BucketsClient that sends the requests.
+%                Meant for tests and custom clients; a default client is
+%                created otherwise.
+%
+%   See also ebrains.bucket.getBucketObject, ebrains.bucket.createVirtualBucket
+
+    arguments
+        bucketName (1,1) string {mustBeNonzeroLengthText}
+        objectName (1,1) string {mustBeNonzeroLengthText}
+        targetFile (1,1) string
+        options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
-    endpointPath = sprintf("buckets/%s/%s", bucketName, relativeFilePath);
+    % Names are relative to the bucket root, so a leading "/" would be
+    % sent as an empty first folder.
+    objectName = removeLeadingSlash(objectName);
 
-    apiURL = BASE_API_URL + endpointPath;
+    % The expected size lets the cleanup below tell a partial download from
+    % one that completed before the error was raised.
+    expectedSizeBytes = ebrains.bucket.getFileSize(bucketName, objectName, Client=options.Client);
+    downloadUrl = options.Client.getDownloadUrl(bucketName, objectName);
 
-    disp('Starting download.')
+    targetFolder = fileparts(targetFile);
+    if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
+        mkdir(targetFolder)
+    end
 
-    % downloadURL = getDownloadUrl(apiURL, options) ??
-
-    % TODO: 
-
-    % Resolve the expected size before the transfer so the cleanup below can
-    % tell a partial download from one that completed before the error.
-    webFileSize = ebrains.bucket.getFileSize(relativeFilePath, bucketName);
+    % Only a file that was there before the transfer, i.e. the placeholder
+    % of a virtual bucket, is put back if the transfer fails.
+    hadPlaceholder = isfile(targetFile);
 
     try
-        filePath = ebrains.external.filedownload.downloadFile(filePath, apiURL, ShowFilename=true);
+        ebrains.external.filedownload.downloadFile(targetFile, downloadUrl, ...
+            ShowFilename=true, FileSizeBytes=expectedSizeBytes);
     catch ME
-        % A failed transfer can leave a partial file behind. Replace it with
-        % an empty placeholder so a virtual bucket keeps its file listing.
-        if isfile(filePath) && getLocalFileSize(filePath) ~= webFileSize
-            delete(filePath)
-            createEmptyFile(filePath)
+        % A failed transfer can leave a partial file behind. Remove it, and
+        % put back an empty placeholder where one was, so a virtual bucket
+        % keeps its file listing.
+        if isfile(targetFile) && getLocalFileSize(targetFile) ~= expectedSizeBytes
+            delete(targetFile)
+            if hadPlaceholder
+                createEmptyFile(targetFile)
+            end
         end
         rethrow(ME)
     end
+end
 
-    %task.concrete.downloadFile(filePath, apiURL, 'ProgressDisplay', progressDisplay)
+function name = removeLeadingSlash(name)
+    if startsWith(name, "/")
+        name = extractAfter(name, 1);
+    end
 end
 
 function fileSizeBytes = getLocalFileSize(filePath)
@@ -56,36 +93,4 @@ function createEmptyFile(filePath)
         return
     end
     fclose(fileID);
-end
-
-function downloadURL = getDownloadUrl(apiURL, options)
-    arguments
-        apiURL (1,1) string
-        options.useToken (1,1) logical = false
-    end
-
-    if options.useToken
-        accessToken = getToken();
-    
-        header = matlab.net.http.HeaderField(...
-            "accept", "application/json", ...
-            "Authorization", "Bearer " + accessToken);
-    else
-        header=[];
-    end
-
-    method = matlab.net.http.RequestMethod.GET;
-    req = matlab.net.http.RequestMessage(method, header, []);
-    [resp, ~, ~] = req.send(apiURL);
-    
-    if resp.StatusCode ~= matlab.net.http.StatusCode.OK
-        error(string(resp.StatusLine))
-    else
-        downloadURL = resp.Body.Data.url;
-    end
-end
-
-function accessToken = getToken()
-    authClient = ebrains.getTokenManager();    
-    accessToken = authClient.AccessToken;
 end

@@ -1,8 +1,8 @@
-function uploadFile(sourceFile, objectName, bucketName, options)
+function uploadFile(bucketName, objectName, sourceFile, options)
 % uploadFile - Upload a file to an EBRAINS Data Proxy bucket
 %
 %   Syntax:
-%       ebrains.bucket.uploadFile(sourceFile, objectName, bucketName)
+%       ebrains.bucket.uploadFile(bucketName, objectName, sourceFile)
 %       uploads the local file sourceFile to the bucket, where it becomes
 %       the object objectName. An existing object of that name is replaced.
 %
@@ -10,29 +10,30 @@ function uploadFile(sourceFile, objectName, bucketName, options)
 %       through the given client instead of a default one.
 %
 %   Input Arguments
-%       sourceFile : Path of the local file to upload
-%       objectName : Name of the object in the bucket, including any folder
-%                    within the bucket, e.g. "data/session1/raw.bin".
-%                    A leading "/" is ignored.
 %       bucketName : Name of the bucket to upload to
+%       objectName : Name of the object in the bucket, including any folder
+%                    within the bucket, e.g. "data/session1/raw.bin". The
+%                    name is relative to the bucket root; a leading "/" is
+%                    ignored.
+%       sourceFile : Path of the local file to upload
 %
 %   Name-Value Arguments
 %       Client : ebrains.bucket.api.BucketsClient that sends the requests.
 %                Meant for tests and custom clients; a default client is
 %                created otherwise.
+%
+%   See also ebrains.bucket.downloadFile, ebrains.bucket.getBucketObject
 
     arguments
-        sourceFile (1,1) string {mustBeFile}
-        objectName (1,1) string {mustBeNonzeroLengthText}
         bucketName (1,1) string {mustBeNonzeroLengthText}
+        objectName (1,1) string {mustBeNonzeroLengthText}
+        sourceFile (1,1) string {mustBeFile}
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    % Object names are "/"-delimited on every platform. A leading "/" would
-    % otherwise be sent as part of the name.
-    if startsWith(objectName, "/")
-        objectName = extractAfter(objectName, 1);
-    end
+    % Names are relative to the bucket root, so a leading "/" would be
+    % sent as an empty first folder.
+    objectName = removeLeadingSlash(objectName);
 
     uploadUrl = options.Client.getUploadUrl(bucketName, objectName);
 
@@ -45,5 +46,11 @@ function uploadFile(sourceFile, objectName, bucketName, options)
         error('EBRAINS:Bucket:UploadFailed', ...
             'Upload of "%s" to object "%s" of bucket "%s" failed: %s', ...
             sourceFile, objectName, bucketName, string(response.StatusLine))
+    end
+end
+
+function name = removeLeadingSlash(name)
+    if startsWith(name, "/")
+        name = extractAfter(name, 1);
     end
 end
