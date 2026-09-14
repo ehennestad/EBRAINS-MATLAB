@@ -26,9 +26,7 @@ function fileSizeBytes = getFileSize(bucketName, objectName, options)
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    % Names are relative to the bucket root, so a leading "/" would be
-    % sent as an empty first folder.
-    objectName = removeLeadingSlash(objectName);
+    objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
 
     % The listing reports the size of every object it returns, so a listing
     % narrowed to the object's name answers without a request to the object
@@ -37,10 +35,12 @@ function fileSizeBytes = getFileSize(bucketName, objectName, options)
     page = options.Client.listObjects(bucketName, prefix=objectName);
     objects = page.objects;
 
-    if isempty(objects)
-        isMatch = false;
-    else
+    % jsondecode turns an empty JSON array into [], which has no name field,
+    % so an empty listing cannot go through the name comparison.
+    if ~isempty(objects)
         isMatch = strcmp({objects.name}, objectName);
+    else
+        isMatch = false;
     end
 
     if ~any(isMatch)
@@ -49,10 +49,4 @@ function fileSizeBytes = getFileSize(bucketName, objectName, options)
     end
 
     fileSizeBytes = objects(isMatch).bytes;
-end
-
-function name = removeLeadingSlash(name)
-    if startsWith(name, "/")
-        name = extractAfter(name, 1);
-    end
 end

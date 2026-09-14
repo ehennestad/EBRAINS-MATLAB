@@ -6,8 +6,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       uploads the local file sourceFile to the bucket, where it becomes
 %       the object objectName. An existing object of that name is replaced.
 %
-%       ebrains.bucket.uploadFile(..., Client=client) sends the requests
-%       through the given client instead of a default one.
+%       ebrains.bucket.uploadFile(..., Name=Value) sets the options below.
 %
 %   Input Arguments
 %       bucketName : Name of the bucket to upload to
@@ -18,9 +17,13 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       sourceFile : Path of the local file to upload
 %
 %   Name-Value Arguments
-%       Client : ebrains.bucket.api.BucketsClient that sends the requests.
-%                Meant for tests and custom clients; a default client is
-%                created otherwise.
+%       DisplayMode : Where progress is shown, "Dialog Box" (default) or
+%                     "Command Window".
+%       Figure      : Parent figure of the progress dialog. By default the
+%                     dialog gets a window of its own.
+%       Client      : ebrains.bucket.api.BucketsClient that sends the
+%                     requests. Meant for tests and custom clients; a
+%                     default client is created otherwise.
 %
 %   See also ebrains.bucket.downloadFile, ebrains.bucket.getBucketObject
 
@@ -28,29 +31,29 @@ function uploadFile(bucketName, objectName, sourceFile, options)
         bucketName (1,1) string {mustBeNonzeroLengthText}
         objectName (1,1) string {mustBeNonzeroLengthText}
         sourceFile (1,1) string {mustBeFile}
+        options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
+        options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    % Names are relative to the bucket root, so a leading "/" would be
-    % sent as an empty first folder.
-    objectName = removeLeadingSlash(objectName);
+    objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
 
     uploadUrl = options.Client.getUploadUrl(bucketName, objectName);
 
-    % The uploader only raises on failure when called without outputs, and
-    % that error carries no identifier. Raise a namespaced one instead.
     [wasSuccess, response] = ebrains.external.filedownload.uploadFile(...
-        sourceFile, uploadUrl, ShowFilename=true);
+        sourceFile, uploadUrl, Filename=objectName, ...
+        DisplayMode=options.DisplayMode, Figure=options.Figure);
 
     if ~wasSuccess
+        % The uploader's own error has no identifier and drops the response
+        % body, which is where the storage backend explains a refusal.
+        errorMessage = string(response.StatusLine);
+        bodyText = ebrains.common.internal.getResponseBodyText(response);
+        if strlength(bodyText) > 0
+            errorMessage = errorMessage + ": " + bodyText;
+        end
         error('EBRAINS:Bucket:UploadFailed', ...
             'Upload of "%s" to object "%s" of bucket "%s" failed: %s', ...
-            sourceFile, objectName, bucketName, string(response.StatusLine))
-    end
-end
-
-function name = removeLeadingSlash(name)
-    if startsWith(name, "/")
-        name = extractAfter(name, 1);
+            sourceFile, objectName, bucketName, errorMessage)
     end
 end
