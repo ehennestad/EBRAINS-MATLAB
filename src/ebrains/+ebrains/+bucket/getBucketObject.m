@@ -38,7 +38,7 @@ function filePath = getBucketObject(bucketName, objectName, options)
         mkdir(targetFileFolder)
     end
 
-    ebrains.internal.extern.fex.filedownload.downloadFile(filePath, downloadUrl);
+    ebrains.external.filedownload.downloadFile(filePath, downloadUrl);
 
     if nargout == 0
         clear filePath

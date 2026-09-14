@@ -33,7 +33,7 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
         options.FileSizeBytes  (1,1) double                      = nan
     end
 
-    import ebrains.internal.extern.fex.filedownload.*
+    import ebrains.external.filedownload.*
 
     if options.ShowFilename
         [~, filename, ext] = fileparts(strURLFilename);
