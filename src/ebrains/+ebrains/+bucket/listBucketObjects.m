@@ -8,24 +8,25 @@ function completeObjectList = listBucketObjects(bucketName, options)
 %
 %   Input Arguments
 %       bucketName : Name of the bucket to get object information from
+%
+%   Name-Value Arguments
+%       Verbose : Print progress while the pages of the listing arrive.
+%       Client  : ebrains.bucket.api.BucketsClient that sends the requests.
+%                 Meant for tests and custom clients; a default client is
+%                 created otherwise.
 
     arguments
         bucketName (1,1) string
-        options.Verbose = false
+        options.Verbose (1,1) logical = false
+        options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    BASE_API_URL = ebrains.common.constant.DataProxyApiBaseUrl();
+    client = options.Client;
 
-    authClient = ebrains.iam.DeviceFlowTokenClient.instance();
-    authHeaderField = authClient.getAuthHeaderField();
-
-    apiURL = BASE_API_URL + "buckets/" + bucketName;
-
-    method = matlab.net.http.RequestMethod.GET;
-    req = matlab.net.http.RequestMessage(method, authHeaderField, []);
-
-    % Get bucket stats:
-    nTotalObjects = ebrains.bucket.getObjectCount(bucketName);
+    % The stat endpoint reports the object count in one request, which is
+    % what tells the paging loop below when the listing is complete.
+    bucketStat = client.getBucketStat(bucketName);
+    nTotalObjects = bucketStat.objects_count;
 
     pageSize = 10000;
     marker = "";
@@ -36,21 +37,18 @@ function completeObjectList = listBucketObjects(bucketName, options)
     tBegin = tic;
     while ~finished
 
-        QP = matlab.net.QueryParameter('limit', pageSize, 'marker', marker);
-        apiURI = matlab.net.URI(apiURL, QP);
-
         if options.Verbose
             fprintf('Sending request for bucket objects... ')
         end
 
-        response = req.send(apiURI);
-
-        switch response.StatusCode
-            case "OK"
-                objectList = response.Body.Data.objects;
-            otherwise
-                error('Unable to get file manifest for dataset "%s" with status code: %s', bucketName, response.StatusCode )
+        % The first page has no marker; later pages start after the last
+        % object of the page before.
+        if marker == ""
+            page = client.listObjects(bucketName, limit=pageSize);
+        else
+            page = client.listObjects(bucketName, limit=pageSize, marker=marker);
         end
+        objectList = page.objects;
 
         if isempty(completeObjectList)
             completeObjectList = objectList;
