@@ -38,7 +38,7 @@ function filePath = getBucketObject(bucketName, objectName, options)
         mkdir(targetFileFolder)
     end
 
-    websave(filePath, downloadUrl);
+    ebrains.internal.extern.fex.filedownload.downloadFile(filePath, downloadUrl);
 
     if nargout == 0
         clear filePath
