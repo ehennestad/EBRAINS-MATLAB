@@ -1,3 +1,2 @@
 [codespell]
-skip = **/+ebrains/+collaboratory/+api/Idm.m
 ignore-words-list = ALS
