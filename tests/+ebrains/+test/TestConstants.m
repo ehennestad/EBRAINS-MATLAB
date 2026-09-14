@@ -5,6 +5,11 @@ classdef TestConstants < matlab.unittest.TestCase
             testCase.verifyEqual(url, "https://wiki.ebrains.eu");
         end
 
+        function testCollabApiBaseUrl(testCase)
+            url = ebrains.common.constant.CollabApiBaseUrl();
+            testCase.verifyEqual(url, "https://wiki.ebrains.eu/rest/v1/");
+        end
+
         function testDataProxyApiBaseUrl(testCase)
             url = ebrains.common.constant.DataProxyApiBaseUrl();
             testCase.verifyEqual(url, "https://data-proxy.ebrains.eu/api/v1/");
