@@ -121,7 +121,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         %
         %   uploadUrl = client.getUploadUrl(bucketName, objectName) returns
         %   the URL as a string. A PUT of the file content to that URL
-        %   creates or replaces the object.
+        %   creates or replaces the object, which
+        %   ebrains.external.filedownload.uploadFile does with a progress
+        %   display.
 
             arguments
                 obj (1,1) ebrains.bucket.api.BucketsClient

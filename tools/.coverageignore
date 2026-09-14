@@ -1,0 +1,4 @@
+# Path prefixes relative to src/ebrains, with "/" as separator. Files below a
+# listed prefix are left out of code analysis and code coverage. Vendored
+# code lives in external; it is released and maintained elsewhere.
+external/
