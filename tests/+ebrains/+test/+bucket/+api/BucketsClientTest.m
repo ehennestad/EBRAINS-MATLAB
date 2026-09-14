@@ -97,6 +97,33 @@ classdef BucketsClientTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:getDownloadUrl:NotFound');
         end
 
+        %% getUploadUrl
+        function testGetUploadUrlReturnsTemporaryUrl(testCase)
+            testCase.Client.addResponse('OK', struct('url', 'https://swift.example.org/up?sig=1'));
+
+            uploadUrl = testCase.Client.getUploadUrl("my-bucket", "sub dir/file.txt");
+
+            testCase.verifyEqual(uploadUrl, "https://swift.example.org/up?sig=1");
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir%2Ffile.txt');
+        end
+
+        function testGetUploadUrlSendsNoBodyAndNoQuery(testCase)
+            testCase.Client.addResponse('OK', struct('url', 'https://swift.example.org/up'));
+
+            testCase.Client.getUploadUrl("my-bucket", "file.txt");
+
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+            testCase.verifyFalse(contains(char(request.URL.EncodedURI), '?'));
+        end
+
+        function testGetUploadUrlValidationError(testCase)
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid name'));
+            testCase.verifyError(@() testCase.Client.getUploadUrl("my-bucket", "file.txt"), ...
+                'EBRAINS:Bucket:getUploadUrl:UnprocessableEntity');
+        end
+
         %% renameObject
         function testRenameObjectSendsPatchWithPayload(testCase)
             testCase.Client.addResponse('OK', struct());

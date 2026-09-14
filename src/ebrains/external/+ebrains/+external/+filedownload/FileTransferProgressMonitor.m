@@ -22,8 +22,10 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
 %   Written by Eivind Hennestad
 %
 %   Bundled copy of filedownload v1.2.0 (web-transfer-progress-monitor).
-%   Differs from the release only in calling isWebBasedUIFigure through
-%   the instance, since the bare class name does not resolve in a namespace.
+%   Differs from the release in calling isWebBasedUIFigure through the
+%   instance, since the bare class name does not resolve in a namespace,
+%   and in joining a split progress message before it is printed to the
+%   command window, where the release failed on the second update.
     
     properties (SetAccess = private) % User settings for monitor
         DisplayMode = 'Dialog Box'; % Where to display progress.
@@ -221,7 +223,12 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         end
         
         function updateCommandWindowMessage(obj, msgStr)
-            
+            % A progress message arrives split into parts once a time
+            % estimate is included; join them before formatting.
+            if iscell(msgStr)
+                msgStr = strjoin(msgStr, ' ');
+            end
+
             % Add indentation
             msgStr = sprintf('%s%s', repmat(' ', 1, obj.IndentSize), msgStr);
 

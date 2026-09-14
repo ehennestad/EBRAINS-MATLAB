@@ -1,7 +1,9 @@
 classdef BucketsClient < ebrains.common.internal.HttpClient
 % BucketsClient - Client for the bucket endpoints of the EBRAINS Data Proxy
 %
-%   Each method mirrors one endpoint under /buckets of the Data Proxy API.
+%   Each method mirrors one endpoint under /buckets of the Data Proxy API:
+%   bucket stat, one page of the object listing, temporary download and
+%   upload URLs, and rename.
 %   An object name is sent as a single path segment, so a name that holds
 %   "/" (a folder within the bucket) reaches the server percent-encoded.
 %
@@ -111,6 +113,37 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 downloadUrl = string(response.Body.Data.url);
             else
                 obj.throwError("getDownloadUrl", response)
+            end
+        end
+
+        function uploadUrl = getUploadUrl(obj, bucketName, objectName)
+        % getUploadUrl - Get a temporary URL to which an object can be uploaded
+        %
+        %   uploadUrl = client.getUploadUrl(bucketName, objectName) returns
+        %   the URL as a string. A PUT of the file content to that URL
+        %   creates or replaces the object, which
+        %   ebrains.external.filedownload.uploadFile does with a progress
+        %   display.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+            end
+
+            % The endpoint is a PUT without a body, which MATLAB warns
+            % about on purpose. The warning is off for this request only.
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
+            request = obj.initializeRequestMessage("PUT");
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectName]);
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode == "OK"
+                uploadUrl = string(response.Body.Data.url);
+            else
+                obj.throwError("getUploadUrl", response)
             end
         end
 

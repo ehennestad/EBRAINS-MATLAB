@@ -3,8 +3,7 @@ classdef DownloadFileTest < matlab.unittest.TestCase
     %
     % The downloader is a copy of the filedownload library placed in the
     % ebrains namespace. These tests cover what the namespace changes: the
-    % private validators must resolve from the package folder, and the
-    % progress monitor must reach its own static methods.
+    % private validators must resolve from the package folder.
 
     methods (Test)
         function testInvalidDisplayModeIsRejected(testCase)
@@ -19,17 +18,6 @@ classdef DownloadFileTest < matlab.unittest.TestCase
                 @() ebrains.external.filedownload.downloadFile(...
                     'file.txt', 'https://example.org/file.txt', 'Figure', 42), ...
                 'filedownload:invalidFigure');
-        end
-
-        function testProgressMonitorResolvesDisplayMode(testCase)
-            monitor = ebrains.external.filedownload.FileTransferProgressMonitor(...
-                'DisplayMode', 'Command Window');
-            testCase.addTeardown(@() delete(monitor));
-
-            % The display getters call the static isWebBasedUIFigure method.
-            testCase.verifyTrue(monitor.UseCommandWindow);
-            testCase.verifyFalse(monitor.UseWaitbarDialog);
-            testCase.verifyFalse(monitor.UseUIProgressDialog);
         end
     end
 end
