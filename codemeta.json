@@ -1,0 +1,53 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/ehennestad/EBRAINS-MATLAB",
+  "readme": "https://github.com/ehennestad/EBRAINS-MATLAB/blob/main/README.md",
+  "installUrl": "https://www.mathworks.com/matlabcentral/fileexchange/182284-ebrains-services-toolbox",
+  "contIntegration": "https://github.com/ehennestad/EBRAINS-MATLAB/actions",
+  "issueTracker": "https://github.com/ehennestad/EBRAINS-MATLAB/issues",
+  "name": "EBRAINS Services Toolbox",
+  "description": "Lightweight MATLAB helpers and API clients to work with EBRAINS services (authentication, Data Proxy buckets, and KG metadata).",
+  "applicationCategory": "neuroscience",
+  "keywords": [
+    "EBRAINS",
+    "Knowledge Graph",
+    "Data Proxy",
+    "API client",
+    "neuroscience"
+  ],
+  "releaseNotes": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/tag/v0.9.2",
+  "developmentStatus": "active",
+  "programmingLanguage": [
+    "MATLAB"
+  ],
+  "operatingSystem": [
+    "Linux",
+    "Windows",
+    "macOS"
+  ],
+  "runtimePlatform": "MATLAB R2022b or later",
+  "relatedLink": [
+    "https://www.ebrains.eu"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0000-0002-8297-1753",
+      "givenName": "Eivind",
+      "familyName": "Hennestad"
+    }
+  ],
+  "maintainer": {
+    "@type": "Person",
+    "@id": "https://orcid.org/0000-0002-8297-1753",
+    "givenName": "Eivind",
+    "familyName": "Hennestad"
+  },
+  "version": "0.9.2",
+  "downloadUrl": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/download/v0.9.2/EBRAINS_MATLAB_v0_9_2.mltbx",
+  "dateCreated": "2024-03-15",
+  "datePublished": "2025-10-12",
+  "dateModified": "2026-09-07"
+}
