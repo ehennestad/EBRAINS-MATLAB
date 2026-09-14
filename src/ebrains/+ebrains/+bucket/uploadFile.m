@@ -18,7 +18,7 @@ function uploadFile(sourceFile, targetPath, bucketName)
 
     uploadURL = getUploadUrl(apiURL);
 
-    [wasSuccess, response] = uploadFile(sourceFile, uploadURL, ShowFilename=true);
+    [wasSuccess, response] = ebrains.external.filedownload.uploadFile(sourceFile, uploadURL, ShowFilename=true);
 end
 
 function uploadURL = getUploadUrl(apiURL)

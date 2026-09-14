@@ -22,7 +22,7 @@ function downloadFile(filePath, relativeFilePath, bucketName, progressDisplay)
     webFileSize = ebrains.bucket.getFileSize(relativeFilePath, bucketName);
 
     try
-        [filePath] = downloadFile(filePath, apiURL, ShowFilename=true);
+        filePath = ebrains.external.filedownload.downloadFile(filePath, apiURL, ShowFilename=true);
     catch ME
         % A failed transfer can leave a partial file behind. Replace it with
         % an empty placeholder so a virtual bucket keeps its file listing.
