@@ -76,6 +76,14 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             ".well-known/openid-configuration"
     end
 
+    properties (Constant, Hidden)
+        % Seconds a login request to the identity provider may take to
+        % connect and respond. The weboptions default of 5 seconds is short
+        % enough for a slow connection to make a login fail, while a much
+        % longer wait delays the error when the server is unreachable.
+        REQUEST_TIMEOUT_SECONDS = 10
+    end
+
     methods (Abstract, Access = protected)
         fetchToken(obj)
         %fetchToken - Fetch a token with the flow of the subclass
@@ -130,7 +138,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
         function config = requestOpenIdConfiguration(obj)
         %requestOpenIdConfiguration - Fetch the OpenID configuration
-            config = webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT);
+            options = weboptions(Timeout=obj.REQUEST_TIMEOUT_SECONDS);
+            config = webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT, options);
         end
 
         function tokenResponse = requestToken(obj, formFields)
@@ -140,7 +149,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 obj (1,1) ebrains.iam.OidcTokenClient
                 formFields (1,:) cell
             end
-            tokenResponse = webwrite(obj.getOpenIdConfig().token_endpoint, formFields{:});
+            options = weboptions(Timeout=obj.REQUEST_TIMEOUT_SECONDS);
+            tokenResponse = webwrite(obj.getOpenIdConfig().token_endpoint, formFields{:}, options);
         end
 
         function showErrorDialog(~, titleMessage, errorMessage)
