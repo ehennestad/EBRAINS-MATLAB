@@ -1,10 +1,11 @@
 function url = KGCoreApiBaseURL(serverOpts)
 %KGCoreApiBaseURL - Base URL of the EBRAINS Knowledge Graph Core API
-%   URL = KGCoreApiBaseURL() returns the base URL of the KG Core API on
-%   the production server, without a trailing slash.
+%   URL = ebrains.common.constant.KGCoreApiBaseURL() returns the base URL
+%   of the KG Core API on the production server, without a trailing
+%   slash.
 %
-%   URL = KGCoreApiBaseURL(Server=SERVER) also specifies the server.
-%   SERVER must be:
+%   URL = ebrains.common.constant.KGCoreApiBaseURL(Server=SERVER) also
+%   specifies the server. SERVER must be:
 %       "prod"    - (default) The production server.
 %       "preprod" - The pre-production server.
 %

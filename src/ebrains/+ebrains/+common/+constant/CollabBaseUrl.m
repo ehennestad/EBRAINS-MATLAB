@@ -1,7 +1,7 @@
 function url = CollabBaseUrl()
 %CollabBaseUrl - Base URL of the EBRAINS Collaboratory website
-%   URL = CollabBaseUrl() returns the URL of the Collaboratory wiki,
-%   without a trailing slash.
+%   URL = ebrains.common.constant.CollabBaseUrl() returns the URL of the
+%   Collaboratory wiki, without a trailing slash.
 %
 %   See also CollabApiBaseUrl
 
