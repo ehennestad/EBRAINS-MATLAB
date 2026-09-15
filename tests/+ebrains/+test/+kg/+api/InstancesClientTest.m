@@ -585,8 +585,11 @@ classdef InstancesClientTest < matlab.unittest.TestCase
         end
 
         function testGetInstancesBulkStageOrderIsRespected(testCase)
+            % Both ids are answered, so the first stage settles the lookup
+            % and the request under test is the only one made.
             bulkResponse = struct();
             bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', struct('id', 'id2'), 'error', []);
             testCase.Client.addResponse('OK', bulkResponse);
 
             testCase.Client.getInstancesBulk(["id1", "id2"], ["IN_PROGRESS", "RELEASED"]);
@@ -606,6 +609,59 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             [~, warningId] = lastwarn();
             testCase.verifyEqual(warningId, 'EBRAINS:KG_API:InstancesNotFound');
             testCase.verifySubstring(lastwarn(), 'try stage IN_PROGRESS');
+        end
+
+        function testGetInstancesBulkReportsRequestedIdOverServerErrorText(testCase)
+            % The message of a failed entry names the id when the instance
+            % is simply not there, but explains itself for anything else.
+            % The caller is told which of its ids is missing either way.
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            bulkResponse.data.id2 = struct('data', [], 'error', struct(...
+                'code', 403, 'message', 'You do not have permission to read this instance'));
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            [result, missingIds] = testCase.Client.getInstancesBulk(["id1", "id2"], "RELEASED");
+
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(missingIds, "id2");
+        end
+
+        function testGetInstancesBulkReportsIdsTheResponseLeavesOut(testCase)
+            % An id the response does not mention at all is missing as far
+            % as the caller is concerned.
+            bulkResponse = struct();
+            bulkResponse.data.id1 = struct('data', struct('id', 'id1'), 'error', []);
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            [result, missingIds] = testCase.Client.getInstancesBulk(["id1", "id2"], "RELEASED");
+
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(missingIds, "id2");
+        end
+
+        function testGetInstancesBulkMatchesEntriesKeyedByUuid(testCase)
+            % The response is keyed by the requested ids, and jsondecode
+            % makes a valid MATLAB field name of every key: a leading digit
+            % gets an "x" in front, and a "-" becomes "_". The ids are
+            % matched to their entry through the same conversion, so the
+            % field names here are spelled out as jsondecode produces them.
+            uuids = ["08ab00ea-3e19-4300-9d9f-c0ef0ec8e445", ...
+                     "b7c4d1f0-1111-2222-3333-444455556666"];
+            instanceIRI = 'https://kg.ebrains.eu/api/instances/08ab00ea-3e19-4300-9d9f-c0ef0ec8e445';
+
+            bulkResponse = struct();
+            bulkResponse.data.x08ab00ea_3e19_4300_9d9f_c0ef0ec8e445 = ...
+                struct('data', struct('x_id', instanceIRI), 'error', []);
+            bulkResponse.data.b7c4d1f0_1111_2222_3333_444455556666 = ...
+                struct('data', [], 'error', struct('message', 'Instance not found'));
+            testCase.Client.addResponse('OK', bulkResponse);
+
+            [result, missingIds] = testCase.Client.getInstancesBulk(uuids, "RELEASED");
+
+            testCase.verifyLength(result, 1);
+            testCase.verifyEqual(result{1}.x_id, instanceIRI);
+            testCase.verifyEqual(missingIds, uuids(2));
         end
 
         function testGetInstancesBulkRejectsAnyStage(testCase)
