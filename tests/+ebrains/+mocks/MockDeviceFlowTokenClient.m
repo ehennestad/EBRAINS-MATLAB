@@ -42,10 +42,8 @@ classdef MockDeviceFlowTokenClient < ebrains.iam.DeviceFlowTokenClient & ebrains
 
         function seedTokens(obj, accessToken, refreshToken, expiresIn)
             % Put the client in the state of having completed a login
-            obj.AccessToken_ = accessToken;
-            obj.RefreshToken = refreshToken;
-            obj.AccessTokenExpiresAt = datetime("now") + seconds(expiresIn);
-            obj.RefreshTokenExpiresAt = datetime("now") + seconds(2*expiresIn);
+            obj.storeToken(accessToken, expiresIn)
+            obj.storeRefreshToken(refreshToken, 2*expiresIn)
         end
     end
 
