@@ -190,6 +190,48 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/file.txt');
         end
 
+        function testUploadFileReportsARefusedTransfer(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            refused = matlab.net.http.ResponseMessage(matlab.net.http.StatusLine("HTTP/1.1 403 Forbidden"), [], ...
+                matlab.net.http.MessageBody('AccessDenied'));
+
+            try
+                ebrains.bucket.uploadFile("my-bucket", "file.txt", sourceFile, ...
+                    Client=testCase.Client, Uploader=@(varargin) deal(false, refused));
+                testCase.verifyFail('Expected uploadFile to throw');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'EBRAINS:Bucket:UploadFailed');
+                testCase.verifySubstring(ME.message, '403 Forbidden');
+                testCase.verifySubstring(ME.message, 'AccessDenied');
+            end
+        end
+
+        function testUploadFileHandsTheSignedUrlToTheUploader(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            accepted = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
+            uploads = {};
+            uploader = @(source, url, varargin) recordUpload(source, url, varargin);
+            function [wasSuccess, response] = recordUpload(source, url, nameValues)
+                uploads{end+1} = {source, url, nameValues};
+                wasSuccess = true;
+                response = accepted;
+            end
+
+            ebrains.bucket.uploadFile("my-bucket", "sub/file.txt", sourceFile, ...
+                Client=testCase.Client, Uploader=uploader);
+
+            testCase.assertNumElements(uploads, 1);
+            testCase.verifyEqual(uploads{1}{1}, sourceFile);
+            testCase.verifyEqual(uploads{1}{2}, "https://store.example.org/upload?sig=1");
+            testCase.verifyEqual(uploads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
+        end
+
         %% downloadFile
         function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
             testCase.Client.addResponse('NotFound', 'Object not found');
@@ -224,6 +266,43 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             fileInfoAfter = dir(targetFile);
             testCase.verifyEqual(fileInfoAfter.bytes, fileInfoBefore.bytes);
+            testCase.verifyFalse(isfile(targetFile + ".part"));
+        end
+
+        function testDownloadFileMovesTheReceivedFileIntoPlace(testCase)
+            % The transfer writes to the part file; only a completed
+            % transfer replaces the target, in a folder created on demand.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "new folder", "file.txt");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
+            downloader = @(partFile, url, varargin) writelines("received", partFile);
+
+            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                Client=testCase.Client, Downloader=downloader);
+
+            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "received");
+            testCase.verifyFalse(isfile(targetFile + ".part"));
+        end
+
+        function testDownloadFileRemovesAPartialFileAndKeepsTheTarget(testCase)
+            % A transfer that fails after writing leaves a partial part
+            % file; it must go, and the target must stay as it was.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            writelines("previous", targetFile);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
+            downloader = @(partFile, url, varargin) writeThenFail(partFile);
+            function writeThenFail(partFile)
+                writelines("partial", partFile);
+                error('Test:TransferBroke', 'connection lost');
+            end
+
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                    Client=testCase.Client, Downloader=downloader), ...
+                'Test:TransferBroke');
+
+            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "previous");
             testCase.verifyFalse(isfile(targetFile + ".part"));
         end
 
