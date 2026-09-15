@@ -2,8 +2,9 @@ classdef DeviceLoginDialogTest < matlab.unittest.TestCase
     % DeviceLoginDialogTest - Smoke test of ebrains.iam.internal.DeviceLoginDialog
     %
     % Opens the real message box and steps it through the stages of a
-    % login. Tagged "Graphical": it needs a display, so MatBox leaves it
-    % out of the CI run, and it is meant to be run locally.
+    % login. Tagged "Graphical": it needs a display, so the CI test task
+    % (tools/tasks/testToolbox.m) leaves it out, and it is meant to be run
+    % locally.
 
     methods (Test, TestTags = {'Graphical'})
         function testStagesRunAndTheBoxCloses(testCase)
