@@ -72,14 +72,35 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/file.txt?redirect=0');
         end
 
-        function testGetDownloadUrlEncodesFoldersInObjectName(testCase)
-            % The object name is one path segment, so the Data Proxy
-            % receives the folder separator percent-encoded.
+        function testGetDownloadUrlSendsFoldersAsPathSegments(testCase)
+            % Folders in the name are path separators to the Data Proxy.
+            % Sent as %2F, the temporary URL it signs is refused by the
+            % object store.
             testCase.Client.addResponse('OK', struct('url', 'https://swift.example.org/tmp'));
 
             testCase.Client.getDownloadUrl("my-bucket", "sub dir/file name.txt");
 
-            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/sub%20dir%2Ffile%20name.txt');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/sub%20dir/file%20name.txt');
+        end
+
+        function testGetDownloadUrlEncodesRawCharactersInReturnedUrl(testCase)
+            % The Data Proxy hands out temporary URLs with raw spaces in the
+            % object path and in the content-disposition value.
+            testCase.Client.addResponse('OK', struct('url', ...
+                'https://rgw.example.org/b/blå fil.png?response-content-disposition=attachment; filename=blå fil.png&X-Amz-Signature=1'));
+
+            downloadUrl = testCase.Client.getDownloadUrl("my-bucket", "blå fil.png");
+
+            testCase.verifyEqual(downloadUrl, ...
+                "https://rgw.example.org/b/bl%C3%A5%20fil.png?response-content-disposition=attachment;%20filename=bl%C3%A5%20fil.png&X-Amz-Signature=1");
+        end
+
+        function testGetDownloadUrlLeavesEncodedUrlUnchanged(testCase)
+            testCase.Client.addResponse('OK', struct('url', 'https://rgw.example.org/b/a%20file.png?x=%2F&y=1'));
+
+            downloadUrl = testCase.Client.getDownloadUrl("my-bucket", "a file.png");
+
+            testCase.verifyEqual(downloadUrl, "https://rgw.example.org/b/a%20file.png?x=%2F&y=1");
         end
 
         function testGetDownloadUrlPassesOptionalParameters(testCase)
@@ -105,7 +126,7 @@ classdef BucketsClientTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(uploadUrl, "https://swift.example.org/up?sig=1");
             testCase.Client.verifyRequestMethod(1, 'PUT');
-            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir%2Ffile.txt');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir/file.txt');
         end
 
         function testGetUploadUrlSendsNoBodyAndNoQuery(testCase)
@@ -125,6 +146,14 @@ classdef BucketsClientTest < matlab.unittest.TestCase
         end
 
         %% renameObject
+        function testRenameObjectKeepsTrailingSlashOfFolderName(testCase)
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.renameObject("my-bucket", "old folder/", "new folder/");
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/old%20folder/');
+        end
+
         function testRenameObjectSendsPatchWithPayload(testCase)
             testCase.Client.addResponse('OK', struct());
 

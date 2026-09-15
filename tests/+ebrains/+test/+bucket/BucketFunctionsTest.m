@@ -133,6 +133,82 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 @() ebrains.bucket.getBucketObject("my-bucket", "file.txt", Client=testCase.Client), ...
                 'EBRAINS:Bucket:getDownloadUrl:NotFound');
         end
+
+        %% getFileSize
+        function testGetFileSizeReturnsBytesOfExactMatch(testCase)
+            % The prefix listing also returns longer names, which must not
+            % be mistaken for the object.
+            testCase.Client.addResponse('OK', makePage(["a.txt.bak", "a.txt"], [1, 2048]));
+
+            fileSizeBytes = ebrains.bucket.getFileSize("my-bucket", "/a.txt", Client=testCase.Client);
+
+            testCase.verifyEqual(fileSizeBytes, 2048);
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket?prefix=a.txt');
+        end
+
+        function testGetFileSizeMissingObject(testCase)
+            testCase.Client.addResponse('OK', makePage(string.empty));
+            testCase.verifyError(...
+                @() ebrains.bucket.getFileSize("my-bucket", "a.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:ObjectNotFound');
+        end
+
+        function testGetFileSizeListErrorPropagates(testCase)
+            testCase.Client.addResponse('NotFound', 'Bucket not found');
+            testCase.verifyError(...
+                @() ebrains.bucket.getFileSize("my-bucket", "a.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:listObjects:NotFound');
+        end
+
+        %% uploadFile
+        function testUploadFileErrorPropagatesBeforeUpload(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            testCase.Client.addResponse('Forbidden', 'No write access');
+
+            testCase.verifyError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "/file.txt", sourceFile, Client=testCase.Client), ...
+                'EBRAINS:Bucket:getUploadUrl:Forbidden');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/file.txt');
+        end
+
+        %% downloadFile
+        function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
+            testCase.Client.addResponse('NotFound', 'Object not found');
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "/file.txt", "target.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:getDownloadUrl:NotFound');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/file.txt');
+        end
+
+        function testDownloadFileRejectsFolderAsTarget(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", folderFixture.Folder, Client=testCase.Client), ...
+                'EBRAINS:Bucket:TargetIsFolder');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testDownloadFileFailedTransferLeavesTargetUntouched(testCase)
+            % A refused connection fails the transfer before any byte is
+            % written. The file at the target must be as it was, and no
+            % part file may remain.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "existing.bin");
+            writelines("previous content", targetFile);
+            fileInfoBefore = dir(targetFile);
+            testCase.Client.addResponse('OK', struct('url', 'http://127.0.0.1:9/existing.bin'));
+
+            testCase.verifyError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "existing.bin", targetFile, ...
+                    Client=testCase.Client, DisplayMode="Command Window"), ...
+                'MATLAB:webservices:ConnectionRefused');
+
+            fileInfoAfter = dir(targetFile);
+            testCase.verifyEqual(fileInfoAfter.bytes, fileInfoBefore.bytes);
+            testCase.verifyFalse(isfile(targetFile + ".part"));
+        end
     end
 end
 
@@ -140,8 +216,23 @@ function bucketStat = makeStat(objectCount, bytes)
     bucketStat = struct('name', 'my-bucket', 'objects_count', objectCount, 'bytes', bytes);
 end
 
-function page = makePage(objectNames)
-    % One column struct per object, as jsondecode returns a JSON array
-    names = cellstr(reshape(string(objectNames), [], 1));
-    page = struct('objects', struct('name', names));
+function page = makePage(objectNames, byteSizes)
+% makePage - Listing page as jsondecode returns it from the Data Proxy
+%
+%   One column struct per object, carrying the byte size the listing
+%   reports. An empty JSON array decodes to [] rather than to an empty
+%   struct, and the fixture keeps that shape so the code under test meets it.
+
+    arguments
+        objectNames string
+        byteSizes double = zeros(size(objectNames))
+    end
+
+    if isempty(objectNames)
+        page = struct('objects', []);
+        return
+    end
+    names = cellstr(reshape(objectNames, [], 1));
+    sizes = num2cell(reshape(byteSizes, [], 1));
+    page = struct('objects', struct('name', names, 'bytes', sizes));
 end

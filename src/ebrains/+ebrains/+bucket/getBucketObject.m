@@ -19,6 +19,8 @@ function filePath = getBucketObject(bucketName, objectName, options)
 %       Client       : ebrains.bucket.api.BucketsClient that sends the
 %                      requests. Meant for tests and custom clients; a
 %                      default client is created otherwise.
+%
+%   See also ebrains.bucket.downloadFile
 
     arguments
         bucketName (1,1) string
@@ -27,18 +29,11 @@ function filePath = getBucketObject(bucketName, objectName, options)
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    downloadUrl = options.Client.getDownloadUrl(bucketName, objectName);
-
     filePath = fullfile(options.TargetFolder, objectName);
 
-    % Object names can contain "/" (folders within the bucket), so the
-    % folder that will hold the file may not exist yet.
-    targetFileFolder = fileparts(filePath);
-    if ~isfolder(targetFileFolder)
-        mkdir(targetFileFolder)
-    end
-
-    ebrains.external.filedownload.downloadFile(filePath, downloadUrl);
+    % downloadFile creates the folders that are part of the object name and
+    % leaves a file already at filePath untouched if the transfer fails.
+    ebrains.bucket.downloadFile(bucketName, objectName, filePath, Client=options.Client);
 
     if nargout == 0
         clear filePath

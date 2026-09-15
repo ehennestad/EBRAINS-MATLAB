@@ -25,14 +25,8 @@ function renameObject(bucketName, objectName, targetName, options)
 
     % Names are relative to the bucket root, so a leading "/" would be
     % sent as an empty first folder.
-    objectName = removeLeadingSlash(objectName);
-    targetName = removeLeadingSlash(targetName);
+    objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
+    targetName = ebrains.bucket.internal.removeLeadingSlash(targetName);
 
     options.Client.renameObject(bucketName, objectName, targetName);
-end
-
-function name = removeLeadingSlash(name)
-    if startsWith(name, "/")
-        name = extractAfter(name, 1);
-    end
 end

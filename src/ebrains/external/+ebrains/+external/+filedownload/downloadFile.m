@@ -12,6 +12,8 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
 %       DisplayMode     : Where to display progress. Options: 'Dialog Box' (default) or 'Command Window'
 %       UpdateInterval  : Interval (in seconds) for updating progress. Default = 1 second.
 %       ShowFilename    : Whether to show name of downloaded file. Default = false.
+%       Filename        : Name to show in the progress display. Default = '' (the name is
+%                         taken from the URL when ShowFilename is true).
 %       IndentSize      : Size of indentation if displaying progress in command window.
 %       Figure          : Parent figure for uiprogressdlg. Default = [].
 %       FileSizeBytes   : Known file size when HTTP progress size is unavailable. Default = NaN.
@@ -19,8 +21,12 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
 %   Written by Eivind Hennestad
 %
 %   Bundled copy of filedownload v1.2.0 (web-transfer-progress-monitor).
-%   Differs from the release by the namespace import below and by
-%   treating the URL as already encoded when the URI is built.
+%   Differs from the release by the namespace import below, by treating
+%   the URL as already encoded when the URI is built, by the Filename
+%   option for the progress display, and by raising
+%   filedownload:downloadFailed on a response status outside 2xx: send
+%   returns normally on an HTTP error, and the file consumer writes the
+%   error body to the file as if it were the content.
 
     arguments
         strLocalFilename       char         {mustBeNonempty}
@@ -28,6 +34,7 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
         options.DisplayMode    char         {mustBeValidDisplay} = 'Dialog Box'
         options.UpdateInterval (1,1) double {mustBePositive}     = 1
         options.ShowFilename   (1,1) logical                     = false
+        options.Filename       char                              = ''
         options.IndentSize     (1,1) uint8                       = 0
         options.Figure         {mustBeFigureOrEmpty}             = []
         options.FileSizeBytes  (1,1) double                      = nan
@@ -35,7 +42,9 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
 
     import ebrains.external.filedownload.*
 
-    if options.ShowFilename
+    if ~isempty(options.Filename)
+        filename = options.Filename;
+    elseif options.ShowFilename
         [~, filename, ext] = fileparts(strURLFilename);
         filename = [char(filename), char(ext)];
     else
@@ -68,6 +77,15 @@ function strLocalFilename = downloadFile(strLocalFilename, strURLFilename, optio
     strURLFilename = matlab.net.URI(strURLFilename, 'literal');
     
     [resp, ~, ~] = req.send(strURLFilename, webOpts, consumer);
+
+    % send returns normally on an HTTP error status, and the file consumer
+    % has then written the error body to the file, so the status is checked
+    % here for the caller to learn that the file does not hold the content.
+    statusCode = int32(resp.StatusCode);
+    if statusCode < 200 || statusCode >= 300
+        error('filedownload:downloadFailed', ...
+            'Download failed: %s', char(string(resp.StatusLine)))
+    end
 
     strLocalFilename = resp.Body.Data;
 
