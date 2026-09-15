@@ -14,6 +14,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The called workflow checks the code out and runs codespell over it.
+permissions:
+  contents: read
+
 jobs:
   reuse-workflow-run-codespell:
     name: Run Codespell
