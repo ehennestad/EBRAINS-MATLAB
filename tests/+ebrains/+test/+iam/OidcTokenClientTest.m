@@ -127,6 +127,22 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(client.AccessToken, "access-1");
         end
 
+        function testRefreshWithoutARefreshTokenLogsInOnce(testCase)
+            % A token taken from EBRAINS_TOKEN comes without a refresh
+            % token, so there is nothing to refresh with and the flow of
+            % the subclass fetches one instead. That already leaves a fresh
+            % token, so no refresh request follows it.
+            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.addPollResponse('OK', testCase.makeTokenResponse("access-1"));
+
+            client.authenticate();
+
+            testCase.verifyEqual(client.PollCount, 1);
+            testCase.verifyEmpty(client.TokenRequests);
+            testCase.verifyEqual(client.AccessToken, "access-1");
+        end
+
         function testRefreshFailureShowsDialogAndRethrows(testCase)
             client = ebrains.mocks.MockDeviceFlowTokenClient();
             client.seedTokens("access-0", "refresh-0", 7200);

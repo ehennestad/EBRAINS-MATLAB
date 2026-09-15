@@ -156,9 +156,15 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         function refreshToken(obj)
         %refreshToken - Refresh the access token using the refresh token
 
-            % Check if refresh token exists
+            % Without a refresh token there is nothing to refresh with, so
+            % the flow of the subclass fetches a token instead. That leaves
+            % the client with a fresh token, so the refresh below is done:
+            % running it anyway would spend the new refresh token on a
+            % second round trip, and would report a failure of that request
+            % as a failed refresh although the login itself succeeded.
             if obj.RefreshToken == "" || ismissing(obj.RefreshToken)
                 obj.fetchToken()
+                return
             end
 
             try
