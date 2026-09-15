@@ -46,6 +46,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
         function fetchToken(obj)
         %fetchToken - Fetch a token with the OAuth 2.0 Client Credentials Grant
 
+            obj.assertHasCredentials()
+
             try
                 % Request an access token using client credentials
                 tokenResponse = obj.requestToken({ ...
@@ -87,6 +89,36 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
             obj.fetchToken();
         end
+
+        function assertHasCredentials(obj)
+        %assertHasCredentials - Raise an error when there is nothing to authenticate with
+        %   The client is also the one that carries a token given through
+        %   EBRAINS_TOKEN, and that client has no credentials of its own.
+        %   Requesting a token with the empty ones is refused by the
+        %   identity provider as invalid client credentials, which tells a
+        %   caller whose token simply expired to go and check credentials
+        %   it never gave.
+
+            if strlength(obj.ClientId) > 0 && strlength(obj.ClientSecret) > 0
+                return
+            end
+
+            if ismissing(obj.AccessToken_)
+                error('EBRAINS:IAM:MissingClientCredentials', ...
+                    ['The client credentials flow needs a client id and a client ', ...
+                    'secret. Call ebrains.authenticate with ', ...
+                    'OAuthFlow="ClientCredentialsFlow" and give OIDCClientID ', ...
+                    'and OIDCClientSecret.'])
+            else
+                error('EBRAINS:IAM:MissingClientCredentials', ...
+                    ['The EBRAINS access token has expired, and there is no ', ...
+                    'client id and client secret to fetch a new one with. An ', ...
+                    'access token taken from the EBRAINS_TOKEN environment ', ...
+                    'variable cannot be renewed by this toolbox: set ', ...
+                    'EBRAINS_TOKEN to a valid token, or call ', ...
+                    'ebrains.authenticate to log in.'])
+            end
+        end
     end
 
     methods (Static)
@@ -124,11 +156,21 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
                         % Verify credentials match
                         if isvalid(authClientObject)
-                            if clientId ~= "" && ...
-                               (authClientObject.ClientId ~= clientId || ...
-                               authClientObject.ClientSecret ~= clientSecret)
-                                warning('EBRAINS:IAM:CredentialsChanged', ...
-                                    'Different credentials provided. Creating new instance.');
+                            credentialsDiffer = ...
+                                authClientObject.ClientId ~= clientId || ...
+                                authClientObject.ClientSecret ~= clientSecret;
+
+                            if clientId ~= "" && credentialsDiffer
+                                % A stored client without credentials is the
+                                % one getTokenManager creates to look for a
+                                % token, which every API call does. Giving it
+                                % credentials for the first time is not a
+                                % change of credentials, and saying so would
+                                % warn the caller about their own first login.
+                                if strlength(authClientObject.ClientId) > 0
+                                    warning('EBRAINS:IAM:CredentialsChanged', ...
+                                        'Different credentials provided. Creating new instance.');
+                                end
                                 authClientObject = [];
                             end
                         else

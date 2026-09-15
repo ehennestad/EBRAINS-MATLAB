@@ -14,6 +14,11 @@ on:
       OIDC_CLIENT_SECRET:
         required: true
 
+# Checking the repository out is all the job needs the token for; the EBRAINS
+# APIs it talks to are authenticated with the service account below.
+permissions:
+  contents: read
+
 jobs:
   run-live-tests:
     name: Run live integration tests
@@ -33,6 +38,8 @@ jobs:
 
       - name: Run live integration tests
         uses: matlab-actions/run-command@v2
+        env:
+          OIDC_CLIENT_SECRET: ${{ secrets.OIDC_CLIENT_SECRET }}
         with:
           command: |
             addpath(genpath("src"))
@@ -40,10 +47,14 @@ jobs:
             addpath(genpath("tools"))
 
             % Service account dedicated to this repo's CI, added as an
-            % editor on the eivihe-sandbox collab.
+            % editor on the eivihe-sandbox collab. The secret reaches MATLAB
+            % through the environment rather than being expanded into this
+            % command: a secret pasted into a script is one quotation mark
+            % away from ending the string it was meant to stay inside, and
+            % it would be part of the command GitHub composes and runs.
             ebrains.authenticate(...
                 "OAuthFlow", "ClientCredentialsFlow", ...
                 "OIDCClientID", "ebrains-services-toolbox-matlab-ci", ...
-                "OIDCClientSecret", "${{ secrets.OIDC_CLIENT_SECRET }}")
+                "OIDCClientSecret", getenv("OIDC_CLIENT_SECRET"))
 
             runLiveIntegrationTests()

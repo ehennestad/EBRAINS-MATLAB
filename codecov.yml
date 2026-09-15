@@ -1,8 +1,9 @@
 coverage:
   status:
-    # The project total is informational: it is dominated by IAM code that
-    # is not yet under test (see docs/reports for the current breakdown),
-    # so a hard target there would just fail every PR for pre-existing gaps.
+    # The project total is informational: with target auto it only has to
+    # hold the line, so a pull request is not failed for gaps it did not
+    # introduce. The breakdown of a run is in the "reports" artifact of the
+    # "Test code" workflow; docs/reports is generated, not committed.
     project:
       default:
         target: auto

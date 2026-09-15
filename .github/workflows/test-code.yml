@@ -3,17 +3,32 @@ name: Test code
 on:
   push:
     branches: [ "main" ]
+    # "*" does not match "/", so '*md' only ever matched markdown files in
+    # the repository root. Workflow files are no longer skipped: a change to
+    # the CI itself is the one change that most needs the suite to run. The
+    # badge commit the workflow pushes carries [skip ci], so it does not
+    # start another run.
     paths-ignore:
-      - '*md'
-      - '.github/**'
+      - '**.md'
 
   pull_request:
     branches: [ "main" ]
     paths-ignore:
-      - '*md'
-      - '.github/**'
+      - '**.md'
 
   workflow_dispatch:
+
+# The called workflow declares no permissions of its own, so these are the
+# ones its job runs with. One line per step of it that uses the token, the
+# composite actions it calls included: leaving one out costs a red run, as
+# the check run below did.
+permissions:
+  contents: write         # push-badges commits the regenerated badges
+  checks: write           # publish-unit-test-result-action creates the Test Results check run
+  pull-requests: write    # and comments the summary on the pull request
+  security-events: write  # codeql-action/upload-sarif uploads the code issues report
+  actions: read           # these two are only required in a private repository
+  issues: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
