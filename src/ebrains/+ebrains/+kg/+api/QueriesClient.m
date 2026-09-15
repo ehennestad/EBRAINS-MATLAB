@@ -1,8 +1,37 @@
 classdef QueriesClient < ebrains.kg.api.base.BaseClient
+    %QueriesClient - Client for the query endpoints of the KG Core API
+    %   CLIENT = QueriesClient() creates a client for listing and retrieving
+    %   the queries stored in the EBRAINS Knowledge Graph (KG). Requests are
+    %   authenticated with the access token held by the EBRAINS token
+    %   manager.
+    %
+    %   Every method accepts Server=SERVER to select the KG server. SERVER
+    %   must be:
+    %       "prod"    - (default) The production server.
+    %       "preprod" - The pre-production server.
+    %
+    %   QueriesClient functions:
+    %       listQueries - List the stored queries
+    %       getQuery    - Retrieve one stored query by identifier
+    %
+    %   See also InstancesClient, ebrains.kg.enum.KGServer
 
     methods
         function result = listQueries(obj, optionalParams, serverOptions)
-        % listInstances - Returns a list of instances according to their types.
+        %listQueries - List the stored queries
+        %   RESULT = listQueries(OBJ) returns the queries stored in the KG.
+        %   RESULT is the data array of the response.
+        %
+        %   RESULT = listQueries(OBJ,Name=VALUE) also specifies one or more of
+        %   the following:
+        %       type=TYPE             - Only queries for the type TYPE.
+        %       search=TEXT           - Only queries matching TEXT.
+        %       from=FROM             - Offset of the first result.
+        %       size=SIZE             - Maximum number of results.
+        %       returnTotalResults=TF - Whether to include the total count.
+        %
+        %   RESULT = listQueries(...,Server=SERVER) also specifies the KG server
+        %   to send the request to.
 
             arguments
                 obj (1,1) ebrains.kg.api.QueriesClient
@@ -31,24 +60,19 @@ classdef QueriesClient < ebrains.kg.api.base.BaseClient
                 obj.throwError("listQueries", resp, serverOptions.Server)
             end
         end
-                
+
         function result = getQuery(obj, identifier, serverOptions, responseOptions)
-        % getQuery - Download the stored KG query for the given identifier.
+        %getQuery - Retrieve one stored query by identifier
+        %   RESULT = getQuery(OBJ,IDENTIFIER) returns the definition of the
+        %   stored query IDENTIFIER, a UUID or a full KG instance IRI, as a
+        %   decoded struct.
         %
-        % Syntax:
-        %   query = client.getQuery(identifier)
-        %   query = client.getQuery(identifier, RawOutput=true)
+        %   RESULT = getQuery(...,Server=SERVER) also specifies the KG server
+        %   to send the request to.
         %
-        % Input Arguments:
-        %   identifier string       - Identifier of the query, either a full KG
-        %                             instance IRI or a bare UUID.
-        %   RawOutput (1,1) logical - If true, return the unparsed response payload
-        %                             exactly as returned by the server, preserving
-        %                             the original JSON-LD keys. Default is false.
-        %
-        % Output Arguments:
-        %   query - The query definition. A decoded struct when RawOutput is
-        %           false, or the raw response payload when RawOutput is true.
+        %   RESULT = getQuery(...,RawOutput=TF) also specifies whether to
+        %   return the response body as text, preserving the original JSON-LD
+        %   keys, instead of a decoded struct.
 
             arguments
                 obj (1,1) ebrains.kg.api.QueriesClient
