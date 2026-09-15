@@ -29,7 +29,7 @@ jobs:
           cache: true
 
       - name: Install MatBox
-        uses: ehennestad/matbox-actions/install-matbox@v1.7
+        uses: ehennestad/matbox-actions/install-matbox@v1
 
       - name: Run live integration tests
         uses: matlab-actions/run-command@v2
