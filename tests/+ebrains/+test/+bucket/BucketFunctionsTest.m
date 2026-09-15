@@ -126,6 +126,23 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:renameObject:UnprocessableEntity');
         end
 
+        %% deleteObject
+        function testDeleteObjectIgnoresLeadingSlash(testCase)
+            testCase.Client.addResponse('OK', struct());
+
+            ebrains.bucket.deleteObject("my-bucket", "/old.txt", Client=testCase.Client);
+
+            testCase.Client.verifyRequestMethod(1, 'DELETE');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/old.txt');
+        end
+
+        function testDeleteObjectErrorPropagates(testCase)
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            testCase.verifyError(...
+                @() ebrains.bucket.deleteObject("my-bucket", "old.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:deleteObject:NotFound');
+        end
+
         %% getBucketObject
         function testGetBucketObjectErrorPropagatesBeforeDownload(testCase)
             testCase.Client.addResponse('NotFound', 'Object not found');

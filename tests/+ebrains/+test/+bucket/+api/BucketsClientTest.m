@@ -170,5 +170,34 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.verifyError(@() testCase.Client.renameObject("my-bucket", "old.txt", "new.txt"), ...
                 'EBRAINS:Bucket:renameObject:UnprocessableEntity');
         end
+
+        %% deleteObject
+        function testDeleteObjectSendsDeleteWithoutBody(testCase)
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.deleteObject("my-bucket", "sub dir/old.txt");
+
+            testCase.Client.verifyRequestMethod(1, 'DELETE');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir/old.txt');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testDeleteObjectAcceptsQueuedFolderDeletion(testCase)
+            % The proxy queues a folder deletion and answers 201 rather
+            % than 200; that is success, not an error.
+            testCase.Client.addResponse('Created', struct('status_code', 201, ...
+                'detail', 'Your deletion request is getting processed.'));
+
+            testCase.Client.deleteObject("my-bucket", "old folder/");
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/old%20folder/');
+        end
+
+        function testDeleteObjectNotFound(testCase)
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            testCase.verifyError(@() testCase.Client.deleteObject("my-bucket", "old.txt"), ...
+                'EBRAINS:Bucket:deleteObject:NotFound');
+        end
     end
 end
