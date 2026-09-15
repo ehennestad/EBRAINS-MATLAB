@@ -19,12 +19,16 @@ on:
   workflow_dispatch:
 
 # The called workflow declares no permissions of its own, so these are the
-# ones its job runs with. It commits regenerated badges and uploads the code
-# issues report to code scanning; everything else it does needs no token.
+# ones its job runs with. One line per step of it that uses the token, the
+# composite actions it calls included: leaving one out costs a red run, as
+# the check run below did.
 permissions:
-  contents: write
-  security-events: write
-  actions: read  # only required for workflows in private repositories
+  contents: write         # push-badges commits the regenerated badges
+  checks: write           # publish-unit-test-result-action creates the Test Results check run
+  pull-requests: write    # and comments the summary on the pull request
+  security-events: write  # codeql-action/upload-sarif uploads the code issues report
+  actions: read           # these two are only required in a private repository
+  issues: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
