@@ -736,13 +736,39 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 obj.throwError("getInstancesBulk", response, server)
             end
 
-            % The response holds one entry per requested id, with either
-            % data or an error whose message names the id.
-            entries = reshape(struct2cell(response.Body.Data.data), 1, []);
-            hasError = cellfun(@(entry) ~isempty(entry.error), entries);
+            % The response holds one entry per requested id, keyed by the
+            % id itself, with either data or an error. The requested ids
+            % are the ones reported as missing: the message of a failed
+            % entry names the id when the instance is simply not there, but
+            % explains itself for anything else (a permission, say), and
+            % such a message taken for an id would be looked up in the next
+            % stage and then reported to the caller as a missing instance.
+            entries = response.Body.Data.data;
 
-            found = cellfun(@(entry) entry.data, entries(~hasError), 'UniformOutput', false);
-            missingIds = string(cellfun(@(entry) entry.error.message, entries(hasError), 'UniformOutput', false));
+            % jsondecode makes a valid MATLAB field name of every key of an
+            % object, so the request's ids go through the same conversion
+            % to find the entry that answers each of them.
+            entryNames = matlab.lang.makeValidName(identifiers);
+
+            found = cell(1, 0);
+            isMissing = true(size(identifiers));
+
+            for i = 1:numel(identifiers)
+                if ~isfield(entries, entryNames(i))
+                    continue % Not answered at all; missing as far as the caller is concerned
+                end
+
+                entry = entries.(entryNames(i));
+                hasError = isfield(entry, 'error') && ~isempty(entry.error);
+                hasData = isfield(entry, 'data') && ~isempty(entry.data);
+
+                if ~hasError && hasData
+                    found{end+1} = entry.data; %#ok<AGROW> One append per instance found
+                    isMissing(i) = false;
+                end
+            end
+
+            missingIds = identifiers(isMissing);
         end
     end
 end

@@ -22,7 +22,8 @@ function authenticate(mode, options, oidcOptions)
 %
 %   AUTHENTICATE(...,OIDCClientSecret=SECRET) also specifies the client
 %   secret. The client credentials flow needs both a client id and a
-%   secret. The device flow ignores the secret with a warning.
+%   secret, and giving only one of the two is an error. The device flow
+%   ignores the secret with a warning.
 %
 %   See also getTokenManager, ebrains.iam.enum.FlowType,
 %   ebrains.iam.DeviceFlowTokenClient,
@@ -35,19 +36,43 @@ function authenticate(mode, options, oidcOptions)
         oidcOptions.OIDCClientSecret (1,1) string
     end
 
+    % The INSTANCE method of each client takes its credentials positionally,
+    % so they are named here one by one. Forwarding the values of the
+    % options struct would leave the meaning of each to the order of its
+    % fields, and a client id and a secret that swap places are a login
+    % attempt with the secret as the client id.
+    hasClientId = isfield(oidcOptions, "OIDCClientID");
+    hasClientSecret = isfield(oidcOptions, "OIDCClientSecret");
+
     switch string(options.OAuthFlow)
         case "DeviceFlow"
-            if isfield(oidcOptions, "OIDCClientSecret")
+            if hasClientSecret
                 warning("EBRAINS:authenticate:SecretNotSupported", ...
                    "The Device Flow does not require a OIDC client secret")
-                oidcOptions = rmfield(oidcOptions, "OIDCClientSecret");
             end
-            nvPairs = struct2cell(oidcOptions);
-            tokenClient = ebrains.iam.DeviceFlowTokenClient.instance(nvPairs{:});
+            if hasClientId
+                tokenClient = ebrains.iam.DeviceFlowTokenClient.instance(...
+                    oidcOptions.OIDCClientID);
+            else
+                tokenClient = ebrains.iam.DeviceFlowTokenClient.instance();
+            end
 
         case "ClientCredentialsFlow"
-            nvPairs = struct2cell(oidcOptions);
-            tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance(nvPairs{:});
+            % One of the two on its own would authenticate as a client with
+            % an empty id or an empty secret, which the identity provider
+            % refuses with an error that does not name the missing half.
+            if hasClientId ~= hasClientSecret
+                error("EBRAINS:authenticate:IncompleteCredentials", ...
+                    "The Client Credentials Flow needs both a OIDC client " + ...
+                    "id and a OIDC client secret. Give both, or neither to " + ...
+                    "reuse the credentials of the current token client.")
+            end
+            if hasClientId
+                tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance(...
+                    oidcOptions.OIDCClientID, oidcOptions.OIDCClientSecret);
+            else
+                tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance();
+            end
 
         otherwise
             error('Unsupported flow type: "%s"', string(options.OAuthFlow))

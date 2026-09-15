@@ -322,6 +322,40 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfolder(fullfile(rootPath, "emptydir")));
         end
 
+        function testCreateVirtualBucketCreatesExtensionlessObjectsAsFiles(testCase)
+            % The listing returns objects, not the folders implied by their
+            % names, so a name without an extension is still a file.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            testCase.Client.addResponse('OK', makeStat(2, 0));
+            testCase.Client.addResponse('OK', makePage(["README", "sub/LICENSE"]));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyTrue(isfile(fullfile(rootPath, "README")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "sub", "LICENSE")));
+        end
+
+        function testCreateVirtualBucketCreatesDirectoryMarkersAsFolders(testCase)
+            % An object store marks the placeholder object of a folder with
+            % a directory content type rather than a trailing "/". Here the
+            % marker also arrives before the object below it, so the folder
+            % has to be a folder for the file to be created at all.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            page = struct('objects', struct(...
+                'name', {'markedFolder'; 'markedFolder/notes.txt'}, ...
+                'bytes', {0; 0}, ...
+                'content_type', {'application/directory'; 'text/plain'}));
+            testCase.Client.addResponse('OK', makeStat(2, 0));
+            testCase.Client.addResponse('OK', page);
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "markedFolder")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "markedFolder", "notes.txt")));
+        end
+
         function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket"); %#ok<NASGU> read by evalc below
