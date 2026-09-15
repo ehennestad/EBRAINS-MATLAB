@@ -1,0 +1,23 @@
+name: Live test
+
+# Scheduled and on-demand entry point for the live integration tests; see
+# live-integration-tests.yml for what they cover. Also run as a release
+# prerequisite by prepare-release.yml.
+
+on:
+  schedule:
+    # Once a week: the APIs under test change rarely enough not to need a
+    # daily run.
+    - cron: '23 4 * * 1'
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-live-tests:
+    uses: ./.github/workflows/live-integration-tests.yml
+    secrets:
+      OIDC_CLIENT_SECRET: ${{ secrets.OIDC_CLIENT_SECRET }}
