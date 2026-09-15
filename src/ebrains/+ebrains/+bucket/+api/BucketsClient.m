@@ -4,8 +4,10 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %   Each method mirrors one endpoint under /buckets of the Data Proxy API:
 %   bucket stat, one page of the object listing, temporary download and
 %   upload URLs, and rename.
-%   An object name is sent as a single path segment, so a name that holds
-%   "/" (a folder within the bucket) reaches the server percent-encoded.
+%   An object name that holds "/" (a folder within the bucket) is sent with
+%   the "/" as path separators, since the proxy takes the rest of the path
+%   as the name. The temporary URLs the proxy returns are made valid URLs
+%   before they are handed back; see the local functions in this file.
 %
 %   The functions of the ebrains.bucket namespace build on this client and
 %   are the intended entry point. Use the client directly when an endpoint
@@ -106,11 +108,12 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             requiredParams = struct('redirect', false);
 
             request = obj.initializeRequestMessage("GET");
-            apiUri = obj.buildApiUri(["buckets", bucketName, objectName], requiredParams, optionalParams);
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)], ...
+                requiredParams, optionalParams);
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
-                downloadUrl = string(response.Body.Data.url);
+                downloadUrl = encodeRawUrlCharacters(response.Body.Data.url);
             else
                 obj.throwError("getDownloadUrl", response)
             end
@@ -137,11 +140,11 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             warningCleanup = onCleanup(@() warning(warnState));
 
             request = obj.initializeRequestMessage("PUT");
-            apiUri = obj.buildApiUri(["buckets", bucketName, objectName]);
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
-                uploadUrl = string(response.Body.Data.url);
+                uploadUrl = encodeRawUrlCharacters(response.Body.Data.url);
             else
                 obj.throwError("getUploadUrl", response)
             end
@@ -164,7 +167,7 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             payload = struct('rename', struct('target_name', targetName));
 
             request = obj.initializeRequestMessage("PATCH", JSONPayload=jsonencode(payload));
-            apiUri = obj.buildApiUri(["buckets", bucketName, objectName]);
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode ~= "OK"
@@ -187,4 +190,35 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 pathSegments, requiredParams, optionalParams);
         end
     end
+end
+
+function segments = objectPathSegments(objectName)
+% objectPathSegments - Path segments of an object name, one per folder level
+%
+%   The Data Proxy takes the rest of the request path as the object name, so
+%   "/" in a name has to reach it as a path separator. Sent percent-encoded
+%   within one segment, the name arrives with a literal "%2F", and the
+%   temporary URL the proxy then signs is refused by the object store. A
+%   trailing "/" (a folder, for rename) becomes a trailing empty segment,
+%   which keeps the trailing "/" in the request path.
+    segments = reshape(split(objectName, "/"), 1, []);
+end
+
+function url = encodeRawUrlCharacters(url)
+% encodeRawUrlCharacters - Percent-encode characters that are not valid in a URL
+%
+%   The temporary URLs the Data Proxy hands out hold raw spaces, in the
+%   object path and in the content-disposition query value, which a URI
+%   parser rejects. A raw space or non-ASCII character is never valid in a
+%   URL, so encoding it cannot change the meaning, and the object store
+%   verifies the signature against the encoded form. Characters a URL may
+%   hold, existing percent escapes included, are left as they are.
+    url = char(url);
+    validCharacters = ['A':'Z', 'a':'z', '0':'9', '-._~:/?#[]@!$&''()*+,;=%'];
+    rawCharacters = unique(url(~ismember(url, validCharacters)));
+    for rawCharacter = rawCharacters
+        escape = sprintf('%%%02X', unicode2native(rawCharacter, 'UTF-8'));
+        url = strrep(url, rawCharacter, escape);
+    end
+    url = string(url);
 end
