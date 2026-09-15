@@ -1,24 +1,29 @@
 classdef DecodeJwtTest < matlab.unittest.TestCase
     % DecodeJwtTest - Unit tests for ebrains.internal.decode_jwt
 
+    properties (Constant)
+        % Claims put into a token and expected back out of it
+        Claims = struct('sub', 'user123', 'exp', 1234567890)
+        % Long enough for its base64 form to hold "+" or "/", the
+        % characters the base64url substitution in decode_jwt exists for
+        LongNote = repmat('x', 1, 40)
+    end
+
     methods (Test)
         function testDecodesPayloadClaims(testCase)
-            token = makeJwt(struct('sub', 'user123', 'exp', 1234567890));
+            token = ebrains.mocks.makeTestJwt(testCase.Claims);
 
             payload = ebrains.internal.decode_jwt(char(token));
 
-            testCase.verifyEqual(payload.sub, 'user123');
-            testCase.verifyEqual(payload.exp, 1234567890);
+            testCase.verifyEqual(payload, testCase.Claims);
         end
 
         function testAcceptsBase64UrlCharactersInPayload(testCase)
-            % A payload whose standard-base64 encoding would contain "+" or
-            % "/" is exactly the case the "-"/"_" substitution exists for.
-            token = makeJwt(struct('note', repmat('x', 1, 40)));
+            token = ebrains.mocks.makeTestJwt(struct('note', testCase.LongNote));
 
             payload = ebrains.internal.decode_jwt(char(token));
 
-            testCase.verifyEqual(payload.note, repmat('x', 1, 40));
+            testCase.verifyEqual(payload.note, testCase.LongNote);
         end
 
         function testMissingPayloadSegmentErrors(testCase)
@@ -28,12 +33,4 @@ classdef DecodeJwtTest < matlab.unittest.TestCase
             testCase.verifyError(@() ebrains.internal.decode_jwt('onlyonepart'), ?MException);
         end
     end
-end
-
-function token = makeJwt(payloadStruct)
-% makeJwt - Build a JWT with a fixed header, an arbitrary payload, and no
-%           real signature, matching what decode_jwt actually reads.
-    toBase64Url = @(text) strrep(strrep(erase(matlab.net.base64encode(text), '='), '+', '-'), '/', '_');
-    header = struct('alg', 'none', 'typ', 'JWT');
-    token = toBase64Url(jsonencode(header)) + "." + toBase64Url(jsonencode(payloadStruct)) + ".signature";
 end
