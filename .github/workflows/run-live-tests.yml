@@ -7,7 +7,9 @@ name: Live test
 
 on:
   schedule:
-    - cron: '23 4 * * *'
+    # Once a week: the APIs under test change rarely enough not to need a
+    # daily run.
+    - cron: '23 4 * * 1'
 
   workflow_dispatch:
 
