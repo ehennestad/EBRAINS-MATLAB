@@ -1,4 +1,9 @@
 function url = CollabApiBaseUrl()
-% CollabApiBaseUrl - Base URL for the Collaboratory REST API
+%CollabApiBaseUrl - Base URL of the EBRAINS Collaboratory REST API
+%   URL = CollabApiBaseUrl() returns the base URL, with a trailing slash,
+%   that the Collaboratory API client prepends to its endpoint paths.
+%
+%   See also CollabBaseUrl, ebrains.collab.api.CollabsClient
+
     url = "https://wiki.ebrains.eu/rest/v1/";
 end
