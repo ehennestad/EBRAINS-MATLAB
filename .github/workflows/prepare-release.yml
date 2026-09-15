@@ -37,7 +37,7 @@ jobs:
       # into the toolbox. Important: This should not be a namespace directory
       source_directory: src
       
-      # Path to directory containing tests. This directory will be used for 
+      # Path to directory containing tests. This directory will be used for
       # locating MATLAB  test suites
       tests_directory: tests
 

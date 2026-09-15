@@ -1,6 +1,6 @@
 name: Run Codespell
 
-# NB: Will only process "skip" and "ignore-words-list" from the codespell 
+# NB: Will only process "skip" and "ignore-words-list" from the codespell
 # config file if provided
 
 on:
@@ -19,6 +19,6 @@ jobs:
     name: Run Codespell
     uses: ehennestad/matbox-actions/.github/workflows/codespell-workflow.yml@v1
     with:
-      # Specify the path of a codespell config file relative to the repository 
+      # Specify the path of a codespell config file relative to the repository
       # root directory
       config_file: tools/.codespellrc
