@@ -1,12 +1,12 @@
 classdef BaseClient < ebrains.common.internal.HttpClient
-    %BaseClient - Knowledge Graph specifics shared by the KG API clients
-    %   BaseClient resolves the KG server of a request to its base URL and
-    %   names the server in the report of a server error. Request building,
-    %   sending and error formatting are inherited from
-    %   ebrains.common.internal.HttpClient. Subclass it to write a KG API
-    %   client; it has no public methods of its own.
-    %
-    %   See also ebrains.kg.api.InstancesClient, ebrains.kg.api.QueriesClient
+%BaseClient - Knowledge Graph specifics shared by the KG API clients
+%   BaseClient resolves the KG server of a request to its base URL and
+%   names the server in the report of a server error. Request building,
+%   sending and error formatting are inherited from
+%   ebrains.common.internal.HttpClient. Subclass it to write a KG API
+%   client; it has no public methods of its own.
+%
+%   See also ebrains.kg.api.InstancesClient, ebrains.kg.api.QueriesClient
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:KG_API"  % Prefix of the identifiers of raised errors
