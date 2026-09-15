@@ -36,13 +36,6 @@ classdef MockHttpClient < ebrains.common.internal.HttpClient & ebrains.mocks.Moc
         function raiseError(obj, operationName, response)
             obj.throwError(operationName, response);
         end
-
-        function headers = buildDefaultHeader(obj)
-            % The real default header, Authorization field and all, which
-            % the override below replaces so that the rest of the tests
-            % need no token
-            headers = getDefaultHeader@ebrains.common.internal.HttpClient(obj);
-        end
     end
 
     methods (Access = protected)

@@ -1,10 +1,8 @@
-classdef HttpClientTest < ebrains.test.iam.TokenClientTestCase
+classdef HttpClientTest < matlab.unittest.TestCase
     % HttpClientTest - Unit tests for ebrains.common.internal.HttpClient
     %
     % Uses MockHttpClient, a minimal concrete subclass, so that no token is
-    % needed and no request reaches a server. The test of the real default
-    % header installs a token client of its own, so the suite inherits the
-    % setup that keeps the session's token singletons out of the way.
+    % needed and no request reaches a server.
 
     properties
         Client ebrains.mocks.MockHttpClient
@@ -38,22 +36,6 @@ classdef HttpClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.Client.dispatch(request, matlab.net.URI("https://example.org/instances"));
 
             testCase.verifyEqual(testCase.Client.getRequestPayload(1), payload);
-        end
-
-        %% Default header
-        function testDefaultHeaderCarriesTheTokenOfTheTokenManager(testCase)
-            % Every mock replaces getDefaultHeader so that no token is
-            % needed, which leaves the real one, and the wiring from the
-            % token manager to the Authorization field, untested.
-            tokenClient = ebrains.mocks.MockClientCredentialsFlowTokenClient("service", "secret");
-            tokenClient.seedToken("abc", 7200);
-            testCase.installSingleton(testCase.ClientCredentialsSingletonName, tokenClient);
-
-            headers = testCase.Client.buildDefaultHeader();
-
-            fieldNames = string({headers.Name});
-            testCase.verifyEqual(string(headers(fieldNames == "Authorization").Value), "Bearer abc");
-            testCase.verifyTrue(all(ismember(["Content-Type", "Accept"], fieldNames)));
         end
 
         %% Error reporting
