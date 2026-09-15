@@ -11,15 +11,16 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %       authClient.fetchToken() redirects to the browser for user to grant
 %           permissions
 %
-%   The requests of the flow go through requestDeviceAuthorization and
-%   sendTokenRequest, the browser through openVerificationPage, and the
-%   progress box through createLoginDialog, so that a test double can
-%   drive the flow without a network or a display.
-%
 %   See also: ebrains.iam.OidcTokenClient, ebrains.iam.internal.DeviceLoginDialog
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/
+%
+% Developer note:
+%   The requests of the flow go through requestDeviceAuthorization and
+%   sendTokenRequest, the browser through openVerificationPage, and the
+%   progress box through createLoginDialog, so that a test double can
+%   drive the flow without a network or a display.
 
     properties (Constant)
         FLOW_NAME = "Device Flow"

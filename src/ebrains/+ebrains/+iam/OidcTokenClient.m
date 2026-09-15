@@ -8,7 +8,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %   USAGE:
 %       Subclasses should implement:
 %       - fetchToken() - Flow-specific token retrieval
-%
+
+% Developer note:
 %   Every request to the identity provider goes through one of the
 %   protected request methods (requestOpenIdConfiguration, requestToken),
 %   and the only dialog of this class through showErrorDialog, so that a

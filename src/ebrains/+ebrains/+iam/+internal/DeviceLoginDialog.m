@@ -3,8 +3,11 @@ classdef DeviceLoginDialog < handle
 %
 %   dialog = ebrains.iam.internal.DeviceLoginDialog() opens the box.
 %   showRedirecting, showWaiting, and showSuccess move it through the
-%   stages of the login; close removes it. DeviceFlowTokenClient creates
-%   the dialog through a hook so that a test can replace it with a spy.
+%   stages of the login; close removes it.
+
+% Developer note:
+%   DeviceFlowTokenClient creates the dialog through createLoginDialog so
+%   that a test can replace it with a spy.
 
     properties (Access = private)
         Figure
