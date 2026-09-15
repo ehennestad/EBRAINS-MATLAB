@@ -1,26 +1,26 @@
 function authenticate(mode, options, oidcOptions)
-%authenticate - Log in to EBRAINS with an OIDC authentication flow
-%   authenticate() obtains an access token for EBRAINS using the device
+%AUTHENTICATE - Log in to EBRAINS with an OIDC authentication flow
+%   AUTHENTICATE() obtains an access token for EBRAINS using the device
 %   flow, which opens a browser page where you log in and grant access.
 %   Nothing happens when the current token is still valid.
 %
-%   authenticate(MODE) also specifies whether a valid token is reused.
+%   AUTHENTICATE(MODE) also specifies whether a valid token is reused.
 %   MODE must be:
 %       "default" - (default) Authenticate only when there is no active
 %                   token.
 %       "refresh" - Fetch or refresh the token even when one is active.
 %
-%   authenticate(...,OAuthFlow=FLOW) also specifies the flow to use.
+%   AUTHENTICATE(...,OAuthFlow=FLOW) also specifies the flow to use.
 %   FLOW must be:
 %       "DeviceFlow"            - (default) Log in interactively in the
 %                                 browser.
 %       "ClientCredentialsFlow" - Authenticate as a service with a client
 %                                 id and secret, without user interaction.
 %
-%   authenticate(...,OIDCClientID=ID) also specifies the OIDC client id
+%   AUTHENTICATE(...,OIDCClientID=ID) also specifies the OIDC client id
 %   to authenticate as. The default is the client id of this toolbox.
 %
-%   authenticate(...,OIDCClientSecret=SECRET) also specifies the client
+%   AUTHENTICATE(...,OIDCClientSecret=SECRET) also specifies the client
 %   secret. The client credentials flow needs both a client id and a
 %   secret. The device flow ignores the secret with a warning.
 %
