@@ -27,7 +27,9 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
         SINGLETON_NAME = "IAM_ClientCredentials_Client"
     end
     
-    methods (Access = private)
+    methods (Access = protected)
+        % Protected rather than private so that a test double can subclass
+        % the client; instance() remains the way to get one.
         function obj = ClientCredentialsFlowTokenClient(clientId, clientSecret)
             arguments
                 clientId (1,1) string
@@ -45,11 +47,11 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
             try
                 % Request an access token using client credentials
-                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
+                tokenResponse = obj.requestToken({ ...
                     "grant_type", "client_credentials", ...
                     "client_id", obj.ClientId, ...
                     "client_secret", obj.ClientSecret ...
-                );
+                    });
 
                 obj.AccessToken_ = tokenResponse.access_token;
                 
@@ -123,7 +125,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                             if clientId ~= "" && ...
                                (authClientObject.ClientId ~= clientId || ...
                                authClientObject.ClientSecret ~= clientSecret)
-                                warning('Different credentials provided. Creating new instance.');
+                                warning('EBRAINS:IAM:CredentialsChanged', ...
+                                    'Different credentials provided. Creating new instance.');
                                 authClientObject = [];
                             end
                         else
