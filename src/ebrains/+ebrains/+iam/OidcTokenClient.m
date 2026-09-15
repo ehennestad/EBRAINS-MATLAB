@@ -6,8 +6,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %   implements one authentication flow, or call AUTHENTICATE and
 %   getTokenManager from the ebrains namespace.
 %
-%   A token found in the EBRAINS_TOKEN secret or environment variable
-%   is loaded when a client is created.
+%   A token found in the EBRAINS_TOKEN environment variable is loaded
+%   when a client is created.
 %
 %   OidcTokenClient functions:
 %       authenticate         - Fetch a token, or refresh the active one
@@ -109,7 +109,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function tryLoadTokenFromEnvironment(obj)
-        % tryLoadTokenFromEnvironment - Load an access token from EBRAINS_TOKEN, if set
+        %tryLoadTokenFromEnvironment - Load the access token from EBRAINS_TOKEN
+
             if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
                 obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
                 obj.decodeTokenExpiryTime()
