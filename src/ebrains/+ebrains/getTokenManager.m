@@ -1,7 +1,19 @@
 function tokenManager = getTokenManager()
-% getTokenManager - Get a token manager
+%getTokenManager - Get the token client that holds the EBRAINS token
+%   tokenManager = getTokenManager() returns the token client to use for
+%   authenticated requests. The client credentials client is returned
+%   when it has authenticated before. Otherwise the device flow client is
+%   returned, after logging in through the browser when it has no active
+%   token.
+%
+%   Set the environment variable
+%   EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW to "true" to raise
+%   an error instead of falling back to the device flow.
+%
+%   See also authenticate, ebrains.iam.OidcTokenClient,
+%   ebrains.iam.DeviceFlowTokenClient,
+%   ebrains.iam.ClientCredentialsFlowTokenClient
 
-    % First we check ClientCredentialsFlowTokenClient
     tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance();
     if tokenClient.canAuthenticate()
         tokenManager = tokenClient;

@@ -109,24 +109,9 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function tryLoadTokenFromEnvironment(obj)
-        %tryLoadTokenFromEnvironment - Load a token from secrets or environment
-
-            % Try to get from secrets
-            if exist("isSecret", "file")
-                try
-                    if isSecret('EBRAINS_TOKEN')
-                        obj.AccessToken_ = getSecret('EBRAINS_TOKEN');
-                        obj.decodeTokenExpiryTime()
-                        return
-                    end
-                catch
-                    % Try to get via env instead
-                end
-            end
-
-            % Try to get from env
-            if isenv('EBRAINS_TOKEN')
-                obj.AccessToken_ = getenv('EBRAINS_TOKEN');
+        % tryLoadTokenFromEnvironment - Load an access token from EBRAINS_TOKEN, if set
+            if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
+                obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
                 obj.decodeTokenExpiryTime()
             end
         end

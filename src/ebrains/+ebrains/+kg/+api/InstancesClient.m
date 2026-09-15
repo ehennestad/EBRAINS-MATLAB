@@ -1,40 +1,40 @@
 classdef InstancesClient < ebrains.kg.api.base.BaseClient
-    %InstancesClient - Client for the instance endpoints of the KG Core API
-    %   CLIENT = InstancesClient() creates a client for listing, retrieving,
-    %   creating, updating, releasing and deleting metadata instances in the
-    %   EBRAINS Knowledge Graph (KG). Requests are authenticated with the
-    %   access token held by the EBRAINS token manager.
-    %
-    %   Every method accepts Server=SERVER to select the KG server. SERVER
-    %   must be:
-    %       "prod"    - (default) The production server.
-    %       "preprod" - The pre-production server.
-    %
-    %   Methods that return instance data also accept the return options
-    %   returnPayload=TF, returnPermissions=TF, returnAlternatives=TF and
-    %   returnEmbedded=TF. These control which parts of an instance the
-    %   server includes in the response.
-    %
-    %   Instance identifiers may be given as a bare UUID or as a full KG
-    %   instance IRI. The IRI prefix is stripped before the request is sent.
-    %
-    %   InstancesClient functions:
-    %       listInstances           - List instances of a given type
-    %       getInstance             - Retrieve one instance by identifier
-    %       getInstancesBulk        - Retrieve several instances by identifier
-    %       createNewInstance       - Create an instance with a generated id
-    %       createNewInstanceWithId - Create an instance with a given id
-    %       updateInstance          - Partially update an instance
-    %       replaceInstance         - Replace the contents of an instance
-    %       deleteInstance          - Delete an instance
-    %       moveInstance            - Move an instance to another space
-    %       releaseInstance         - Release an instance
-    %       getReleaseStatus        - Get the release status of an instance
-    %       listTypes               - List the types available in a space
-    %       runDynamicQuery         - Run a query given as a JSON-LD payload
-    %
-    %   See also QueriesClient, ebrains.kg.enum.KGServer,
-    %   ebrains.kg.enum.KGStage, ebrains.kg.query.ReturnOptions
+%InstancesClient - Client for the instance endpoints of the KG Core API
+%   CLIENT = InstancesClient() creates a client for listing, retrieving,
+%   creating, updating, releasing and deleting metadata instances in the
+%   EBRAINS Knowledge Graph (KG). Requests are authenticated with the
+%   access token held by the EBRAINS token manager.
+%
+%   Every method accepts Server=SERVER to select the KG server. SERVER
+%   must be:
+%       "prod"    - (default) The production server.
+%       "preprod" - The pre-production server.
+%
+%   Methods that return instance data also accept the return options
+%   returnPayload=TF, returnPermissions=TF, returnAlternatives=TF and
+%   returnEmbedded=TF. These control which parts of an instance the
+%   server includes in the response.
+%
+%   Instance identifiers may be given as a bare UUID or as a full KG
+%   instance IRI. The IRI prefix is stripped before the request is sent.
+%
+%   InstancesClient functions:
+%       listInstances           - List instances of a given type
+%       getInstance             - Retrieve one instance by identifier
+%       getInstancesBulk        - Retrieve several instances by identifier
+%       createNewInstance       - Create an instance with a generated id
+%       createNewInstanceWithId - Create an instance with a given id
+%       updateInstance          - Partially update an instance
+%       replaceInstance         - Replace the contents of an instance
+%       deleteInstance          - Delete an instance
+%       moveInstance            - Move an instance to another space
+%       releaseInstance         - Release an instance
+%       getReleaseStatus        - Get the release status of an instance
+%       listTypes               - List the types available in a space
+%       runDynamicQuery         - Run a query given as a JSON-LD payload
+%
+%   See also QueriesClient, ebrains.kg.enum.KGServer,
+%   ebrains.kg.enum.KGStage, ebrains.kg.query.ReturnOptions
 
     methods
         function result = listInstances(obj, type, requiredParams, optionalParams, serverOptions)
