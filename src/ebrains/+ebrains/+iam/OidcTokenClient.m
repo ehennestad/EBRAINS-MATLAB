@@ -12,9 +12,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 % Developer note:
 %   Every request to the identity provider goes through one of the
 %   protected request methods (requestOpenIdConfiguration, requestToken),
-%   the only dialog of this class through showErrorDialog, and the MATLAB
-%   secret store through readTokenFromSecretStore, so that a test double
-%   can answer them without a network, a display, or a vault.
+%   and the only dialog of this class through showErrorDialog, so that a
+%   test double can answer them without a network or a display.
 
     properties (Abstract, Constant)
         FLOW_NAME (1,1) string
@@ -85,35 +84,10 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function tryLoadTokenFromEnvironment(obj)
-        % tryLoadTokenFromEnvironment - Load EBRAINS_TOKEN from the environment or the secret store
-        %
-        %   The environment variable is read first. The MATLAB secret store
-        %   is only consulted without one, since probing the store can take
-        %   seconds on a headless machine.
-
-            if isenv('EBRAINS_TOKEN')
-                token = string(getenv('EBRAINS_TOKEN'));
-            else
-                token = obj.readTokenFromSecretStore();
-            end
-
-            if ~ismissing(token) && strlength(token) > 0
-                obj.AccessToken_ = token;
+        % tryLoadTokenFromEnvironment - Load an access token from EBRAINS_TOKEN, if set
+            if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
+                obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
                 obj.decodeTokenExpiryTime()
-            end
-        end
-
-        function token = readTokenFromSecretStore(~)
-        % readTokenFromSecretStore - The EBRAINS_TOKEN secret of the MATLAB secret store, if any
-            token = string(missing);
-            if exist("isSecret", "file")
-                try
-                    if isSecret('EBRAINS_TOKEN')
-                        token = string(getSecret('EBRAINS_TOKEN'));
-                    end
-                catch
-                    % No usable secret store; the client starts without a token.
-                end
             end
         end
 

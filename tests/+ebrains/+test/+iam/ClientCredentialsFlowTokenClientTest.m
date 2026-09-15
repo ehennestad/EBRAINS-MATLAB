@@ -55,11 +55,7 @@ classdef ClientCredentialsFlowTokenClientTest < ebrains.test.iam.TokenClientTest
         end
 
         %% Singleton lifecycle
-        % These construct the real class. A token in the environment keeps
-        % the constructor away from the secret store, which is slow to probe
-        % on a headless runner.
         function testInstanceIsReusedForSameCredentials(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             first = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
             second = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
 
@@ -68,7 +64,6 @@ classdef ClientCredentialsFlowTokenClientTest < ebrains.test.iam.TokenClientTest
         end
 
         function testInstanceWithOtherCredentialsWarnsAndReplaces(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             first = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
 
             second = testCase.verifyWarning(...
@@ -80,7 +75,6 @@ classdef ClientCredentialsFlowTokenClientTest < ebrains.test.iam.TokenClientTest
         end
 
         function testResetDeletesTheInstance(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             first = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
 
             ebrains.iam.ClientCredentialsFlowTokenClient.reset();

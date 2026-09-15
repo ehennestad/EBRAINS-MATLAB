@@ -27,12 +27,6 @@ classdef MockClientCredentialsFlowTokenClient < ebrains.iam.ClientCredentialsFlo
             config = obj.fakeOpenIdConfiguration();
         end
 
-        function token = readTokenFromSecretStore(~)
-            % Probing the real store takes seconds on a headless runner and
-            % is never part of a unit test; only the environment counts.
-            token = string(missing);
-        end
-
         function tokenResponse = requestToken(obj, formFields)
             obj.getOpenIdConfig(); % resolved for the endpoint, as the real method does
             tokenResponse = obj.respondToTokenRequest(formFields);

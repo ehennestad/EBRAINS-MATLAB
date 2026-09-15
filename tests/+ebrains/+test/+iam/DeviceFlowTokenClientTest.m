@@ -106,11 +106,7 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
         end
 
         %% Singleton lifecycle
-        % These construct the real class. A token in the environment keeps
-        % the constructor away from the secret store, which is slow to probe
-        % on a headless runner.
         function testInstanceUsesTheDefaultClientId(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             client = ebrains.iam.DeviceFlowTokenClient.instance();
 
             testCase.verifyEqual(client.ClientId, ebrains.common.constant.OIDCClientID());
@@ -118,7 +114,6 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
         end
 
         function testInstanceWithOtherClientIdReplaces(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             first = ebrains.iam.DeviceFlowTokenClient.instance();
 
             second = ebrains.iam.DeviceFlowTokenClient.instance("other-client");
@@ -128,7 +123,6 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
         end
 
         function testResetDeletesTheInstance(testCase)
-            setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt());
             first = ebrains.iam.DeviceFlowTokenClient.instance();
 
             ebrains.iam.DeviceFlowTokenClient.reset();

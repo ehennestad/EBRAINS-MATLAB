@@ -6,10 +6,9 @@ classdef GetTokenManagerTest < ebrains.test.iam.TokenClientTestCase
 
     methods (TestMethodSetup)
         function installTokenlessClientCredentialsClient(testCase)
-            % getTokenManager asks the client-credentials singleton first.
-            % A mock there means no real client is built, and the real
-            % constructor's secret-store probe is slow on a headless runner.
-            % Tests that want that client to be usable seed it a token.
+            % getTokenManager asks the client-credentials singleton first;
+            % a mock there keeps the tests to the mocks. Tests that want that
+            % client to be usable seed it a token.
             testCase.installSingleton(testCase.ClientCredentialsSingletonName, ...
                 ebrains.mocks.MockClientCredentialsFlowTokenClient());
         end

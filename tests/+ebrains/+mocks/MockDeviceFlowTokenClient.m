@@ -54,12 +54,6 @@ classdef MockDeviceFlowTokenClient < ebrains.iam.DeviceFlowTokenClient & ebrains
             config = obj.fakeOpenIdConfiguration();
         end
 
-        function token = readTokenFromSecretStore(~)
-            % Probing the real store takes seconds on a headless runner and
-            % is never part of a unit test; only the environment counts.
-            token = string(missing);
-        end
-
         function deviceResponse = requestDeviceAuthorization(obj)
             obj.getOpenIdConfig(); % resolved for the endpoint, as the real method does
             obj.DeviceAuthorizationRequestCount = obj.DeviceAuthorizationRequestCount + 1;
