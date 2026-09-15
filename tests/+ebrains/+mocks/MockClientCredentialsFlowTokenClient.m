@@ -17,8 +17,7 @@ classdef MockClientCredentialsFlowTokenClient < ebrains.iam.ClientCredentialsFlo
 
         function seedToken(obj, accessToken, expiresIn)
             % Put the client in the state of having fetched a token
-            obj.AccessToken_ = accessToken;
-            obj.AccessTokenExpiresAt = datetime("now") + seconds(expiresIn);
+            obj.storeToken(accessToken, expiresIn)
         end
     end
 

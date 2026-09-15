@@ -56,14 +56,10 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                     "client_secret", obj.ClientSecret ...
                     });
 
-                obj.AccessToken_ = tokenResponse.access_token;
-
-                obj.AccessTokenExpiresAt = ...
-                    datetime("now") + seconds(tokenResponse.expires_in);
+                obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
 
                 % Note: Client credentials flow typically does not provide a refresh token
-                obj.RefreshToken = missing;
-                obj.RefreshTokenExpiresAt = [];
+                obj.clearRefreshToken()
 
                 disp("Access token successfully retrieved using client credentials.");
 
@@ -103,7 +99,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                 return
             end
 
-            if ismissing(obj.AccessToken_)
+            if ~obj.canAuthenticate()
                 error('EBRAINS:IAM:MissingClientCredentials', ...
                     ['The client credentials flow needs a client id and a client ', ...
                     'secret. Call ebrains.authenticate with ', ...

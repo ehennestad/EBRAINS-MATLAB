@@ -187,14 +187,8 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         function handleTokenResponse(obj, tokenResponse)
         %handleTokenResponse - Store the tokens and expiry times of a response
 
-            obj.AccessToken_ = tokenResponse.access_token;
-            obj.RefreshToken = tokenResponse.refresh_token;
-
-            obj.AccessTokenExpiresAt = ...
-                datetime("now") + seconds(tokenResponse.expires_in);
-
-            obj.RefreshTokenExpiresAt = ...
-                datetime("now") + seconds(tokenResponse.refresh_expires_in);
+            obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
+            obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
         end
 
         function handleUnspecifiedBadRequestError(obj, errorData)

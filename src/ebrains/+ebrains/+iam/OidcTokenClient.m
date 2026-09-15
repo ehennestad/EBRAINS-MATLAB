@@ -58,6 +58,14 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     properties (Access = protected)
         OpenIdConfig
+    end
+
+    % A token and the moment it expires belong together: a client whose
+    % expiry does not match its token either treats an expired token as
+    % live or renews a good one. They are private so that every flow goes
+    % through storeToken, storeRefreshToken and clearRefreshToken below,
+    % which can only set them as a pair.
+    properties (Access = private)
         AccessToken_ (1,1) string = missing
         RefreshToken (1,1) string
         AccessTokenExpiresAt
@@ -123,6 +131,9 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         %tryLoadTokenFromEnvironment - Load the access token from EBRAINS_TOKEN
 
             if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
+                % A token given this way arrives without the lifetime that
+                % storeToken takes, so the pair is completed by reading the
+                % expiry out of the token itself.
                 obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
                 obj.decodeTokenExpiryTime()
             end
@@ -158,6 +169,45 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             errordlg(errorMessage, titleMessage);
         end
 
+        function storeToken(obj, accessToken, expiresInSeconds)
+        %storeToken - Record an access token and when it expires
+        %   storeToken(OBJ,accessToken,expiresInSeconds) stores the token a
+        %   flow obtained together with the moment it expires, which the
+        %   identity provider gives as a lifetime in seconds.
+
+            arguments
+                obj (1,1) ebrains.iam.OidcTokenClient
+                accessToken (1,1) string
+                expiresInSeconds (1,1) double
+            end
+
+            obj.AccessToken_ = accessToken;
+            obj.AccessTokenExpiresAt = datetime("now") + seconds(expiresInSeconds);
+        end
+
+        function storeRefreshToken(obj, refreshToken, expiresInSeconds)
+        %storeRefreshToken - Record a refresh token and when it expires
+
+            arguments
+                obj (1,1) ebrains.iam.OidcTokenClient
+                refreshToken (1,1) string
+                expiresInSeconds (1,1) double
+            end
+
+            obj.RefreshToken = refreshToken;
+            obj.RefreshTokenExpiresAt = datetime("now") + seconds(expiresInSeconds);
+        end
+
+        function clearRefreshToken(obj)
+        %clearRefreshToken - Record that the client holds no refresh token
+        %   A flow that does not issue one, such as the client credentials
+        %   flow, calls this so that the refresh token of an earlier flow
+        %   is not sent on its behalf.
+
+            obj.RefreshToken = missing;
+            obj.RefreshTokenExpiresAt = [];
+        end
+
         function decodeTokenExpiryTime(obj)
         %decodeTokenExpiryTime - Read the expiry time out of the access token
 
@@ -189,14 +239,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                     });
 
                 % Update object properties with new token values
-                obj.AccessToken_ = tokenResponse.access_token;
-                obj.RefreshToken = tokenResponse.refresh_token;
-
-                obj.AccessTokenExpiresAt = ...
-                    datetime("now") + seconds(tokenResponse.expires_in);
-
-                obj.RefreshTokenExpiresAt = ...
-                    datetime("now") + seconds(tokenResponse.refresh_expires_in);
+                obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
+                obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
 
                 % Log success
                 disp("Access token successfully refreshed.");
