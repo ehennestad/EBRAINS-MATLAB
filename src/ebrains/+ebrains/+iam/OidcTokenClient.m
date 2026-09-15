@@ -258,5 +258,10 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 end
             end
         end
+    
+        function resetAll()
+            ebrains.iam.OidcTokenClient.reset("IAM_DeviceFlow_Client")
+            ebrains.iam.OidcTokenClient.reset("IAM_ClientCredentials_Client")
+        end
     end
 end
