@@ -1,4 +1,7 @@
 # Path prefixes relative to src/ebrains, with "/" as separator. Files below a
 # listed prefix are left out of code analysis and code coverage. Vendored
-# code lives in external; it is released and maintained elsewhere.
+# code lives in external; it is released and maintained elsewhere. examples/
+# holds demo scripts, not toolbox API; they are meant to be read, not unit
+# tested.
 external/
+examples/

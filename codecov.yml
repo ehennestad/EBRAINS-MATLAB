@@ -1,0 +1,16 @@
+coverage:
+  status:
+    # The project total is informational: it is dominated by IAM code that
+    # is not yet under test (see docs/reports for the current breakdown),
+    # so a hard target there would just fail every PR for pre-existing gaps.
+    project:
+      default:
+        target: auto
+        threshold: 1%
+
+    # New and changed lines are held to a real bar instead: 80% of a patch
+    # must be covered, so new gaps stop accumulating even while the
+    # project average is still catching up.
+    patch:
+      default:
+        target: 80%

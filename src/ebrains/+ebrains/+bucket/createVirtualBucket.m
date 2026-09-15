@@ -8,14 +8,21 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %       ebrains.bucket.createVirtualBucket(bucketName, virtualBucketRootPath)
 %           creates the virtual dataset for a bucket in the folder
 %           specified by virtualBucketRootPath
+%
+%   Name-Value Arguments
+%       Verbose : Print progress while the pages of the listing arrive.
+%       Client  : ebrains.bucket.api.BucketsClient that sends the requests.
+%                 Meant for tests and custom clients; a default client is
+%                 created otherwise.
 
     arguments
         bucketName (1,1) string
         virtualBucketRootPath (1,1) string
         options.Verbose = false
+        options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    S = ebrains.bucket.listBucketObjects(bucketName, "Verbose", options.Verbose);
+    S = ebrains.bucket.listBucketObjects(bucketName, "Verbose", options.Verbose, "Client", options.Client);
 
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
