@@ -1,17 +1,25 @@
 classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
-% DeviceFlowTokenClient - Client for OIDC Device Authentication Flow
+%DeviceFlowTokenClient - Token client for the OIDC device flow
+%   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance() returns the
+%   shared client for the OAuth 2.0 Device Authorization Grant, creating
+%   it with the client id of this toolbox on first use. Authenticating
+%   opens the EBRAINS login page in the browser, where the user grants
+%   access, while a dialog shows the progress.
 %
-%   This client implements the OAuth 2.0 Device Authorization Grant flow
-%   for authenticating with EBRAINS IAM.
+%   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance(OIDCClientID)
+%   also specifies the OIDC client id. A stored client with a different
+%   id is replaced.
 %
-%   USAGE:
-%       authClient = ebrains.iam.DeviceFlowTokenClient.instance() creates a
-%           client or retrieves an existing (persistent) client
+%   The shared client is stored in the UserData of the graphics root so
+%   that it survives a clear all. Use RESET to remove it. The remaining
+%   methods and properties are inherited from OidcTokenClient.
 %
-%       authClient.fetchToken() redirects to the browser for user to grant
-%           permissions
+%   DeviceFlowTokenClient functions:
+%       instance - The shared client, created on first use
+%       reset    - Delete the shared client
 %
-%   See also: ebrains.iam.OidcTokenClient, ebrains.iam.internal.DeviceLoginDialog
+%   See also OidcTokenClient, ClientCredentialsFlowTokenClient,
+%   ebrains.authenticate, ebrains.getTokenManager
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/
@@ -23,7 +31,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %   drive the flow without a network or a display.
 
     properties (Constant)
-        FLOW_NAME = "Device Flow"
+        FLOW_NAME = "Device Flow"  % Display name of the authentication flow
     end
 
     properties (Constant, Access = private)
@@ -40,7 +48,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
     methods (Access = protected)
         function fetchToken(obj)
-        % fetchToken - Fetch token using OAuth 2.0 Device Authorization Grant
+        %fetchToken - Fetch a token with the OAuth 2.0 Device Authorization Grant
 
             deviceResponse = obj.requestDeviceAuthorization();
 
@@ -49,19 +57,19 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
             dialog.showRedirecting()
             dialog.showWaiting()
-            
+
             obj.openVerificationPage(deviceResponse.verification_uri_complete)
-            
+
             pollingInterval = deviceResponse.interval;
             pause(pollingInterval)
-            
+
             deadline = datetime("now") + seconds(double(deviceResponse.expires_in));
 
             isFinished = false;
             while ~isFinished && datetime("now") < deadline % Poll loop
 
                 response = obj.sendTokenRequest(deviceResponse);
-                
+
                 switch response.StatusCode
                     case matlab.net.http.StatusCode.OK
                         obj.handleTokenResponse(response.Body.Data)
@@ -84,7 +92,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                                     'The device code has expired. Please try connecting again.')
                                 error('EBRAINS:DeviceFlow:DeviceCodeExpired', ...
                                     'The device code has expired. Please try connecting again.')
-                            
+
                             case "access_denied"
                                 if strcmp(errorData.error_description, 'The end user denied the authorization request')
                                     titleMessage = "Authentication failed";
@@ -122,7 +130,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         end
 
         function deviceResponse = requestDeviceAuthorization(obj)
-        % requestDeviceAuthorization - Start the device flow and get the codes to poll with
+        %requestDeviceAuthorization - Start the device flow and get its codes
             endpointUrl = obj.getOpenIdConfig().device_authorization_endpoint; % openid-connect/auth/device
             deviceResponse = webwrite(endpointUrl, ...
                 'client_id', obj.ClientId, ...
@@ -130,26 +138,26 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         end
 
         function openVerificationPage(~, url)
-        % openVerificationPage - Open the page where the user grants access
+        %openVerificationPage - Open the page where the user grants access
             web(url)
         end
 
         function dialog = createLoginDialog(~)
-        % createLoginDialog - The box that shows the progress of the login
+        %createLoginDialog - The box that shows the progress of the login
             dialog = ebrains.iam.internal.DeviceLoginDialog();
         end
 
         function response = sendTokenRequest(obj, deviceResponse)
-        % sendTokenRequest - Poll the token endpoint once with the device code
+        %sendTokenRequest - Poll the token endpoint once with the device code
             try
                 endpointURI = matlab.net.URI(obj.getOpenIdConfig().token_endpoint);
-                
+
                 % Define request body (form data)
                 formData = struct( ...
                     'grant_type', 'urn:ietf:params:oauth:grant-type:device_code', ...
                     'client_id', obj.ClientId, ...
                     'device_code', deviceResponse.device_code);
-        
+
                 % Hold the content provider in a named variable. FormProvider is
                 % a handle object; as an unnamed temporary it is released at the
                 % end of the construction statement (R2025b), leaving
@@ -161,7 +169,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 req = matlab.net.http.RequestMessage('POST', ...
                     [matlab.net.http.HeaderField('Content-Type', 'application/x-www-form-urlencoded')], ...
                     bodyProvider);
-                
+
                 % Send request
                 response = req.send(endpointURI);
             catch MECause
@@ -175,17 +183,21 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
     methods (Access = private)
         function handleTokenResponse(obj, tokenResponse)
+        %handleTokenResponse - Store the tokens and expiry times of a response
+
             obj.AccessToken_ = tokenResponse.access_token;
             obj.RefreshToken = tokenResponse.refresh_token;
-            
+
             obj.AccessTokenExpiresAt = ...
                 datetime("now") + seconds(tokenResponse.expires_in);
-    
+
             obj.RefreshTokenExpiresAt = ...
                 datetime("now") + seconds(tokenResponse.refresh_expires_in);
         end
 
         function handleUnspecifiedBadRequestError(obj, errorData)
+        %handleUnspecifiedBadRequestError - Show and raise an unexpected 400 error
+
             titleMessage = errorData.error;
             errorMessage = errorData.error_description;
             obj.showErrorDialog(titleMessage, errorMessage)
@@ -195,11 +207,18 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
     methods (Static)
         function obj = instance(OIDCClientID)
-        %instance - Return a singleton instance of the DeviceFlowTokenClient
+        %INSTANCE - The shared client, created on first use
+        %   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance() returns the
+        %   stored client, creating one with the client id of this toolbox
+        %   when none is stored.
+        %
+        %   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance(OIDCClientID)
+        %   also specifies the OIDC client id. A stored client with a
+        %   different id is deleted and replaced.
 
-        %   Note: to achieve persistent singleton instance that survives a 
-        %   clear all statement, the singleton instance is stored in the 
-        %   graphics root object's UserData property. 
+        %   Note: to achieve persistent singleton instance that survives a
+        %   clear all statement, the singleton instance is stored in the
+        %   graphics root object's UserData property.
         %   Open question: Are there better ways to do this?
 
             arguments
@@ -210,7 +229,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
             className = string( mfilename('class') );
             singletonName = eval( className + "." + "SINGLETON_NAME" );
-            
+
             rootUserData = get(0, 'UserData');
             if isstruct(rootUserData)
                 if isfield(rootUserData, 'SingletonInstances')
@@ -238,16 +257,20 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
             % - Construct the client if singleton instance is not present
             if isempty(authClientObject) || ~isvalid(authClientObject)
                 authClientObject = ebrains.iam.DeviceFlowTokenClient(OIDCClientID);
-                
+
                 rootUserData.SingletonInstances.(singletonName) = authClientObject;
                 set(0, 'UserData', rootUserData)
             end
-        
+
             % - Return the instance
             obj = authClientObject;
         end
-            
+
         function reset()
+        %RESET - Delete the shared client
+        %   ebrains.iam.DeviceFlowTokenClient.reset() deletes the stored
+        %   client so that the next INSTANCE call creates a new one.
+
             className = string( mfilename('class') );
             singletonName = eval( className + "." + "SINGLETON_NAME" );
             ebrains.iam.OidcTokenClient.reset(singletonName)

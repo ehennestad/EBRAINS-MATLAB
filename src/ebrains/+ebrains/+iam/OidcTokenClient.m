@@ -1,13 +1,34 @@
 classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
-% OidcTokenClient - Abstract base class for OIDC token authentication
+%OidcTokenClient - Base class for the EBRAINS OIDC token clients
+%   OidcTokenClient holds an access token for the EBRAINS identity
+%   provider and refreshes it when it expires. It cannot be created
+%   directly. Use the INSTANCE method of a subclass, each of which
+%   implements one authentication flow, or call AUTHENTICATE and
+%   getTokenManager from the ebrains namespace.
 %
-%   This abstract class provides common functionality for OIDC token
-%   authentication flows. Subclasses must implement specific authentication
-%   flows (e.g., device flow, client credentials flow).
+%   A token found in the EBRAINS_TOKEN environment variable is loaded
+%   when a client is created.
 %
-%   USAGE:
-%       Subclasses should implement:
-%       - fetchToken() - Flow-specific token retrieval
+%   OidcTokenClient functions:
+%       authenticate         - Fetch a token, or refresh the active one
+%       hasActiveToken       - Whether the access token is still valid
+%       canAuthenticate      - Whether the client has held a token before
+%       getFlowName          - Name of the authentication flow
+%       getAuthHeaderField   - Authorization header for matlab.net.http
+%       getWebOptions        - weboptions carrying the Authorization header
+%       copyTokenToClipboard - Copy the access token to the clipboard
+%       reset                - Delete a stored singleton client
+%       resetAll             - Delete every stored singleton client
+%
+%   OidcTokenClient properties:
+%       ClientId    - OIDC client id the client authenticates as
+%       Scope       - Scopes requested with the token
+%       AccessToken - The access token, fetched or refreshed on demand
+%       ExpiresIn   - Time left until the access token expires
+%
+%   See also ebrains.authenticate, ebrains.getTokenManager,
+%   DeviceFlowTokenClient, ClientCredentialsFlowTokenClient,
+%   ebrains.iam.enum.Scope
 
 % Developer note:
 %   Every request to the identity provider goes through one of the
@@ -16,20 +37,20 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %   test double can answer them without a network or a display.
 
     properties (Abstract, Constant)
-        FLOW_NAME (1,1) string
+        FLOW_NAME (1,1) string  % Display name of the authentication flow
     end
 
     properties (SetAccess = private)
-        ClientId (1,1) string
+        ClientId (1,1) string  % OIDC client id the client authenticates as
     end
 
     properties
-        Scope = [ enumeration('ebrains.iam.enum.Scope').Name ]
+        Scope = [ enumeration('ebrains.iam.enum.Scope').Name ]  % Scopes requested with the token
     end
-    
+
     properties (Dependent, SetAccess = private)
-        AccessToken
-        ExpiresIn
+        AccessToken  % The access token, fetched or refreshed on demand
+        ExpiresIn    % Time left until the access token expires
     end
 
     properties (Access = protected)
@@ -47,26 +68,30 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
     properties (Constant, Access = protected)
         IAM_BASE_URL = ...
             "https://iam.ebrains.eu/auth/realms/hbp/"
-        
+
         WELL_KNOWN_CONFIGURATION_ENDPOINT = ...
             ".well-known/openid-configuration"
     end
-    
+
     methods (Abstract, Access = protected)
         fetchToken(obj)
-        % fetchToken - Fetch token using the specific authentication flow
-        %   Subclasses must implement this method to perform the 
-        %   flow-specific token retrieval.
+        %fetchToken - Fetch a token with the flow of the subclass
     end
 
     methods
         function flowName = getFlowName(obj)
-        % getFlowName - Return the name of the authentication flow
-        %   Returns a string describing the authentication flow type
+        %getFlowName - Name of the authentication flow
+        %   flowName = getFlowName(OBJ) returns the display name of the flow
+        %   the client implements, such as "Device Flow".
+
             flowName = obj.FLOW_NAME;
         end
-    
+
         function authenticate(obj)
+        %AUTHENTICATE - Fetch a token, or refresh the active one
+        %   AUTHENTICATE(OBJ) runs the authentication flow of the client
+        %   when it has no active token, and refreshes the token otherwise.
+
             if ~obj.hasActiveToken()
                 obj.fetchToken()
             else
@@ -74,7 +99,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             end
         end
     end
-    
+
     methods (Access = protected)
         function obj = OidcTokenClient(clientId)
             % The OpenID configuration is fetched on the first token request
@@ -84,7 +109,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function tryLoadTokenFromEnvironment(obj)
-        % tryLoadTokenFromEnvironment - Load an access token from EBRAINS_TOKEN, if set
+        %tryLoadTokenFromEnvironment - Load the access token from EBRAINS_TOKEN
+
             if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
                 obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
                 obj.decodeTokenExpiryTime()
@@ -92,7 +118,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function config = getOpenIdConfig(obj)
-        % getOpenIdConfig - The OpenID configuration, fetched once on first use
+        %getOpenIdConfig - The OpenID configuration, fetched once on first use
             if isempty(obj.OpenIdConfig)
                 obj.OpenIdConfig = obj.requestOpenIdConfiguration();
             end
@@ -100,15 +126,13 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function config = requestOpenIdConfiguration(obj)
-        % requestOpenIdConfiguration - Get the OpenID configuration from the provider
+        %requestOpenIdConfiguration - Fetch the OpenID configuration
             config = webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT);
         end
 
         function tokenResponse = requestToken(obj, formFields)
-        % requestToken - Post form fields to the token endpoint
-        %
-        %   tokenResponse = obj.requestToken(formFields) posts the given
-        %   cell array of name-value pairs and returns the decoded response.
+        %requestToken - Post form fields to the token endpoint
+
             arguments
                 obj (1,1) ebrains.iam.OidcTokenClient
                 formFields (1,:) cell
@@ -117,24 +141,26 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function showErrorDialog(~, titleMessage, errorMessage)
-        % showErrorDialog - Show an error in a dialog box
+        %showErrorDialog - Show an error in a dialog box
             errordlg(errorMessage, titleMessage);
         end
-        
+
         function decodeTokenExpiryTime(obj)
+        %decodeTokenExpiryTime - Read the expiry time out of the access token
+
             obj.AccessTokenExpiresAt = ...
                 ebrains.internal.get_token_expiration(obj.AccessToken_);
             obj.AccessTokenExpiresAt.TimeZone = '';
         end
-    
+
         function refreshToken(obj)
-            % refreshToken - Refresh the access token using the refresh token
-        
+        %refreshToken - Refresh the access token using the refresh token
+
             % Check if refresh token exists
             if obj.RefreshToken == "" || ismissing(obj.RefreshToken)
                 obj.fetchToken()
             end
-        
+
             try
                 % Request a new access token using the refresh token
                 tokenResponse = obj.requestToken({ ...
@@ -142,20 +168,20 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                     "client_id", obj.ClientId, ...
                     "refresh_token", obj.RefreshToken ...
                     });
-        
+
                 % Update object properties with new token values
                 obj.AccessToken_ = tokenResponse.access_token;
                 obj.RefreshToken = tokenResponse.refresh_token;
-        
+
                 obj.AccessTokenExpiresAt = ...
                     datetime("now") + seconds(tokenResponse.expires_in);
-        
+
                 obj.RefreshTokenExpiresAt = ...
                     datetime("now") + seconds(tokenResponse.refresh_expires_in);
-        
+
                 % Log success
                 disp("Access token successfully refreshed.");
-        
+
             catch ME
                 titleMessage = "Token Refresh Failed";
                 switch ME.identifier
@@ -169,9 +195,11 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             end
         end
     end
-    
+
     methods (Access = protected) % CustomDisplay override
         function groups = getPropertyGroups(obj)
+        %getPropertyGroups - Display the properties with the token masked
+
             propNames = properties(obj);
 
             s = struct();
@@ -189,6 +217,14 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     methods
         function opts = getWebOptions(obj, opts)
+        %getWebOptions - weboptions carrying the Authorization header
+        %   OPTS = getWebOptions(OBJ) returns a weboptions object whose header
+        %   fields carry the bearer token of the client, for use with webread
+        %   and webwrite.
+        %
+        %   OPTS = getWebOptions(OBJ,OPTS) adds the header to the given
+        %   weboptions object instead of a new one.
+
             arguments
                 obj
                 opts weboptions = weboptions
@@ -199,11 +235,21 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         end
 
         function authField = getAuthHeaderField(obj)
+        %getAuthHeaderField - Authorization header for matlab.net.http
+        %   authField = getAuthHeaderField(OBJ) returns an AuthorizationField
+        %   carrying the bearer token of the client, for use in a
+        %   matlab.net.http.RequestMessage.
+
             authField = matlab.net.http.field.AuthorizationField(...
                 'Authorization', sprintf('Bearer %s', obj.AccessToken));
         end
 
         function tf = hasActiveToken(obj)
+        %hasActiveToken - Whether the access token is still valid
+        %   TF = hasActiveToken(OBJ) is true when the client holds an access
+        %   token that has not expired. A warning is issued when the token
+        %   has expired or expires within the hour.
+
             tf = false;
 
             if ~ismissing(obj.AccessToken_) && ~ismissing(obj.ExpiresIn)
@@ -223,16 +269,21 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 end
             end
         end
-        
+
         function tf = canAuthenticate(obj)
-        % canAuthenticate - Check if client can authenticate. 
-        %
-        % If AccessToken is not missing, we assume the client has already
-        % authenticated successfully before and that it can authenticate again.
+        %canAuthenticate - Whether the client has held a token before
+        %   TF = canAuthenticate(OBJ) is true when the client has an access
+        %   token, expired or not. A client that authenticated once is
+        %   assumed to be able to do so again.
+
             tf = ~ismissing(obj.AccessToken_);
         end
 
         function copyTokenToClipboard(obj)
+        %copyTokenToClipboard - Copy the access token to the clipboard
+        %   copyTokenToClipboard(OBJ) copies the current access token to the
+        %   system clipboard without refreshing it.
+
             clipboard("copy", obj.AccessToken_)
         end
     end
@@ -260,6 +311,12 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     methods (Static)
         function reset(singletonName)
+        %RESET - Delete a stored singleton client
+        %   ebrains.iam.OidcTokenClient.reset(singletonName) deletes the token
+        %   client stored under singletonName in the UserData of the graphics
+        %   root and removes the entry, so that the next INSTANCE call creates
+        %   a new client.
+
             arguments
                 singletonName (1,1) string
             end
@@ -276,8 +333,13 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 end
             end
         end
-    
+
         function resetAll()
+        %resetAll - Delete every stored singleton client
+        %   ebrains.iam.OidcTokenClient.resetAll() deletes the stored device
+        %   flow and client credentials clients, so that the next INSTANCE
+        %   call of either creates a new one.
+
             ebrains.iam.OidcTokenClient.reset("IAM_DeviceFlow_Client")
             ebrains.iam.OidcTokenClient.reset("IAM_ClientCredentials_Client")
         end
