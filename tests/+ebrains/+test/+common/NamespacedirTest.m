@@ -1,11 +1,5 @@
 classdef NamespacedirTest < matlab.unittest.TestCase
     % NamespacedirTest - Unit tests for ebrains.common.namespacedir
-    %
-    % A namespace that is not on the path is not covered here: what()
-    % returns an empty struct array for it, and namespacedir then errors
-    % with a generic "insufficient outputs" message rather than one that
-    % names the missing namespace, which looks like an unhandled edge case
-    % rather than an intended restriction.
 
     methods (Test)
         function testResolvesTopLevelNamespace(testCase)
@@ -20,6 +14,12 @@ classdef NamespacedirTest < matlab.unittest.TestCase
 
             testCase.verifyTrue(isfolder(folderPath));
             testCase.verifyTrue(endsWith(folderPath, fullfile("+bucket", "+api")));
+        end
+
+        function testMissingNamespaceIsNamedInError(testCase)
+            testCase.verifyError(...
+                @() ebrains.common.namespacedir("ebrains.nosuchnamespace"), ...
+                'EBRAINS:Common:NamespaceNotFound');
         end
     end
 end
