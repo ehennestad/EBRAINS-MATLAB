@@ -326,9 +326,10 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
     methods (Static)
         function reset(singletonName)
         %RESET - Delete a stored singleton client
-        %   RESET(singletonName) deletes the token client stored under
-        %   singletonName in the UserData of the graphics root and removes
-        %   the entry, so that the next INSTANCE call creates a new client.
+        %   ebrains.iam.OidcTokenClient.reset(singletonName) deletes the token
+        %   client stored under singletonName in the UserData of the graphics
+        %   root and removes the entry, so that the next INSTANCE call creates
+        %   a new client.
 
             arguments
                 singletonName (1,1) string
@@ -349,9 +350,9 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
         function resetAll()
         %resetAll - Delete every stored singleton client
-        %   resetAll() deletes the stored device flow and client credentials
-        %   clients, so that the next INSTANCE call of either creates a new
-        %   one.
+        %   ebrains.iam.OidcTokenClient.resetAll() deletes the stored device
+        %   flow and client credentials clients, so that the next INSTANCE
+        %   call of either creates a new one.
 
             ebrains.iam.OidcTokenClient.reset("IAM_DeviceFlow_Client")
             ebrains.iam.OidcTokenClient.reset("IAM_ClientCredentials_Client")

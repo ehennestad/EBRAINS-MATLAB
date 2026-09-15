@@ -1,13 +1,14 @@
 classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %DeviceFlowTokenClient - Token client for the OIDC device flow
-%   CLIENT = DeviceFlowTokenClient.INSTANCE() returns the shared client
-%   for the OAuth 2.0 Device Authorization Grant, creating it with the
-%   client id of this toolbox on first use. Authenticating opens the
-%   EBRAINS login page in the browser, where the user grants access,
-%   while a dialog shows the progress.
+%   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance() returns the
+%   shared client for the OAuth 2.0 Device Authorization Grant, creating
+%   it with the client id of this toolbox on first use. Authenticating
+%   opens the EBRAINS login page in the browser, where the user grants
+%   access, while a dialog shows the progress.
 %
-%   CLIENT = DeviceFlowTokenClient.INSTANCE(OIDCClientID) also specifies
-%   the OIDC client id. A stored client with a different id is replaced.
+%   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance(OIDCClientID)
+%   also specifies the OIDC client id. A stored client with a different
+%   id is replaced.
 %
 %   The shared client is stored in the UserData of the graphics root so
 %   that it survives a clear all. Use RESET to remove it. The remaining
@@ -207,11 +208,13 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
     methods (Static)
         function obj = instance(OIDCClientID)
         %INSTANCE - The shared client, created on first use
-        %   CLIENT = INSTANCE() returns the stored client, creating one with
-        %   the client id of this toolbox when none is stored.
+        %   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance() returns the
+        %   stored client, creating one with the client id of this toolbox
+        %   when none is stored.
         %
-        %   CLIENT = INSTANCE(OIDCClientID) also specifies the OIDC client
-        %   id. A stored client with a different id is deleted and replaced.
+        %   CLIENT = ebrains.iam.DeviceFlowTokenClient.instance(OIDCClientID)
+        %   also specifies the OIDC client id. A stored client with a
+        %   different id is deleted and replaced.
 
         %   Note: to achieve persistent singleton instance that survives a
         %   clear all statement, the singleton instance is stored in the
@@ -265,8 +268,8 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
         function reset()
         %RESET - Delete the shared client
-        %   RESET() deletes the stored client so that the next INSTANCE call
-        %   creates a new one.
+        %   ebrains.iam.DeviceFlowTokenClient.reset() deletes the stored
+        %   client so that the next INSTANCE call creates a new one.
 
             className = string( mfilename('class') );
             singletonName = eval( className + "." + "SINGLETON_NAME" );

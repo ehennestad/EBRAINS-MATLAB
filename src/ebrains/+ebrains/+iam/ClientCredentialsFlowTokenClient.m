@@ -1,6 +1,6 @@
 classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 %ClientCredentialsFlowTokenClient - Token client for service logins
-%   CLIENT = ClientCredentialsFlowTokenClient.INSTANCE(clientId,clientSecret)
+%   CLIENT = ebrains.iam.ClientCredentialsFlowTokenClient.instance(clientId,clientSecret)
 %   returns the shared client for the OAuth 2.0 Client Credentials
 %   Grant, creating it on first use. The flow authenticates a service
 %   with its client id and secret and needs no user interaction.
@@ -92,14 +92,14 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
     methods (Static)
         function obj = instance(clientId, clientSecret)
         %INSTANCE - The shared client, created on first use
-        %   CLIENT = INSTANCE(clientId,clientSecret) returns the stored client
-        %   for the given credentials, creating one when none is stored. A
-        %   stored client with different credentials is replaced, with a
-        %   warning.
+        %   CLIENT = ebrains.iam.ClientCredentialsFlowTokenClient.instance(clientId,clientSecret)
+        %   returns the stored client for the given credentials, creating one
+        %   when none is stored. A stored client with different credentials
+        %   is replaced, with a warning.
         %
-        %   CLIENT = INSTANCE() returns the stored client without checking
-        %   its credentials, and creates a client with empty credentials
-        %   when none is stored.
+        %   CLIENT = ebrains.iam.ClientCredentialsFlowTokenClient.instance()
+        %   returns the stored client without checking its credentials, and
+        %   creates a client with empty credentials when none is stored.
 
         %   Note: to achieve persistent singleton instance that survives a
         %   clear all statement, the singleton instance is stored in the
@@ -153,8 +153,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
         function reset()
         %RESET - Delete the shared client
-        %   RESET() deletes the stored client so that the next INSTANCE call
-        %   creates a new one.
+        %   ebrains.iam.ClientCredentialsFlowTokenClient.reset() deletes the
+        %   stored client so that the next INSTANCE call creates a new one.
 
             className = string( mfilename('class') );
             singletonName = eval( className + "." + "SINGLETON_NAME" );
