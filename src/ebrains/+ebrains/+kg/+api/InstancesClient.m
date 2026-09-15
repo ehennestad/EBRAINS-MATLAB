@@ -1,8 +1,69 @@
 classdef InstancesClient < ebrains.kg.api.base.BaseClient
+    %InstancesClient - Client for the instance endpoints of the KG Core API
+    %   CLIENT = InstancesClient() creates a client for listing, retrieving,
+    %   creating, updating, releasing and deleting metadata instances in the
+    %   EBRAINS Knowledge Graph (KG). Requests are authenticated with the
+    %   access token held by the EBRAINS token manager.
+    %
+    %   Every method accepts Server=SERVER to select the KG server. SERVER
+    %   must be:
+    %       "prod"    - (default) The production server.
+    %       "preprod" - The pre-production server.
+    %
+    %   Methods that return instance data also accept the return options
+    %   returnPayload=TF, returnPermissions=TF, returnAlternatives=TF and
+    %   returnEmbedded=TF. These control which parts of an instance the
+    %   server includes in the response.
+    %
+    %   Instance identifiers may be given as a bare UUID or as a full KG
+    %   instance IRI. The IRI prefix is stripped before the request is sent.
+    %
+    %   InstancesClient functions:
+    %       listInstances           - List instances of a given type
+    %       getInstance             - Retrieve one instance by identifier
+    %       getInstancesBulk        - Retrieve several instances by identifier
+    %       createNewInstance       - Create an instance with a generated id
+    %       createNewInstanceWithId - Create an instance with a given id
+    %       updateInstance          - Partially update an instance
+    %       replaceInstance         - Replace the contents of an instance
+    %       deleteInstance          - Delete an instance
+    %       moveInstance            - Move an instance to another space
+    %       releaseInstance         - Release an instance
+    %       getReleaseStatus        - Get the release status of an instance
+    %       listTypes               - List the types available in a space
+    %       runDynamicQuery         - Run a query given as a JSON-LD payload
+    %
+    %   See also QueriesClient, ebrains.kg.enum.KGServer,
+    %   ebrains.kg.enum.KGStage, ebrains.kg.query.ReturnOptions
 
     methods
         function result = listInstances(obj, type, requiredParams, optionalParams, serverOptions)
-        % listInstances - Returns a list of instances according to their types.
+        %listInstances - List instances of a given type
+        %   RESULT = listInstances(OBJ,TYPE) returns the released instances of
+        %   type TYPE in the "dataset" space. TYPE is an openMINDS type given
+        %   as a full IRI, or as a short name when openMINDS_MATLAB is on the
+        %   path. RESULT is the data array of the response.
+        %
+        %   RESULT = listInstances(OBJ,TYPE,stage=STAGE) also specifies the
+        %   stage to list from. STAGE must be:
+        %       "RELEASED"    - (default) Released instances.
+        %       "IN_PROGRESS" - Instances that are still in progress.
+        %
+        %   RESULT = listInstances(OBJ,TYPE,space=SPACE) also specifies the KG
+        %   space to list from. The default is "dataset".
+        %
+        %   RESULT = listInstances(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       searchByLabel=LABEL   - Only instances whose label matches
+        %                               LABEL.
+        %       filterProperty=PROP   - Property to filter instances on.
+        %       filterValue=VALUE     - Value that PROP must have.
+        %       from=FROM             - Offset of the first result.
+        %       size=SIZE             - Maximum number of results.
+        %       returnTotalResults=TF - Whether to include the total count.
+        %
+        %   RESULT = listInstances(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -38,29 +99,28 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = getInstance(obj, identifier, stage, optionalParams, serverOptions, responseOptions)
-        % getInstance - Downloads KG metadata instance for the given identifier.
+        %getInstance - Retrieve one instance by identifier
+        %   RESULT = getInstance(OBJ,IDENTIFIER) returns the released instance
+        %   with the given IDENTIFIER, a UUID or a full KG instance IRI.
         %
-        % Syntax:
-        %   metadataInstance = client.getInstance(identifier, stage, optionals)
-        %   Downloads instance data from the API using the specified identifier,
-        %   stage, and optional parameters for additional configurations.
+        %   RESULT = getInstance(OBJ,IDENTIFIER,STAGE) also specifies the
+        %   stages to look in, in order of preference. The first stage that
+        %   holds the instance wins. STAGE is a vector of one or more of:
+        %       "RELEASED"    - (default) The released instance.
+        %       "IN_PROGRESS" - The instance that is still in progress.
+        %   Pass ["RELEASED","IN_PROGRESS"] to fall back to the draft of an
+        %   instance that has not been released.
         %
-        % Input Arguments:
-        %   identifier string      - The unique identifier of the instance to be downloaded.
-        %   stage (1,:) KGStage    - Stages to look in, in order of preference. The
-        %                            first stage that holds the instance wins. Defaults
-        %                            to "RELEASED". Pass ["RELEASED", "IN_PROGRESS"] to
-        %                            fall back to the draft of an unreleased instance.
-        %   optionals              - Optional structure with the following fields:
-        %       returnIncomingLinks logical   - If true, return incoming links; default is false.
-        %       incomingLinksPageSize int64   - Number of incoming links to return per page; default is 10.
-        %       returnPayload logical         - If true, return the payload; default is true.
-        %       returnPermissions logical     - If true, return permissions; default is false.
-        %       returnAlternatives logical    - If true, return alternatives; default is false.
-        %       returnEmbedded logical        - If true, return embedded data; default is true.
+        %   RESULT = getInstance(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
         %
-        % Output Arguments:
-        %   metadataInstance        - The downloaded metadata instance.
+        %   RESULT = getInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+        %
+        %   RESULT = getInstance(...,RawOutput=TF) also specifies whether to
+        %   return the response body as text instead of decoded data.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -112,6 +172,22 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = createNewInstance(obj, payloadJson, requiredParams, optionalParams, serverOptions)
+        %createNewInstance - Create an instance with a generated id
+        %   RESULT = createNewInstance(OBJ,payloadJson) creates an instance
+        %   from the JSON-LD document payloadJson in the "dataset" space and
+        %   returns the decoded response body.
+        %
+        %   RESULT = createNewInstance(OBJ,payloadJson,space=SPACE) also
+        %   specifies the KG space to create the instance in.
+        %
+        %   RESULT = createNewInstance(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   RESULT = createNewInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 payloadJson       (1,1) string {mustBeNonzeroLengthText}
@@ -138,6 +214,23 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = createNewInstanceWithId(obj, identifier, payloadJson, requiredParams, optionalParams, serverOptions)
+        %createNewInstanceWithId - Create an instance with a given id
+        %   RESULT = createNewInstanceWithId(OBJ,IDENTIFIER,payloadJson)
+        %   creates an instance with the UUID or full KG instance IRI
+        %   IDENTIFIER from the JSON-LD document payloadJson in the "dataset"
+        %   space and returns the decoded response body.
+        %
+        %   RESULT = createNewInstanceWithId(...,space=SPACE) also specifies
+        %   the KG space to create the instance in.
+        %
+        %   RESULT = createNewInstanceWithId(...,Name=VALUE) also specifies
+        %   the return options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   RESULT = createNewInstanceWithId(...,Server=SERVER) also specifies
+        %   the KG server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier (1,1) string
@@ -167,6 +260,21 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = updateInstance(obj, identifier, payloadJson, optionalParams, serverOptions)
+        %updateInstance - Partially update an instance
+        %   RESULT = updateInstance(OBJ,IDENTIFIER,payloadJson) updates the
+        %   properties given in the JSON-LD document payloadJson on the
+        %   instance IDENTIFIER, a UUID or a full KG instance IRI. Properties
+        %   not in the document are left as they are. RESULT is the decoded
+        %   response body.
+        %
+        %   RESULT = updateInstance(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   RESULT = updateInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -195,6 +303,20 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = replaceInstance(obj, identifier, payloadJson, optionalParams, serverOptions)
+        %replaceInstance - Replace the contents of an instance
+        %   RESULT = replaceInstance(OBJ,IDENTIFIER,payloadJson) replaces the
+        %   contents of the instance IDENTIFIER, a UUID or a full KG instance
+        %   IRI, by the JSON-LD document payloadJson and returns the decoded
+        %   response body.
+        %
+        %   RESULT = replaceInstance(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   RESULT = replaceInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -223,6 +345,16 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = deleteInstance(obj, identifier, serverOptions)
+        %deleteInstance - Delete an instance
+        %   deleteInstance(OBJ,IDENTIFIER) deletes the instance IDENTIFIER, a
+        %   UUID or a full KG instance IRI.
+        %
+        %   RESULT = deleteInstance(OBJ,IDENTIFIER) also returns the data of
+        %   the response.
+        %
+        %   [...] = deleteInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifier string
@@ -249,6 +381,18 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = moveInstance(obj, identifier, space, optionalParams, serverOptions)
+        %moveInstance - Move an instance to another space
+        %   RESULT = moveInstance(OBJ,IDENTIFIER,SPACE) moves the instance
+        %   IDENTIFIER, a UUID or a full KG instance IRI, to the KG space SPACE
+        %   and returns the data of the response.
+        %
+        %   RESULT = moveInstance(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   RESULT = moveInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -285,6 +429,16 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = releaseInstance(obj, identifier, optionalParams, serverOptions)
+        %releaseInstance - Release an instance
+        %   RESULT = releaseInstance(OBJ,IDENTIFIER) releases the instance
+        %   IDENTIFIER, a UUID or a full KG instance IRI, and returns the data
+        %   of the response.
+        %
+        %   RESULT = releaseInstance(...,revision=REVISION) also specifies the
+        %   revision of the instance to release.
+        %
+        %   RESULT = releaseInstance(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -317,6 +471,20 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = getReleaseStatus(obj, identifier, requiredParams, serverOptions)
+        %getReleaseStatus - Get the release status of an instance
+        %   RESULT = getReleaseStatus(OBJ,IDENTIFIER) returns the release
+        %   status of the instance IDENTIFIER, a UUID or a full KG instance
+        %   IRI.
+        %
+        %   RESULT = getReleaseStatus(...,releaseTreeScope=SCOPE) also
+        %   specifies which instances the status covers. SCOPE must be:
+        %       "TOP_INSTANCE_ONLY"        - (default) The instance itself.
+        %       "CHILDREN_ONLY"            - The linked child instances.
+        %       "CHILDREN_ONLY_RESTRICTED" - The linked child instances, with
+        %                                    the restricted scope of the KG.
+        %
+        %   RESULT = getReleaseStatus(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -344,6 +512,33 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function [result, missingIds] = getInstancesBulk(obj, identifiers, stage, optionalParams, serverOptions)
+        %getInstancesBulk - Retrieve several instances by identifier
+        %   RESULT = getInstancesBulk(OBJ,IDENTIFIERS) returns the released
+        %   instances with the given IDENTIFIERS, a string array of UUIDs or
+        %   full KG instance IRIs. RESULT is a cell array of the instances
+        %   found, and a warning lists the identifiers that were not found.
+        %   When IDENTIFIERS is scalar, RESULT is the instance itself and a
+        %   missing instance is an error.
+        %
+        %   RESULT = getInstancesBulk(OBJ,IDENTIFIERS,STAGE) also specifies
+        %   the stages to look in, in order of preference. Identifiers not
+        %   found in one stage are looked up in the next. STAGE is a vector of
+        %   one or more of:
+        %       "RELEASED"    - (default) Released instances.
+        %       "IN_PROGRESS" - Instances that are still in progress.
+        %
+        %   [RESULT,missingIds] = getInstancesBulk(...) also returns the
+        %   identifiers that were not found in any of the stages. No warning
+        %   is issued in this case.
+        %
+        %   [...] = getInstancesBulk(...,Name=VALUE) also specifies the return
+        %   options and one or more of the following:
+        %       returnIncomingLinks=TF     - Whether to include incoming links.
+        %       incomingLinksPageSize=SIZE - Number of incoming links per page.
+        %
+        %   [...] = getInstancesBulk(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 identifiers (1,:) string
@@ -376,6 +571,29 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = listTypes(obj, requiredParams, optionalParams, serverOptions)
+        %listTypes - List the types available in a space
+        %   RESULT = listTypes(OBJ) returns the types that have released
+        %   instances in the "dataset" space.
+        %
+        %   RESULT = listTypes(OBJ,stage=STAGE) also specifies the stage to
+        %   list types from. STAGE must be:
+        %       "RELEASED"    - (default) Released instances.
+        %       "IN_PROGRESS" - Instances that are still in progress.
+        %
+        %   RESULT = listTypes(OBJ,space=SPACE) also specifies the KG space to
+        %   list types from. The default is "dataset".
+        %
+        %   RESULT = listTypes(...,Name=VALUE) also specifies one or more of
+        %   the following:
+        %       withProperties=TF     - Whether to include the properties of
+        %                               each type.
+        %       withIncomingLinks=TF  - Whether to include incoming links.
+        %       from=FROM             - Offset of the first result.
+        %       size=SIZE             - Maximum number of results.
+        %       returnTotalResults=TF - Whether to include the total count.
+        %
+        %   RESULT = listTypes(...,Server=SERVER) also specifies the KG server
+        %   to send the request to.
 
            arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -407,6 +625,27 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function result = runDynamicQuery(obj, jsonldPayload, requiredParams, optionalParams, serverOptions)
+        %runDynamicQuery - Run a query given as a JSON-LD payload
+        %   RESULT = runDynamicQuery(OBJ,jsonldPayload) runs the KG query
+        %   specification jsonldPayload against the released stage and
+        %   returns the data array of the response.
+        %
+        %   RESULT = runDynamicQuery(OBJ,jsonldPayload,stage=STAGE) also
+        %   specifies the stage to query. STAGE must be:
+        %       "RELEASED"    - (default) Released instances.
+        %       "IN_PROGRESS" - Instances that are still in progress.
+        %
+        %   RESULT = runDynamicQuery(...,Name=VALUE) also specifies one or more
+        %   of the following:
+        %       from=FROM                - Offset of the first result.
+        %       size=SIZE                - Maximum number of results.
+        %       returnTotalResults=TF    - Whether to include the total count.
+        %       instanceId=ID            - Restrict the query to one instance.
+        %       restrictToSpaces=SPACES  - Restrict the query to these spaces.
+        %
+        %   RESULT = runDynamicQuery(...,Server=SERVER) also specifies the KG
+        %   server to send the request to.
+
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
                 jsonldPayload (1,1) string
@@ -440,12 +679,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
     methods (Access = private)
         function [result, missingIds, advice] = fetchInstancesByIds(obj, identifiers, stage, optionalParams, serverOptions)
-        % fetchInstancesByIds - Request instances by id from each stage in turn
-        %
-        %   Posts to the bulk endpoint for the first stage, then looks for
-        %   the ids that were not found in the next stage, and so on. Ids
-        %   missing from every stage are returned, together with advice on
-        %   what a caller can do about them.
+        %fetchInstancesByIds - Request instances by id from each stage in turn
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -457,6 +691,10 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
+            % Post to the bulk endpoint for the first stage, then look for
+            % the ids that were not found in the next stage, and so on. Ids
+            % missing from every stage are returned, together with advice on
+            % what a caller can do about them.
             stage = removeDuplicateStages(stage);
             missingIds = ebrains.kg.api.internal.normalizeIdentifiers(identifiers);
             result = cell(1, 0);
@@ -478,7 +716,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         end
 
         function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
-        % requestInstancesByIds - One bulk request against a single stage
+        %requestInstancesByIds - One bulk request against a single stage
 
             OPERATION = "POST";
             ENDPOINT_PATH = "/instancesByIds";
