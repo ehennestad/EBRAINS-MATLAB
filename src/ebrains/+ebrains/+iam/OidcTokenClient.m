@@ -7,7 +7,10 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %   getTokenManager from the ebrains namespace.
 %
 %   A token found in the EBRAINS_TOKEN environment variable is loaded
-%   when a client is created.
+%   when a client is created. Such a token cannot be renewed by the
+%   toolbox, which holds no credentials of its own for it: once it
+%   expires, a valid token has to be given the same way, or one of the
+%   flows has to log in.
 %
 %   OidcTokenClient functions:
 %       authenticate         - Fetch a token, or refresh the active one
