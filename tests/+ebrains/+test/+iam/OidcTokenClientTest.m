@@ -78,6 +78,12 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(accessToken, "renewed");
         end
 
+        function testRequestTimeoutExceedsWebOptionsDefault(testCase)
+            % The test doubles replace the request methods, so this checks
+            % the timeout the real methods pass to weboptions, not a request.
+            testCase.verifyGreaterThan(ebrains.iam.OidcTokenClient.REQUEST_TIMEOUT_SECONDS, weboptions().Timeout);
+        end
+
         function testAuthorizationHeaderCarriesBearerToken(testCase)
             token = ebrains.mocks.makeTestJwt();
             setenv("EBRAINS_TOKEN", token);

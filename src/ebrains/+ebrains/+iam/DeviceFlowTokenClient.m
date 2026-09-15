@@ -132,9 +132,11 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         function deviceResponse = requestDeviceAuthorization(obj)
         %requestDeviceAuthorization - Start the device flow and get its codes
             endpointUrl = obj.getOpenIdConfig().device_authorization_endpoint; % openid-connect/auth/device
+            options = weboptions(Timeout=obj.REQUEST_TIMEOUT_SECONDS);
             deviceResponse = webwrite(endpointUrl, ...
                 'client_id', obj.ClientId, ...
-                'scope', strjoin( obj.Scope, " ") );
+                'scope', strjoin( obj.Scope, " "), ...
+                options);
         end
 
         function openVerificationPage(~, url)
