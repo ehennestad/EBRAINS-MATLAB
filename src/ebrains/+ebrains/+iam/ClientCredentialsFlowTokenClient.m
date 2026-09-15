@@ -1,20 +1,20 @@
 classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
-    %ClientCredentialsFlowTokenClient - Token client for service logins
-    %   CLIENT = ClientCredentialsFlowTokenClient.INSTANCE(clientId,clientSecret)
-    %   returns the shared client for the OAuth 2.0 Client Credentials
-    %   Grant, creating it on first use. The flow authenticates a service
-    %   with its client id and secret and needs no user interaction.
-    %
-    %   The shared client is stored in the UserData of the graphics root so
-    %   that it survives a clear all. Use RESET to remove it. The remaining
-    %   methods and properties are inherited from OidcTokenClient.
-    %
-    %   ClientCredentialsFlowTokenClient functions:
-    %       instance - The shared client, created on first use
-    %       reset    - Delete the shared client
-    %
-    %   See also OidcTokenClient, DeviceFlowTokenClient,
-    %   ebrains.authenticate, ebrains.getTokenManager
+%ClientCredentialsFlowTokenClient - Token client for service logins
+%   CLIENT = ClientCredentialsFlowTokenClient.INSTANCE(clientId,clientSecret)
+%   returns the shared client for the OAuth 2.0 Client Credentials
+%   Grant, creating it on first use. The flow authenticates a service
+%   with its client id and secret and needs no user interaction.
+%
+%   The shared client is stored in the UserData of the graphics root so
+%   that it survives a clear all. Use RESET to remove it. The remaining
+%   methods and properties are inherited from OidcTokenClient.
+%
+%   ClientCredentialsFlowTokenClient functions:
+%       instance - The shared client, created on first use
+%       reset    - Delete the shared client
+%
+%   See also OidcTokenClient, DeviceFlowTokenClient,
+%   ebrains.authenticate, ebrains.getTokenManager
 
     properties (Constant)
         FLOW_NAME = "Client Credentials Flow"  % Display name of the authentication flow

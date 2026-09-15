@@ -1,24 +1,24 @@
 classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
-    %DeviceFlowTokenClient - Token client for the OIDC device flow
-    %   CLIENT = DeviceFlowTokenClient.INSTANCE() returns the shared client
-    %   for the OAuth 2.0 Device Authorization Grant, creating it with the
-    %   client id of this toolbox on first use. Authenticating opens the
-    %   EBRAINS login page in the browser, where the user grants access,
-    %   while a dialog shows the progress.
-    %
-    %   CLIENT = DeviceFlowTokenClient.INSTANCE(OIDCClientID) also specifies
-    %   the OIDC client id. A stored client with a different id is replaced.
-    %
-    %   The shared client is stored in the UserData of the graphics root so
-    %   that it survives a clear all. Use RESET to remove it. The remaining
-    %   methods and properties are inherited from OidcTokenClient.
-    %
-    %   DeviceFlowTokenClient functions:
-    %       instance - The shared client, created on first use
-    %       reset    - Delete the shared client
-    %
-    %   See also OidcTokenClient, ClientCredentialsFlowTokenClient,
-    %   ebrains.authenticate, ebrains.getTokenManager
+%DeviceFlowTokenClient - Token client for the OIDC device flow
+%   CLIENT = DeviceFlowTokenClient.INSTANCE() returns the shared client
+%   for the OAuth 2.0 Device Authorization Grant, creating it with the
+%   client id of this toolbox on first use. Authenticating opens the
+%   EBRAINS login page in the browser, where the user grants access,
+%   while a dialog shows the progress.
+%
+%   CLIENT = DeviceFlowTokenClient.INSTANCE(OIDCClientID) also specifies
+%   the OIDC client id. A stored client with a different id is replaced.
+%
+%   The shared client is stored in the UserData of the graphics root so
+%   that it survives a clear all. Use RESET to remove it. The remaining
+%   methods and properties are inherited from OidcTokenClient.
+%
+%   DeviceFlowTokenClient functions:
+%       instance - The shared client, created on first use
+%       reset    - Delete the shared client
+%
+%   See also OidcTokenClient, ClientCredentialsFlowTokenClient,
+%   ebrains.authenticate, ebrains.getTokenManager
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/

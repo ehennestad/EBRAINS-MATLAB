@@ -1,34 +1,34 @@
 classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
-    %OidcTokenClient - Base class for the EBRAINS OIDC token clients
-    %   OidcTokenClient holds an access token for the EBRAINS identity
-    %   provider and refreshes it when it expires. It cannot be created
-    %   directly. Use the INSTANCE method of a subclass, each of which
-    %   implements one authentication flow, or call AUTHENTICATE and
-    %   getTokenManager from the ebrains namespace.
-    %
-    %   A token found in the EBRAINS_TOKEN secret or environment variable
-    %   is loaded when a client is created.
-    %
-    %   OidcTokenClient functions:
-    %       authenticate         - Fetch a token, or refresh the active one
-    %       hasActiveToken       - Whether the access token is still valid
-    %       canAuthenticate      - Whether the client has held a token before
-    %       getFlowName          - Name of the authentication flow
-    %       getAuthHeaderField   - Authorization header for matlab.net.http
-    %       getWebOptions        - weboptions carrying the Authorization header
-    %       copyTokenToClipboard - Copy the access token to the clipboard
-    %       reset                - Delete a stored singleton client
-    %       resetAll             - Delete every stored singleton client
-    %
-    %   OidcTokenClient properties:
-    %       ClientId    - OIDC client id the client authenticates as
-    %       Scope       - Scopes requested with the token
-    %       AccessToken - The access token, fetched or refreshed on demand
-    %       ExpiresIn   - Time left until the access token expires
-    %
-    %   See also ebrains.authenticate, ebrains.getTokenManager,
-    %   DeviceFlowTokenClient, ClientCredentialsFlowTokenClient,
-    %   ebrains.iam.enum.Scope
+%OidcTokenClient - Base class for the EBRAINS OIDC token clients
+%   OidcTokenClient holds an access token for the EBRAINS identity
+%   provider and refreshes it when it expires. It cannot be created
+%   directly. Use the INSTANCE method of a subclass, each of which
+%   implements one authentication flow, or call AUTHENTICATE and
+%   getTokenManager from the ebrains namespace.
+%
+%   A token found in the EBRAINS_TOKEN secret or environment variable
+%   is loaded when a client is created.
+%
+%   OidcTokenClient functions:
+%       authenticate         - Fetch a token, or refresh the active one
+%       hasActiveToken       - Whether the access token is still valid
+%       canAuthenticate      - Whether the client has held a token before
+%       getFlowName          - Name of the authentication flow
+%       getAuthHeaderField   - Authorization header for matlab.net.http
+%       getWebOptions        - weboptions carrying the Authorization header
+%       copyTokenToClipboard - Copy the access token to the clipboard
+%       reset                - Delete a stored singleton client
+%       resetAll             - Delete every stored singleton client
+%
+%   OidcTokenClient properties:
+%       ClientId    - OIDC client id the client authenticates as
+%       Scope       - Scopes requested with the token
+%       AccessToken - The access token, fetched or refreshed on demand
+%       ExpiresIn   - Time left until the access token expires
+%
+%   See also ebrains.authenticate, ebrains.getTokenManager,
+%   DeviceFlowTokenClient, ClientCredentialsFlowTokenClient,
+%   ebrains.iam.enum.Scope
 
 % Developer note:
 %   Every request to the identity provider goes through one of the
