@@ -226,6 +226,44 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(fileInfoAfter.bytes, fileInfoBefore.bytes);
             testCase.verifyFalse(isfile(targetFile + ".part"));
         end
+
+        %% createVirtualBucket
+        function testCreateVirtualBucketCreatesEmptyFilesAndFolders(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            testCase.Client.addResponse('OK', makeStat(3, 0));
+            testCase.Client.addResponse('OK', makePage(["a.txt", "sub/b.txt", "emptydir/"]));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            aInfo = dir(fullfile(rootPath, "a.txt"));
+            testCase.verifyEqual(aInfo.bytes, 0);
+            bInfo = dir(fullfile(rootPath, "sub", "b.txt"));
+            testCase.verifyEqual(bInfo.bytes, 0);
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "emptydir")));
+        end
+
+        function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket"); %#ok<NASGU> read by evalc below
+            testCase.Client.addResponse('OK', makeStat(1, 0));
+            testCase.Client.addResponse('OK', makePage("a.txt"));
+
+            output = evalc(...
+                'ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client, Verbose=true)');
+
+            testCase.verifySubstring(output, 'Created 1/1 virtual files');
+        end
+
+        function testCreateVirtualBucketListErrorPropagates(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            testCase.Client.addResponse('NotFound', 'Bucket not found');
+
+            testCase.verifyError(...
+                @() ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client), ...
+                'EBRAINS:Bucket:getBucketStat:NotFound');
+        end
     end
 end
 

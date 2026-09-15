@@ -17,5 +17,13 @@ function pathName = namespacedir(namespaceName)
     namespaceRelativePath = fullfile(namespaceParts{:});
 
     info = what(namespaceRelativePath);
-    pathName = info.path;
+    if isempty(info)
+        error('EBRAINS:Common:NamespaceNotFound', ...
+            'Namespace "%s" was not found. Add the folder that holds "+%s" to the MATLAB path.', ...
+            namespaceName, strrep(namespaceName, ".", "/+"))
+    end
+
+    % A namespace can be spread over several path folders. The first one in
+    % path order is returned, the same precedence MATLAB itself applies.
+    pathName = info(1).path;
 end

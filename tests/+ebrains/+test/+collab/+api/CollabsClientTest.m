@@ -43,6 +43,31 @@ classdef CollabsClientTest < matlab.unittest.TestCase
                 'MATLAB:validators:mustBeMember');
         end
 
+        function testSearchCollabsPassesOrderRolesAndVisibility(testCase)
+            testCase.Client.addResponse('OK', struct('name', {}));
+
+            testCase.Client.searchCollabs(order="desc", roles="editor", visibility="public");
+
+            testCase.Client.verifyRequestURL(1, 'order=desc');
+            testCase.Client.verifyRequestURL(1, 'roles=editor');
+            testCase.Client.verifyRequestURL(1, 'visibility=public');
+        end
+
+        function testSearchCollabsRejectsUnknownOrder(testCase)
+            testCase.verifyError(@() testCase.Client.searchCollabs(order="bogus"), ...
+                'MATLAB:validators:mustBeMember');
+        end
+
+        function testSearchCollabsRejectsUnknownRole(testCase)
+            testCase.verifyError(@() testCase.Client.searchCollabs(roles="bogus"), ...
+                'MATLAB:validators:mustBeMember');
+        end
+
+        function testSearchCollabsRejectsUnknownVisibility(testCase)
+            testCase.verifyError(@() testCase.Client.searchCollabs(visibility="bogus"), ...
+                'MATLAB:validators:mustBeMember');
+        end
+
         function testSearchCollabsUnauthorized(testCase)
             testCase.Client.addResponse('Unauthorized', 'Token is not active');
             testCase.verifyError(@() testCase.Client.searchCollabs(), ...

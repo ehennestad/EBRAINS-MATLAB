@@ -20,6 +20,11 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     
     properties (TestParameter)
         Stage = {"RELEASED", "IN_PROGRESS"}
+
+        % Every write and listing operation reports a failed server
+        % response the same way, through throwError; this drives that one
+        % path for each of them instead of repeating it per operation.
+        ErroringOperation = ebrains.test.kg.api.InstancesClientTest.erroringOperations()
     end
     
     methods (TestClassSetup)
@@ -656,6 +661,17 @@ classdef InstancesClientTest < matlab.unittest.TestCase
                 'MATLAB:validation:UnableToConvert');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
+
+        %% Error propagation, once for every operation
+        function testOperationPropagatesServerError(testCase, ErroringOperation)
+            operationName = ErroringOperation{1};
+            callArgs = ErroringOperation{2};
+            testCase.Client.addResponse('NotFound', struct('detail', 'not found'));
+
+            testCase.verifyError(...
+                @() testCase.Client.(operationName)(callArgs{:}), ...
+                "EBRAINS:KG_API:" + operationName + ":NotFound");
+        end
     end
     
     methods (Test, TestTags = {'IdentifierNormalization'})
@@ -746,6 +762,33 @@ classdef InstancesClientTest < matlab.unittest.TestCase
         end
     end
     
+    methods (Static)
+        function parameters = erroringOperations()
+        % erroringOperations - One parameter per operation: {name, callArgs}
+        %
+        %   callArgs are the arguments that reach the operation's own request,
+        %   beyond the mock client itself; each name is written once here and
+        %   also becomes the parameter's label.
+            operations = { ...
+                'createNewInstance',       {'{}'}; ...
+                'createNewInstanceWithId', {"id1", '{}'}; ...
+                'updateInstance',          {"id1", '{}'}; ...
+                'replaceInstance',         {"id1", '{}'}; ...
+                'deleteInstance',          {"id1"}; ...
+                'moveInstance',            {"id1", "newspace"}; ...
+                'releaseInstance',         {"id1"}; ...
+                'getReleaseStatus',        {"id1"}; ...
+                'listTypes',               {}; ...
+                'runDynamicQuery',         {'{}'}; ...
+                'getInstancesBulk',        {["id1", "id2"]} ...
+                };
+            parameters = struct();
+            for i = 1:size(operations, 1)
+                parameters.(operations{i, 1}) = {operations{i, 1}, operations{i, 2}};
+            end
+        end
+    end
+
     methods (Access = private)
         function iri = fullIri(~, uuid)
             iri = ebrains.common.constant.KgInstanceIRIPrefix + "/" + uuid;
