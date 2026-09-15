@@ -27,16 +27,25 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
     for i = 1:numel(S)
-        objectName = S(i).name;
+        objectName = string(S(i).name);
         filePath = fullfile(virtualBucketRootPath, objectName);
-        [parentFolderName, ~, fileExtension] = fileparts(objectName);
-        if isempty(fileExtension)
+
+        % The listing returns the objects of the bucket rather than the
+        % folders implied by their names, so an entry stands for a folder
+        % only where the bucket says so. Whether the name has an extension
+        % says nothing: "README" and "Snakefile" are files.
+        if isFolderEntry(S(i))
             if ~isfolder(filePath); mkdir(filePath); end
             continue
-        elseif ~isempty(parentFolderName)
-            parentFolderPath = fileparts(filePath);
-            if ~isfolder(parentFolderPath); mkdir(parentFolderPath); end
         end
+
+        % The folders of the object's own name are created as needed; the
+        % root of the virtual bucket is already in place.
+        parentFolderPath = fileparts(filePath);
+        if strlength(parentFolderPath) > 0 && ~isfolder(parentFolderPath)
+            mkdir(parentFolderPath)
+        end
+
         % Create the empty file from MATLAB rather than via a shell command,
         % so object names with spaces or shell metacharacters need no quoting
         % and the function also works on Windows.
@@ -53,5 +62,19 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
                 fprintf("Created %d/%d virtual files\n", i, numel(S))
             end
         end
+    end
+end
+
+function tf = isFolderEntry(object)
+% isFolderEntry - Whether a listing entry stands for a folder
+%
+%   A name that ends with "/" is how the Data Proxy names a folder, and
+%   the object store marks the placeholder object of a folder with a
+%   directory content type. Everything else is a file.
+
+    tf = endsWith(string(object.name), "/");
+
+    if ~tf && isfield(object, 'content_type')
+        tf = startsWith(string(object.content_type), "application/directory");
     end
 end
