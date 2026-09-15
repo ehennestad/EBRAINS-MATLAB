@@ -24,6 +24,11 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
+%       Uploader    : Function that performs the transfer, called as
+%                     [wasSuccess, response] = Uploader(sourceFile, url,
+%                     Name=Value) with the name-value arguments of
+%                     ebrains.external.filedownload.uploadFile, which is
+%                     the default. Meant for tests.
 %
 %   See also ebrains.bucket.downloadFile, ebrains.bucket.getBucketObject
 
@@ -34,13 +39,14 @@ function uploadFile(bucketName, objectName, sourceFile, options)
         options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
+        options.Uploader (1,1) function_handle = @ebrains.external.filedownload.uploadFile
     end
 
     objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
 
     uploadUrl = options.Client.getUploadUrl(bucketName, objectName);
 
-    [wasSuccess, response] = ebrains.external.filedownload.uploadFile(...
+    [wasSuccess, response] = options.Uploader(...
         sourceFile, uploadUrl, Filename=objectName, ...
         DisplayMode=options.DisplayMode, Figure=options.Figure);
 

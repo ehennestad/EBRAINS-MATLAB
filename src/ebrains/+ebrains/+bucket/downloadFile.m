@@ -29,6 +29,11 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
+%       Downloader  : Function that performs the transfer, called as
+%                     Downloader(partFile, url, Name=Value) with the
+%                     name-value arguments of
+%                     ebrains.external.filedownload.downloadFile, which
+%                     is the default. Meant for tests.
 %
 %   See also ebrains.bucket.getBucketObject, ebrains.bucket.createVirtualBucket
 
@@ -39,6 +44,7 @@ function downloadFile(bucketName, objectName, targetFile, options)
         options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
+        options.Downloader (1,1) function_handle = @ebrains.external.filedownload.downloadFile
     end
 
     objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
@@ -59,7 +65,7 @@ function downloadFile(bucketName, objectName, targetFile, options)
     % deriving an extension of its own for a target that has none.
     partFile = targetFile + ".part";
     try
-        ebrains.external.filedownload.downloadFile(partFile, downloadUrl, ...
+        options.Downloader(partFile, downloadUrl, ...
             Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
     catch ME
         if isfile(partFile)
