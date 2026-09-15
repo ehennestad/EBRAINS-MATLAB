@@ -40,11 +40,11 @@ jobs:
             addpath(genpath("tests"))
             addpath(genpath("tools"))
 
-            % Shared with the omkg service account (added as an editor on
-            % the eivihe-sandbox collab) until a dedicated client exists.
+            % Service account dedicated to this repo's CI, added as an
+            % editor on the eivihe-sandbox collab.
             ebrains.authenticate(...
                 "OAuthFlow", "ClientCredentialsFlow", ...
-                "OIDCClientID", "openminds-kg-sync-matlab", ...
+                "OIDCClientID", "ebrains-services-toolbox-matlab-ci", ...
                 "OIDCClientSecret", "${{ secrets.OIDC_CLIENT_SECRET }}")
 
             runLiveIntegrationTests()
