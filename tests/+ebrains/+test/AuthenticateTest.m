@@ -61,5 +61,37 @@ classdef AuthenticateTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(client.AccessToken, "abc");
             testCase.verifyNumElements(client.TokenRequests, 1);
         end
+
+        function testClientCredentialsFlowIgnoresTheOrderOfTheOptions(testCase)
+            % instance() takes the id and the secret positionally. Giving
+            % them the other way round must still authenticate as the same
+            % client: swapped values would be a different client, which
+            % instance() would report through CredentialsChanged before
+            % replacing the one installed here.
+            client = ebrains.mocks.MockClientCredentialsFlowTokenClient("service", "secret");
+            client.addTokenResponse(struct('access_token', 'abc', 'expires_in', 7200));
+            testCase.installSingleton(testCase.ClientCredentialsSingletonName, client);
+
+            testCase.verifyWarningFree(@() ebrains.authenticate(...
+                "OAuthFlow", "ClientCredentialsFlow", ...
+                "OIDCClientSecret", "secret", "OIDCClientID", "service"));
+
+            testCase.verifyNumElements(client.TokenRequests, 1);
+            testCase.verifyEqual(client.AccessToken, "abc");
+        end
+
+        function testClientCredentialsFlowNeedsBothCredentials(testCase)
+            % Half a set of credentials would authenticate as a client with
+            % an empty id or an empty secret.
+            testCase.verifyError(...
+                @() ebrains.authenticate("OAuthFlow", "ClientCredentialsFlow", ...
+                    "OIDCClientID", "service"), ...
+                'EBRAINS:authenticate:IncompleteCredentials');
+
+            testCase.verifyError(...
+                @() ebrains.authenticate("OAuthFlow", "ClientCredentialsFlow", ...
+                    "OIDCClientSecret", "secret"), ...
+                'EBRAINS:authenticate:IncompleteCredentials');
+        end
     end
 end
