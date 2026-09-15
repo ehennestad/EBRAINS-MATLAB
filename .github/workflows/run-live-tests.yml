@@ -1,0 +1,50 @@
+name: Live test
+
+# Runs the tests tagged "LiveIntegration" against the real EBRAINS Data
+# Proxy, Knowledge Graph, and Collaboratory APIs, authenticated as a
+# service account through the OIDC Client Credentials flow. These tests
+# are excluded from the "Test code" workflow; see tools/tasks/testToolbox.m.
+
+on:
+  schedule:
+    - cron: '23 4 * * *'
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-live-tests:
+    name: Run live integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up MATLAB (latest)
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          release: latest
+          cache: true
+
+      - name: Install MatBox
+        uses: ehennestad/matbox-actions/install-matbox@v1.7
+
+      - name: Run live integration tests
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            addpath(genpath("src"))
+            addpath(genpath("tests"))
+            addpath(genpath("tools"))
+
+            % Shared with the omkg service account (added as an editor on
+            % the eivihe-sandbox collab) until a dedicated client exists.
+            ebrains.authenticate(...
+                "OAuthFlow", "ClientCredentialsFlow", ...
+                "OIDCClientID", "openminds-kg-sync-matlab", ...
+                "OIDCClientSecret", "${{ secrets.OIDC_CLIENT_SECRET }}")
+
+            runLiveIntegrationTests()
