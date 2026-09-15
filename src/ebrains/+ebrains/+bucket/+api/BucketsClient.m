@@ -3,7 +3,7 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %
 %   Each method mirrors one endpoint under /buckets of the Data Proxy API:
 %   bucket stat, one page of the object listing, temporary download and
-%   upload URLs, and rename.
+%   upload URLs, rename, and delete.
 %   An object name that holds "/" (a folder within the bucket) is sent with
 %   the "/" as path separators, since the proxy takes the rest of the path
 %   as the name. The temporary URLs the proxy returns are made valid URLs
@@ -18,7 +18,7 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %       bucketStat = client.getBucketStat("my-bucket");
 %
 %   See also ebrains.bucket.listBucketObjects, ebrains.bucket.getBucketObject,
-%   ebrains.bucket.renameObject
+%   ebrains.bucket.renameObject, ebrains.bucket.deleteObject
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:Bucket"
@@ -172,6 +172,32 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 
             if response.StatusCode ~= "OK"
                 obj.throwError("renameObject", response)
+            end
+        end
+        function deleteObject(obj, bucketName, objectName)
+        % deleteObject - Delete an object of a bucket
+        %
+        %   client.deleteObject(bucketName, objectName) removes the object
+        %   from the bucket. To delete a folder with everything in it, end
+        %   objectName with "/". The proxy processes a folder deletion
+        %   asynchronously: it answers 201 when the request is queued, and
+        %   the objects may remain listed until it has completed.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+            end
+
+            request = obj.initializeRequestMessage("DELETE");
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
+            response = obj.sendRequest(request, apiUri);
+
+            % A single object is deleted at once (200); a folder deletion is
+            % queued (201), so any 2xx status is success.
+            statusCode = int32(response.StatusCode);
+            if statusCode < 200 || statusCode >= 300
+                obj.throwError("deleteObject", response)
             end
         end
     end
