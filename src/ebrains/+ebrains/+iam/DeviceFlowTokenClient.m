@@ -11,10 +11,16 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %       authClient.fetchToken() redirects to the browser for user to grant
 %           permissions
 %
-%   See also: ebrains.iam.OidcTokenClient
+%   See also: ebrains.iam.OidcTokenClient, ebrains.iam.internal.DeviceLoginDialog
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/
+%
+% Developer note:
+%   The requests of the flow go through requestDeviceAuthorization and
+%   sendTokenRequest, the browser through openVerificationPage, and the
+%   progress box through createLoginDialog, so that a test double can
+%   drive the flow without a network or a display.
 
     properties (Constant)
         FLOW_NAME = "Device Flow"
@@ -24,7 +30,9 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         SINGLETON_NAME = "IAM_DeviceFlow_Client"
     end
 
-    methods (Access = private)
+    methods (Access = protected)
+        % Protected rather than private so that a test double can subclass
+        % the client; instance() remains the way to get one.
         function obj = DeviceFlowTokenClient(clientId)
             obj@ebrains.iam.OidcTokenClient(clientId);
         end
@@ -34,23 +42,15 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         function fetchToken(obj)
         % fetchToken - Fetch token using OAuth 2.0 Device Authorization Grant
 
-            endpointUrl = obj.OpenIdConfig.device_authorization_endpoint; % openid-connect/auth/device
-            
-            deviceResponse = webwrite(endpointUrl, ...
-                'client_id', obj.ClientId, ...
-                'scope', strjoin( obj.Scope, " ") );
+            deviceResponse = obj.requestDeviceAuthorization();
 
-            message = "Redirecting to web browser to authenticate...";
-            f = msgbox(message, "Authenticating...");
-            figureCleanup = onCleanup(@() safeDeleteFigure(f)); % ensure cleanup on any exit
+            dialog = obj.createLoginDialog();
+            dialogCleanup = onCleanup(@() dialog.close()); % ensure cleanup on any exit
 
-            reformatMessageBoxBeforeRedirecting(f)
-            setMessage(f, "Redirecting to web browser to authenticate...");
-            pause(1)
-            setMessage(f, "Waiting for device login...");
+            dialog.showRedirecting()
+            dialog.showWaiting()
             
-            % Open browser
-            web(deviceResponse.verification_uri_complete)
+            obj.openVerificationPage(deviceResponse.verification_uri_complete)
             
             pollingInterval = deviceResponse.interval;
             pause(pollingInterval)
@@ -65,7 +65,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 switch response.StatusCode
                     case matlab.net.http.StatusCode.OK
                         obj.handleTokenResponse(response.Body.Data)
-                        showSuccess(f)
+                        dialog.showSuccess()
                         isFinished = true;
 
                     case matlab.net.http.StatusCode.BadRequest
@@ -80,7 +80,8 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                                 pause(pollingInterval)
 
                             case "expired_token"
-                                errordlg('The device code has expired. Please try connecting again.', 'Authentication Failed.')
+                                obj.showErrorDialog('Authentication Failed.', ...
+                                    'The device code has expired. Please try connecting again.')
                                 error('EBRAINS:DeviceFlow:DeviceCodeExpired', ...
                                     'The device code has expired. Please try connecting again.')
                             
@@ -90,7 +91,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                                     errorMessage = sprintf(...
                                         ['Make sure the log in to EBRAINS in your web browser and grant access ', ...
                                         'rights to %s before pressing the continue button.'], obj.ClientId);
-                                    errordlg(errorMessage, titleMessage)
+                                    obj.showErrorDialog(titleMessage, errorMessage)
                                     error('EBRAINS:DeviceFlow:AccessDenied', errorMessage) %#ok<SPERR>
                                 else
                                     obj.handleUnspecifiedBadRequestError(errorData)
@@ -108,22 +109,40 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                                 % ignore JSON errors
                             end
                         end
-                        errordlg(msg, 'Authentication Failed');
+                        obj.showErrorDialog('Authentication Failed', msg);
                         error('EBRAINS:DeviceFlow:UnexpectedHTTPStatus', '%s', msg);
                 end
             end
 
             if ~isFinished
-                errordlg('The device authorization session timed out. Please try again.', 'Authentication Timeout');
+                obj.showErrorDialog('Authentication Timeout', ...
+                    'The device authorization session timed out. Please try again.');
                 error('EBRAINS:DeviceFlow:Timeout', 'Polling exceeded device authorization window.');
             end
         end
-    end
 
-    methods (Access = private)
+        function deviceResponse = requestDeviceAuthorization(obj)
+        % requestDeviceAuthorization - Start the device flow and get the codes to poll with
+            endpointUrl = obj.getOpenIdConfig().device_authorization_endpoint; % openid-connect/auth/device
+            deviceResponse = webwrite(endpointUrl, ...
+                'client_id', obj.ClientId, ...
+                'scope', strjoin( obj.Scope, " ") );
+        end
+
+        function openVerificationPage(~, url)
+        % openVerificationPage - Open the page where the user grants access
+            web(url)
+        end
+
+        function dialog = createLoginDialog(~)
+        % createLoginDialog - The box that shows the progress of the login
+            dialog = ebrains.iam.internal.DeviceLoginDialog();
+        end
+
         function response = sendTokenRequest(obj, deviceResponse)
+        % sendTokenRequest - Poll the token endpoint once with the device code
             try
-                endpointURI = matlab.net.URI(obj.OpenIdConfig.token_endpoint);
+                endpointURI = matlab.net.URI(obj.getOpenIdConfig().token_endpoint);
                 
                 % Define request body (form data)
                 formData = struct( ...
@@ -152,7 +171,9 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 throw(ME)
             end
         end
-        
+    end
+
+    methods (Access = private)
         function handleTokenResponse(obj, tokenResponse)
             obj.AccessToken_ = tokenResponse.access_token;
             obj.RefreshToken = tokenResponse.refresh_token;
@@ -164,11 +185,11 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 datetime("now") + seconds(tokenResponse.refresh_expires_in);
         end
 
-        function handleUnspecifiedBadRequestError(~, errorData)
+        function handleUnspecifiedBadRequestError(obj, errorData)
             titleMessage = errorData.error;
             errorMessage = errorData.error_description;
-            errordlg(errorMessage, titleMessage)
-            error('EBRAINS:DeviceFlow:BadRequest', errorMessage)
+            obj.showErrorDialog(titleMessage, errorMessage)
+            error('EBRAINS:DeviceFlow:BadRequest', '%s', errorMessage)
         end
     end
 
@@ -234,67 +255,3 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
     end
 end
 
-function showSuccess(hFigure)
-    message = "Access token successfully retrieved!";
-    hFigure.Children(2).Children(1).String = message;
-    pause(1.5)
-    delete(hFigure)
-end
-
-function onContinuePressed(hFigure)
-    hFigure.Children(1).Visible = 'off';
-    message = "Please wait while retrieving your access token...";
-
-    hFigure.Children(2).Children(1).String = message;
-    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
-    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)-8;
-    uiresume(hFigure)
-end
-
-function reformatMessageBoxBeforeRedirecting(hFigure)
-    hFigure.Position = hFigure.Position + [-50, 0, 100,14];
-    hFigure.Children(1).Visible = 'off';
-    hFigure.Children(1).FontSize = 14;
-    centerHorizontally(hFigure, hFigure.Children(1) )
-    hFigure.Children(2).Children(1).FontSize = 14;
-    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)+5;
-    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
-end
-
-function setMessage(hFigure, message)
-    hFigure.Children(2).Children(1).String = message;
-end
-
-function reformatMessageBoxAfterRedirecting(hFigure)
-    message = "Press Continue to complete authentication.";
-    hFigure.Children(1).Visible = 'on';
-    hFigure.Children(1).String = 'Continue';
-    hFigure.Children(1).Callback = @(s,e,h) onContinuePressed(hFigure);
-
-    %f.Children(1).Position(3:4) = [80,30];
-    hFigure.Children(1).Position(3:4) = [80, 22];
-    centerHorizontally(hFigure, hFigure.Children(1) )
-    hFigure.Children(1).Position(2) = hFigure.Children(1).Position(2) + 4;
-
-    hFigure.Children(2).Children(1).String = message;
-    hFigure.Children(2).Children(1).HorizontalAlignment = "left";
-    centerHorizontally(hFigure, hFigure.Children(2).Children(1) )
-    hFigure.Children(2).Children(1).Position(2) = hFigure.Children(2).Children(1).Position(2)+8;
-end
-
-function centerHorizontally(hFigure, component)
-    W = hFigure.Position(3);
-    componentPosition = component.Position;
-    if numel(componentPosition)==3
-        componentPosition(3:4) = component.Extent(3:4);
-    end
-    
-    xLeft = W/2 - componentPosition(3)/2;
-    component.Position(1)=xLeft;
-end
-
-function safeDeleteFigure(f)
-    if isvalid(f)
-        try delete(f); catch, end
-    end
-end

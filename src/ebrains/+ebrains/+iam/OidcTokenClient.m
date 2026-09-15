@@ -9,6 +9,12 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %       Subclasses should implement:
 %       - fetchToken() - Flow-specific token retrieval
 
+% Developer note:
+%   Every request to the identity provider goes through one of the
+%   protected request methods (requestOpenIdConfiguration, requestToken),
+%   and the only dialog of this class through showErrorDialog, so that a
+%   test double can answer them without a network or a display.
+
     properties (Abstract, Constant)
         FLOW_NAME (1,1) string
     end
@@ -71,7 +77,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
     
     methods (Access = protected)
         function obj = OidcTokenClient(clientId)
-            obj.initOidc()
+            % The OpenID configuration is fetched on the first token request
+            % rather than here, so that creating a client needs no network.
             obj.tryLoadTokenFromEnvironment()
             obj.ClientId = clientId;
         end
@@ -99,10 +106,34 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             end
         end
 
-        function initOidc(obj)
-        % initOidc - Get openID configurations
-            obj.OpenIdConfig = ...
-                webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT);
+        function config = getOpenIdConfig(obj)
+        % getOpenIdConfig - The OpenID configuration, fetched once on first use
+            if isempty(obj.OpenIdConfig)
+                obj.OpenIdConfig = obj.requestOpenIdConfiguration();
+            end
+            config = obj.OpenIdConfig;
+        end
+
+        function config = requestOpenIdConfiguration(obj)
+        % requestOpenIdConfiguration - Get the OpenID configuration from the provider
+            config = webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT);
+        end
+
+        function tokenResponse = requestToken(obj, formFields)
+        % requestToken - Post form fields to the token endpoint
+        %
+        %   tokenResponse = obj.requestToken(formFields) posts the given
+        %   cell array of name-value pairs and returns the decoded response.
+            arguments
+                obj (1,1) ebrains.iam.OidcTokenClient
+                formFields (1,:) cell
+            end
+            tokenResponse = webwrite(obj.getOpenIdConfig().token_endpoint, formFields{:});
+        end
+
+        function showErrorDialog(~, titleMessage, errorMessage)
+        % showErrorDialog - Show an error in a dialog box
+            errordlg(errorMessage, titleMessage);
         end
         
         function decodeTokenExpiryTime(obj)
@@ -121,11 +152,11 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         
             try
                 % Request a new access token using the refresh token
-                tokenResponse = webwrite(obj.OpenIdConfig.token_endpoint, ...
+                tokenResponse = obj.requestToken({ ...
                     "grant_type", "refresh_token", ...
                     "client_id", obj.ClientId, ...
                     "refresh_token", obj.RefreshToken ...
-                );
+                    });
         
                 % Update object properties with new token values
                 obj.AccessToken_ = tokenResponse.access_token;
@@ -147,7 +178,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                         % Re-authenticate if refresh token is invalid
                         obj.fetchToken()
                     otherwise
-                        errordlg(ME.message, titleMessage);
+                        obj.showErrorDialog(titleMessage, ME.message);
                         throwAsCaller(ME);
                 end
             end
@@ -195,11 +226,13 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 warnState = warning('off', 'backtrace');
                 warningCleanup = onCleanup(@() warning(warnState));
                 if obj.ExpiresIn < 0
-                    warning("EBRAINS Access token expired %d minutes ago.", abs(round(seconds(obj.ExpiresIn)/60)))
+                    warning("EBRAINS:IAM:TokenExpired", ...
+                        "EBRAINS Access token expired %d minutes ago.", abs(round(seconds(obj.ExpiresIn)/60)))
                 elseif obj.ExpiresIn < seconds(3600)
                     elapsed = toc(obj.LastWarnTime);
                     if elapsed > 60*10 % 10 minutes
-                        warning("EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
+                        warning("EBRAINS:IAM:TokenExpiresSoon", ...
+                            "EBRAINS Access token expires in %d minutes", round(seconds(obj.ExpiresIn)/60))
                         obj.LastWarnTime = tic;
                     end
                 end
