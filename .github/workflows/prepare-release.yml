@@ -12,8 +12,19 @@ on:
         type: string
 
 jobs:
+  live-test:
+    name: Verify live API access before release
+    # A release must prove it still talks to the real Data Proxy, Knowledge
+    # Graph, and Collaboratory APIs. Runs fresh against the exact commit or
+    # tag being released, rather than relying on the weekly schedule's last
+    # result, which could be stale or could predate this release's changes.
+    uses: ./.github/workflows/live-integration-tests.yml
+    secrets:
+      OIDC_CLIENT_SECRET: ${{ secrets.OIDC_CLIENT_SECRET }}
+
   prepare-release:
     name: Prepare toolbox release
+    needs: live-test
     uses: ehennestad/matbox-actions/.github/workflows/prepare-release-workflow.yml@v1
     with:
       # Do not change
