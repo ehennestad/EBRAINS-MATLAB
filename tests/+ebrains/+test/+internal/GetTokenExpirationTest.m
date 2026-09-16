@@ -18,5 +18,14 @@ classdef GetTokenExpirationTest < matlab.unittest.TestCase
             testCase.verifyEqual(posixtime(expiration), testCase.ExpiryPosixTime);
             testCase.verifyNotEmpty(expiration.TimeZone);
         end
+
+        function testUnusableExpiryClaimIsReportedAsMalformed(testCase)
+            % Read without the check, an exp claim that is not a number
+            % reaches datetime, which reports it as its own argument.
+            token = ebrains.mocks.makeTestJwt(struct('exp', 'tomorrow'));
+
+            testCase.verifyError(@() ebrains.internal.get_token_expiration(token), ...
+                'EBRAINS:IAM:MalformedToken');
+        end
     end
 end

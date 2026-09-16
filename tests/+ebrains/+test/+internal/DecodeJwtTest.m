@@ -26,11 +26,16 @@ classdef DecodeJwtTest < matlab.unittest.TestCase
             testCase.verifyEqual(payload.note, testCase.LongNote);
         end
 
-        function testMissingPayloadSegmentErrors(testCase)
-            % decode_jwt splits on "." and indexes the second part directly,
-            % so a token without one raises a generic indexing error rather
-            % than a message about a malformed token.
-            testCase.verifyError(@() ebrains.internal.decode_jwt('onlyonepart'), ?MException);
+        function testMissingPayloadSegmentIsReportedAsMalformed(testCase)
+            testCase.verifyError(@() ebrains.internal.decode_jwt('onlyonepart'), ...
+                'EBRAINS:IAM:MalformedToken');
+        end
+
+        function testUnreadablePayloadIsReportedAsMalformed(testCase)
+            % Three parts, but the middle one is base64url for '{"a":',
+            % which decodes without being the JSON a payload has to be.
+            testCase.verifyError(@() ebrains.internal.decode_jwt('header.eyJhIjo.signature'), ...
+                'EBRAINS:IAM:MalformedToken');
         end
     end
 end

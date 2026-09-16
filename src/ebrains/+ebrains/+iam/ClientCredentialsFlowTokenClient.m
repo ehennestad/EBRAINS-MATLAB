@@ -10,8 +10,9 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 %   methods and properties are inherited from OidcTokenClient.
 %
 %   ClientCredentialsFlowTokenClient functions:
-%       instance - The shared client, created on first use
-%       reset    - Delete the shared client
+%       instance        - The shared client, created on first use
+%       reset           - Delete the shared client
+%       canProvideToken - Whether the client can supply a valid token
 %
 %   See also OidcTokenClient, DeviceFlowTokenClient,
 %   ebrains.authenticate, ebrains.getTokenManager
@@ -39,6 +40,25 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
             obj@ebrains.iam.OidcTokenClient(clientId);
             obj.ClientSecret = clientSecret;
+        end
+    end
+
+    methods
+        function tf = canProvideToken(obj)
+        %canProvideToken - Whether the client can supply a valid access token
+        %   TF = canProvideToken(OBJ) is true when the token the client
+        %   holds is still valid, or when it has authenticated before and
+        %   holds the client id and secret to do so again.
+        %
+        %   It is false for a client whose only token came from the
+        %   EBRAINS_TOKEN environment variable and has since expired. This
+        %   toolbox holds no credentials to renew such a token with, so a
+        %   caller looking for a usable token manager is better served by
+        %   another flow.
+        %
+        %   See also hasActiveToken, canAuthenticate, ebrains.getTokenManager
+
+            tf = obj.isTokenActive() || (obj.canAuthenticate() && obj.hasCredentials());
         end
     end
 
@@ -95,7 +115,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
         %   caller whose token simply expired to go and check credentials
         %   it never gave.
 
-            if strlength(obj.ClientId) > 0 && strlength(obj.ClientSecret) > 0
+            if obj.hasCredentials()
                 return
             end
 
@@ -114,6 +134,16 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                     'EBRAINS_TOKEN to a valid token, or call ', ...
                     'ebrains.authenticate to log in.'])
             end
+        end
+    end
+
+    methods (Access = private)
+        function tf = hasCredentials(obj)
+        %hasCredentials - Whether the client holds a client id and a secret
+        %   Both are needed to request a token. A client that only carries a
+        %   token given through EBRAINS_TOKEN has neither.
+
+            tf = strlength(obj.ClientId) > 0 && strlength(obj.ClientSecret) > 0;
         end
     end
 
