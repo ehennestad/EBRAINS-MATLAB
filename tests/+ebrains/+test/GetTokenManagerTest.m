@@ -25,6 +25,49 @@ classdef GetTokenManagerTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifySameHandle(tokenManager, client);
         end
 
+        function testPrefersClientCredentialsClientThatCanRenewItsToken(testCase)
+            % A client with credentials fetches a new token on demand, so an
+            % expired one is no reason to go looking for another flow.
+            client = ebrains.mocks.MockClientCredentialsFlowTokenClient("service", "secret");
+            client.seedToken("stale", -60);
+            testCase.installSingleton(testCase.ClientCredentialsSingletonName, client);
+
+            tokenManager = ebrains.getTokenManager();
+
+            testCase.verifySameHandle(tokenManager, client);
+        end
+
+        function testUsesAValidTokenFromTheEnvironment(testCase)
+            % The client without credentials is the one that carries a token
+            % given through EBRAINS_TOKEN. It answers while that token lasts.
+            client = ebrains.mocks.MockClientCredentialsFlowTokenClient("", "");
+            client.seedToken("from-environment", 7200);
+            testCase.installSingleton(testCase.ClientCredentialsSingletonName, client);
+
+            tokenManager = ebrains.getTokenManager();
+
+            testCase.verifySameHandle(tokenManager, client);
+        end
+
+        function testFallsBackToDeviceFlowWhenTheEnvironmentTokenHasExpired(testCase)
+            % A token from EBRAINS_TOKEN cannot be renewed by the toolbox,
+            % which holds no credentials for it. Answering with its client
+            % anyway would fail every request over an expired token, and
+            % would leave a device flow login with nothing to take effect on.
+            expired = ebrains.mocks.MockClientCredentialsFlowTokenClient("", "");
+            expired.seedToken("from-environment", -60);
+            testCase.installSingleton(testCase.ClientCredentialsSingletonName, expired);
+
+            deviceClient = ebrains.mocks.MockDeviceFlowTokenClient();
+            deviceClient.seedTokens("access-0", "refresh-0", 7200);
+            testCase.installSingleton(testCase.DeviceFlowSingletonName, deviceClient);
+
+            tokenManager = ebrains.getTokenManager();
+
+            testCase.verifySameHandle(tokenManager, deviceClient);
+            testCase.verifyEqual(deviceClient.PollCount, 0);
+        end
+
         function testErrorsWhenForcedClientCredentialsCannotAuthenticate(testCase)
             setenv("EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW", "true");
 

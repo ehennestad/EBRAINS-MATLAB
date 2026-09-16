@@ -27,6 +27,20 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEmpty(client.TokenRequests);
         end
 
+        function testUnreadableTokenFromEnvironmentIsIgnoredWithWarning(testCase)
+            % A client is created on the way to every request, so keeping a
+            % value that cannot be read would fail all of them.
+            setenv("EBRAINS_TOKEN", "not-a-json-web-token");
+
+            client = testCase.verifyWarning(...
+                @() ebrains.mocks.MockClientCredentialsFlowTokenClient(), ...
+                'EBRAINS:IAM:InvalidEnvironmentToken');
+
+            testCase.verifyFalse(client.canAuthenticate());
+            testCase.verifyFalse(client.hasActiveToken());
+            testCase.verifyTrue(ismissing(client.ExpiresIn));
+        end
+
         function testExpiredTokenIsInactiveAndWarns(testCase)
             expiredAt = round(posixtime(datetime("now", TimeZone="UTC"))) - 600;
             setenv("EBRAINS_TOKEN", ebrains.mocks.makeTestJwt(struct('exp', expiredAt)));

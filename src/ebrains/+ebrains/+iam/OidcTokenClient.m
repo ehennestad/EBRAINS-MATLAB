@@ -10,7 +10,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %   when a client is created. Such a token cannot be renewed by the
 %   toolbox, which holds no credentials of its own for it: once it
 %   expires, a valid token has to be given the same way, or one of the
-%   flows has to log in.
+%   flows has to log in. A value that is not a readable token is reported
+%   and ignored, leaving a client that has no token.
 %
 %   OidcTokenClient functions:
 %       authenticate         - Fetch a token, or refresh the active one
@@ -130,12 +131,33 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         function tryLoadTokenFromEnvironment(obj)
         %tryLoadTokenFromEnvironment - Load the access token from EBRAINS_TOKEN
 
-            if isenv('EBRAINS_TOKEN') && strlength(getenv('EBRAINS_TOKEN')) > 0
-                % A token given this way arrives without the lifetime that
-                % storeToken takes, so the pair is completed by reading the
-                % expiry out of the token itself.
-                obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
+            if ~isenv('EBRAINS_TOKEN') || strlength(getenv('EBRAINS_TOKEN')) == 0
+                return
+            end
+
+            % A token given this way arrives without the lifetime that
+            % storeToken takes, so the pair is completed by reading the
+            % expiry out of the token itself.
+            obj.AccessToken_ = string(getenv('EBRAINS_TOKEN'));
+
+            try
                 obj.decodeTokenExpiryTime()
+            catch cause
+                % A value that is not a readable token is dropped rather
+                % than kept. A client is created on the way to every
+                % request, so keeping it would fail each of them with the
+                % error of whichever step tripped over the value, and that
+                % error does not name the variable the value came from.
+                % Dropped, it leaves a client that simply has no token,
+                % which one of the flows can still log in.
+                obj.AccessToken_ = missing;
+                obj.AccessTokenExpiresAt = [];
+
+                warnState = warning('off', 'backtrace');
+                warningCleanup = onCleanup(@() warning(warnState));
+                warning("EBRAINS:IAM:InvalidEnvironmentToken", ...
+                    "The EBRAINS_TOKEN environment variable does not hold a " + ...
+                    "readable access token, and was ignored: %s", cause.message)
             end
         end
 
@@ -214,6 +236,17 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             obj.AccessTokenExpiresAt = ...
                 ebrains.internal.get_token_expiration(obj.AccessToken_);
             obj.AccessTokenExpiresAt.TimeZone = '';
+        end
+
+        function tf = isTokenActive(obj)
+        %isTokenActive - Whether the access token is valid, without warning
+        %   The check behind hasActiveToken, for callers that ask about the
+        %   state a client is in rather than about using its token, and that
+        %   would otherwise warn once per request.
+
+            tf = ~ismissing(obj.AccessToken_) ...
+                && ~ismissing(obj.ExpiresIn) ...
+                && obj.ExpiresIn > seconds(0);
         end
 
         function refreshToken(obj)
@@ -313,10 +346,9 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         %   token that has not expired. A warning is issued when the token
         %   has expired or expires within the hour.
 
-            tf = false;
+            tf = obj.isTokenActive();
 
             if ~ismissing(obj.AccessToken_) && ~ismissing(obj.ExpiresIn)
-                tf = obj.ExpiresIn > seconds(0);
                 warnState = warning('off', 'backtrace');
                 warningCleanup = onCleanup(@() warning(warnState));
                 if obj.ExpiresIn < 0

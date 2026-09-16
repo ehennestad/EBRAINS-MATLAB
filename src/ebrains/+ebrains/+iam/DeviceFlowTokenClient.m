@@ -235,23 +235,30 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
                 end
             end
 
+            % A stored client that has been deleted, with delete(client)
+            % rather than with reset, is no longer one. It is dropped here
+            % rather than at the construction check below, since a deleted
+            % handle is not empty and would otherwise pass the test for the
+            % default client id and leave the client without one.
+            if ~isempty(authClientObject) && ~isvalid(authClientObject)
+                authClientObject = [];
+            end
+
             if isempty(authClientObject) && ismissing(OIDCClientID)
                 % Create token client using this toolbox' default OIDC Client
                 OIDCClientID = ebrains.common.constant.OIDCClientID;
             end
 
             % Create new singleton if we are getting a new client id
-            if ~isempty(authClientObject) && isvalid(authClientObject)
-                if ~ismissing(OIDCClientID)
-                    if authClientObject.ClientId ~= OIDCClientID
-                        delete(authClientObject)
-                        authClientObject = [];
-                    end
+            if ~isempty(authClientObject) && ~ismissing(OIDCClientID)
+                if authClientObject.ClientId ~= OIDCClientID
+                    delete(authClientObject)
+                    authClientObject = [];
                 end
             end
 
             % - Construct the client if singleton instance is not present
-            if isempty(authClientObject) || ~isvalid(authClientObject)
+            if isempty(authClientObject)
                 authClientObject = ebrains.iam.DeviceFlowTokenClient(OIDCClientID);
 
                 rootUserData.SingletonInstances.(singletonName) = authClientObject;

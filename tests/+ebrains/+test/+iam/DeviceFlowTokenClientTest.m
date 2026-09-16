@@ -122,6 +122,18 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyFalse(isvalid(first));
         end
 
+        function testInstanceReplacesADeletedClient(testCase)
+            % delete(client) leaves the handle in the store, where it is no
+            % longer a client but is not empty either.
+            first = ebrains.iam.DeviceFlowTokenClient.instance();
+            delete(first)
+
+            second = ebrains.iam.DeviceFlowTokenClient.instance();
+
+            testCase.verifyTrue(isvalid(second));
+            testCase.verifyEqual(second.ClientId, ebrains.common.constant.OIDCClientID());
+        end
+
         function testResetDeletesTheInstance(testCase)
             first = ebrains.iam.DeviceFlowTokenClient.instance();
 
