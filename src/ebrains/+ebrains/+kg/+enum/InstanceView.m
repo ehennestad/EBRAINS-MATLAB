@@ -22,7 +22,6 @@ classdef InstanceView
 
     enumeration
         Search(ebrains.common.constant.KgInstanceViewURL())
-        % The KG Search site serves the preview under /live/.
         Preview(ebrains.common.constant.KgInstanceLivePreviewURL())
         Editor(ebrains.common.constant.KgInstanceEditorURL())
     end
