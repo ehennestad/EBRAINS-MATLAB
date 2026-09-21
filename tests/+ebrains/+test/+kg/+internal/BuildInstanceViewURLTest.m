@@ -6,37 +6,62 @@ classdef BuildInstanceViewURLTest < matlab.unittest.TestCase
         IriPrefix = ebrains.common.constant.KgInstanceIRIPrefix + "/"
     end
 
+    properties (TestParameter)
+        % Each view and the constant that holds the URL it is served under
+        View = struct( ...
+            "Search", struct("Name", "Search", "BaseURL", @ebrains.common.constant.KgInstanceViewURL), ...
+            "Live",   struct("Name", "Live",   "BaseURL", @ebrains.common.constant.KgInstanceLivePreviewURL), ...
+            "Editor", struct("Name", "Editor", "BaseURL", @ebrains.common.constant.KgInstanceEditorURL))
+    end
+
     methods (Test)
-        function testBuildsViewUrlFromBareUuid(testCase)
+        function testBuildsUrlForEachView(testCase, View)
+            actual = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View=View.Name);
+            testCase.verifyEqual(actual, View.BaseURL() + testCase.Uuid);
+        end
+
+        function testViewNameIsCaseInsensitive(testCase, View)
+            actual = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View=lower(View.Name));
+            testCase.verifyEqual(actual, View.BaseURL() + testCase.Uuid);
+        end
+
+        function testAcceptsEnumMember(testCase, View)
+            viewEnum = ebrains.kg.enum.InstanceView(View.Name);
+            actual = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View=viewEnum);
+            testCase.verifyEqual(actual, View.BaseURL() + testCase.Uuid);
+        end
+
+        function testDefaultViewIsSearch(testCase)
             actual = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid);
-            expected = ebrains.common.constant.KgInstanceViewURL() + testCase.Uuid;
+            expected = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View="Search");
             testCase.verifyEqual(actual, expected);
         end
 
-        function testBuildsViewUrlFromFullIri(testCase)
+        function testEveryViewHasItsOwnUrl(testCase)
+            % The views differ only by the constant each maps to, so a
+            % copy-paste that made two of them equal must fail here.
+            views = enumeration("ebrains.kg.enum.InstanceView");
+            urls = arrayfun(...
+                @(v) ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View=v), views);
+            testCase.verifyNumElements(unique(urls), numel(views));
+        end
+
+        function testBuildsUrlFromFullIri(testCase)
             actual = ebrains.kg.internal.buildInstanceViewURL(testCase.IriPrefix + testCase.Uuid);
             expected = ebrains.common.constant.KgInstanceViewURL() + testCase.Uuid;
             testCase.verifyEqual(actual, expected);
-        end
-
-        function testBuildsLivePreviewUrl(testCase)
-            actual = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, LivePreview=true);
-            expected = ebrains.common.constant.KgInstanceLivePreviewURL() + testCase.Uuid;
-            testCase.verifyEqual(actual, expected);
-        end
-
-        function testLivePreviewAndViewUrlsDiffer(testCase)
-            % The two constants are the whole difference between the two
-            % pages, so a copy-paste that made them equal must fail here.
-            viewUrl = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid);
-            liveUrl = ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, LivePreview=true);
-            testCase.verifyNotEqual(viewUrl, liveUrl);
         end
 
         function testAcceptsCharIdentifier(testCase)
             actual = ebrains.kg.internal.buildInstanceViewURL(char(testCase.Uuid));
             expected = ebrains.common.constant.KgInstanceViewURL() + testCase.Uuid;
             testCase.verifyEqual(actual, expected);
+        end
+
+        function testUnknownViewIsRejected(testCase)
+            testCase.verifyError(...
+                @() ebrains.kg.internal.buildInstanceViewURL(testCase.Uuid, View="Atlas"), ...
+                "MATLAB:validation:UnableToConvert");
         end
 
         function testBlankNodeIdentifierIsRejected(testCase)

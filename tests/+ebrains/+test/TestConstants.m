@@ -29,5 +29,10 @@ classdef TestConstants < matlab.unittest.TestCase
             url = ebrains.common.constant.KgInstanceLivePreviewURL();
             testCase.verifyEqual(url, "https://search.kg.ebrains.eu/live/");
         end
+
+        function testKgInstanceEditorURL(testCase)
+            url = ebrains.common.constant.KgInstanceEditorURL();
+            testCase.verifyEqual(url, "https://editor.kg.ebrains.eu/instances/");
+        end
     end
 end

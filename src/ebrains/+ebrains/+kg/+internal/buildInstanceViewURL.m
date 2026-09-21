@@ -1,41 +1,33 @@
 function url = buildInstanceViewURL(identifier, options)
-% buildInstanceViewURL - Build the Knowledge Graph Search URL of an instance
+% buildInstanceViewURL - Build the address of a KG instance on a web page
 %
 %   Syntax:
 %       url = ebrains.kg.internal.buildInstanceViewURL(identifier) returns
-%       the address of the page that the Knowledge Graph Search website
-%       serves for the released version of the instance.
+%       the address of the instance on the Knowledge Graph Search site,
+%       which shows its released version.
 %
 %       url = ebrains.kg.internal.buildInstanceViewURL(identifier,
-%       LivePreview=true) returns the address of the live preview page
-%       instead, which shows the in-progress version.
+%       View=VIEW) returns its address on the given page instead.
 %
 %   Input Arguments
 %       identifier : Identifier of a KG instance, given either as a bare
 %                    UUID or as a full KG instance IRI.
 %
 %   Name-Value Arguments
-%       LivePreview : Whether to build the live preview address. Default is
-%                     false.
+%       View : Page to build the address for, as an
+%              ebrains.kg.enum.InstanceView or its name as text. Default
+%              is "Search".
 %
-%   See also ebrains.kg.viewInstanceOnline,
-%   ebrains.common.constant.KgInstanceViewURL,
-%   ebrains.common.constant.KgInstanceLivePreviewURL
+%   See also ebrains.kg.viewInstanceOnline, ebrains.kg.enum.InstanceView
 
     arguments
         identifier (1,1) string
-        options.LivePreview (1,1) logical = false
+        options.View (1,1) ebrains.kg.enum.InstanceView = "Search"
     end
 
     uuid = resolveUUID(identifier);
 
-    if options.LivePreview
-        baseURL = ebrains.common.constant.KgInstanceLivePreviewURL();
-    else
-        baseURL = ebrains.common.constant.KgInstanceViewURL();
-    end
-
-    url = baseURL + uuid;
+    url = options.View.baseURL() + uuid;
 end
 
 function uuid = resolveUUID(identifier)

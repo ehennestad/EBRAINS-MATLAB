@@ -19,19 +19,34 @@ classdef ViewInstanceOnlineTest < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function testOpensViewUrlForIdentifier(testCase)
+        function testOpensSearchUrlByDefault(testCase)
             ebrains.kg.viewInstanceOnline(testCase.Uuid, Opener=testCase.makeOpener());
 
             expected = ebrains.common.constant.KgInstanceViewURL() + testCase.Uuid;
             testCase.verifyEqual(testCase.OpenedURL, expected);
         end
 
-        function testOpensLivePreviewUrlForIdentifier(testCase)
+        function testOpensLivePreviewUrl(testCase)
             ebrains.kg.viewInstanceOnline(testCase.Uuid, ...
-                LivePreview=true, Opener=testCase.makeOpener());
+                View="Live", Opener=testCase.makeOpener());
 
             expected = ebrains.common.constant.KgInstanceLivePreviewURL() + testCase.Uuid;
             testCase.verifyEqual(testCase.OpenedURL, expected);
+        end
+
+        function testOpensEditorUrl(testCase)
+            ebrains.kg.viewInstanceOnline(testCase.Uuid, ...
+                View="Editor", Opener=testCase.makeOpener());
+
+            expected = ebrains.common.constant.KgInstanceEditorURL() + testCase.Uuid;
+            testCase.verifyEqual(testCase.OpenedURL, expected);
+        end
+
+        function testUnknownViewIsRejected(testCase)
+            testCase.verifyError(...
+                @() ebrains.kg.viewInstanceOnline(testCase.Uuid, ...
+                    View="Atlas", Opener=testCase.makeOpener()), ...
+                "MATLAB:validation:UnableToConvert");
         end
 
         function testOpensUrlForFullIri(testCase)
