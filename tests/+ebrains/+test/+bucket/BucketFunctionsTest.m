@@ -101,6 +101,20 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEmpty(objects);
         end
 
+        function testListBucketObjectsSendsPrefix(testCase)
+            testCase.Client.addResponse('OK', makeStat(5, 4096));
+            testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/y.txt"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            objects = ebrains.bucket.listBucketObjects("my-bucket", ...
+                Prefix="set-a/", Client=testCase.Client);
+
+            testCase.verifyNumElements(objects, 2);
+            testCase.Client.verifyRequestURL(2, 'prefix=set-a');
+            testCase.Client.verifyRequestURL(3, 'prefix=set-a');
+            testCase.Client.verifyRequestURL(3, 'marker=set-a');
+        end
+
         function testListBucketObjectsStatErrorPropagates(testCase)
             testCase.Client.addResponse('NotFound', 'Bucket not found');
             testCase.verifyError(...
@@ -322,6 +336,24 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfolder(fullfile(rootPath, "emptydir")));
         end
 
+        function testCreateVirtualBucketKeepsExistingFiles(testCase)
+            % Cloning again over a bucket whose files were downloaded must
+            % not replace them with empty files.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            mkdir(rootPath)
+            fileID = fopen(fullfile(rootPath, "a.txt"), "w");
+            fprintf(fileID, "downloaded");
+            fclose(fileID);
+            testCase.Client.addResponse('OK', makeStat(2, 0));
+            testCase.Client.addResponse('OK', makePage(["a.txt", "b.txt"]));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyEqual(fileread(fullfile(rootPath, "a.txt")), 'downloaded');
+            testCase.verifyTrue(isfile(fullfile(rootPath, "b.txt")));
+        end
+
         function testCreateVirtualBucketCreatesExtensionlessObjectsAsFiles(testCase)
             % The listing returns objects, not the folders implied by their
             % names, so a name without an extension is still a file.
@@ -354,6 +386,44 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyTrue(isfolder(fullfile(rootPath, "markedFolder")));
             testCase.verifyTrue(isfile(fullfile(rootPath, "markedFolder", "notes.txt")));
+        end
+
+        function testCreateVirtualBucketCreatesUntypedFolderMarkersAsFolders(testCase)
+            % Buckets migrated from the old object storage mark a folder
+            % with an empty object that has neither a trailing "/" nor a
+            % directory content type. Only the objects below it show that
+            % it is a folder.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            page = struct('objects', struct(...
+                'name', {'Sbj001'; 'Sbj001/A160216'; 'Sbj001/A160216/trace.ibw'; 'notes'}, ...
+                'bytes', {0; 0; 0; 0}, ...
+                'content_type', {'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'}));
+            testCase.Client.addResponse('OK', makeStat(4, 0));
+            testCase.Client.addResponse('OK', page);
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "Sbj001")));
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "Sbj001", "A160216")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "Sbj001", "A160216", "trace.ibw")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "notes")), ...
+                'An empty object with nothing below it stays a file.')
+        end
+
+        function testCreateVirtualBucketCreatesOnlyObjectsUnderPrefix(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            testCase.Client.addResponse('OK', makeStat(4, 0));
+            testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/sub/y.txt"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, ...
+                Prefix="set-a/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestURL(2, 'prefix=set-a');
+            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "x.txt")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "sub", "y.txt")));
         end
 
         function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)
