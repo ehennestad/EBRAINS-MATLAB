@@ -32,7 +32,7 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %       Downloader  : Function that performs the transfer, called as
 %                     Downloader(partFile, url, Name=Value) with the
 %                     name-value arguments of
-%                     ebrains.external.filedownload.downloadFile, which
+%                     ebrains.external.webprogress.download, which
 %                     is the default. Meant for tests.
 %
 %   See also ebrains.bucket.getBucketObject, ebrains.bucket.createVirtualBucket
@@ -44,7 +44,7 @@ function downloadFile(bucketName, objectName, targetFile, options)
         options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
-        options.Downloader (1,1) function_handle = @ebrains.external.filedownload.downloadFile
+        options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
     end
 
     objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
