@@ -38,7 +38,10 @@ classdef BucketLiveTest < matlab.unittest.TestCase
             targetFile = fullfile(folderFixture.Folder, "downloaded.txt");
             ebrains.bucket.downloadFile(testCase.BucketName, objectName, targetFile);
             testCase.verifyEqual(dir(targetFile).bytes, sourceSizeBytes);
-            testCase.verifyFalse(isfile(targetFile + ".part"));
+            % The downloader's temporary file must not remain in the folder
+            listing = dir(folderFixture.Folder);
+            fileNames = string({listing(~[listing.isdir]).name});
+            testCase.verifyEqual(sort(fileNames), ["downloaded.txt", "probe.txt"]);
 
             ebrains.bucket.deleteObject(testCase.BucketName, objectName);
             testCase.verifyError(...

@@ -264,13 +264,12 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         end
 
         function testDownloadFileFailedTransferLeavesTargetUntouched(testCase)
-            % A refused connection fails the transfer before any byte is
-            % written. The file at the target must be as it was, and no
-            % part file may remain.
+            % A refused connection fails the transfer of the default
+            % downloader. The file at the target must be as it was, and the
+            % downloader's temporary file must not remain next to it.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "existing.bin");
             writelines("previous content", targetFile);
-            fileInfoBefore = dir(targetFile);
             testCase.Client.addResponse('OK', struct('url', 'http://127.0.0.1:9/existing.bin'));
 
             testCase.verifyError(...
@@ -278,46 +277,43 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                     Client=testCase.Client, DisplayMode="Command Window"), ...
                 'MATLAB:webservices:ConnectionRefused');
 
-            fileInfoAfter = dir(targetFile);
-            testCase.verifyEqual(fileInfoAfter.bytes, fileInfoBefore.bytes);
-            testCase.verifyFalse(isfile(targetFile + ".part"));
+            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "previous content");
+            testCase.verifyEqual(listFileNames(folderFixture.Folder), "existing.bin");
         end
 
-        function testDownloadFileMovesTheReceivedFileIntoPlace(testCase)
-            % The transfer writes to the part file; only a completed
-            % transfer replaces the target, in a folder created on demand.
+        function testDownloadFileHandsTheTargetAndSignedUrlToTheDownloader(testCase)
+            % The downloader writes the target itself, in a folder that is
+            % created on demand.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "new folder", "file.txt");
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
-            downloader = @(partFile, url, varargin) writelines("received", partFile);
+            downloads = {};
+            downloader = @(target, url, varargin) recordDownload(target, url, varargin);
+            function recordDownload(target, url, nameValues)
+                downloads{end+1} = {target, url, nameValues};
+                writelines("received", target);
+            end
 
-            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+            ebrains.bucket.downloadFile("my-bucket", "sub/file.txt", targetFile, ...
                 Client=testCase.Client, Downloader=downloader);
 
+            testCase.assertNumElements(downloads, 1);
+            testCase.verifyEqual(downloads{1}{1}, targetFile);
+            testCase.verifyEqual(downloads{1}{2}, "https://store.example.org/file?sig=1");
+            testCase.verifyEqual(downloads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
             testCase.verifyEqual(strtrim(string(fileread(targetFile))), "received");
-            testCase.verifyFalse(isfile(targetFile + ".part"));
         end
 
-        function testDownloadFileRemovesAPartialFileAndKeepsTheTarget(testCase)
-            % A transfer that fails after writing leaves a partial part
-            % file; it must go, and the target must stay as it was.
+        function testDownloadFileDownloaderErrorPropagates(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "file.txt");
-            writelines("previous", targetFile);
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
-            downloader = @(partFile, url, varargin) writeThenFail(partFile);
-            function writeThenFail(partFile)
-                writelines("partial", partFile);
-                error('Test:TransferBroke', 'connection lost');
-            end
+            downloader = @(target, url, varargin) error('Test:TransferBroke', 'connection lost');
 
             testCase.verifyError(...
                 @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
                     Client=testCase.Client, Downloader=downloader), ...
                 'Test:TransferBroke');
-
-            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "previous");
-            testCase.verifyFalse(isfile(targetFile + ".part"));
         end
 
         %% createVirtualBucket
@@ -473,4 +469,10 @@ function page = makePage(objectNames, byteSizes)
     names = cellstr(reshape(objectNames, [], 1));
     sizes = num2cell(reshape(byteSizes, [], 1));
     page = struct('objects', struct('name', names, 'bytes', sizes));
+end
+
+function fileNames = listFileNames(folder)
+% listFileNames - Names of the files directly in a folder, as a string row
+    listing = dir(folder);
+    fileNames = string({listing(~[listing.isdir]).name});
 end
