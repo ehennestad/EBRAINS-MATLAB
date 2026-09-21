@@ -8,9 +8,9 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %       full path of the file, which is what a virtual bucket needs: its
 %       empty placeholder files are already in place and are filled in.
 %
-%       The object is received in a temporary file next to the target,
-%       targetFile + ".part", which replaces the target once the transfer
-%       has completed. A failed transfer leaves the target as it was.
+%       The object is received in a temporary file in the folder of the
+%       target, which replaces the target once the transfer has completed.
+%       A failed or incomplete transfer leaves the target as it was.
 %
 %       ebrains.bucket.downloadFile(..., Name=Value) sets the options below.
 %
@@ -30,10 +30,12 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
 %       Downloader  : Function that performs the transfer, called as
-%                     Downloader(partFile, url, Name=Value) with the
+%                     Downloader(targetFile, url, Name=Value) with the
 %                     name-value arguments of
 %                     ebrains.external.webprogress.download, which
-%                     is the default. Meant for tests.
+%                     is the default. The function is responsible for
+%                     leaving the target as it was when the transfer
+%                     fails, as the default does. Meant for tests.
 %
 %   See also ebrains.bucket.getBucketObject, ebrains.bucket.createVirtualBucket
 
@@ -58,22 +60,14 @@ function downloadFile(bucketName, objectName, targetFile, options)
 
     downloadUrl = options.Client.getDownloadUrl(bucketName, objectName);
 
-    % The transfer goes to a temporary file that replaces the target only
-    % once it has completed, so a failed transfer leaves whatever was at the
-    % target (an empty placeholder of a virtual bucket, or an older copy)
-    % untouched. The ".part" extension also keeps the file consumer from
-    % deriving an extension of its own for a target that has none.
-    partFile = targetFile + ".part";
-    try
-        options.Downloader(partFile, downloadUrl, ...
-            Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
-    catch ME
-        if isfile(partFile)
-            delete(partFile)
-        end
-        rethrow(ME)
-    end
-    movefile(partFile, targetFile, "f");
+    % The downloader receives the object in a temporary file that replaces
+    % the target only once the transfer has completed, so a failed transfer
+    % leaves whatever was at the target (an empty placeholder of a virtual
+    % bucket, or an older copy) untouched. It also saves the target under
+    % the exact name given, without deriving an extension for a target that
+    % has none.
+    options.Downloader(targetFile, downloadUrl, ...
+        Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
 end
 
 function mustNotBeFolder(path)
