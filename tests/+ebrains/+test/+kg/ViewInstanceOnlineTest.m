@@ -26,9 +26,9 @@ classdef ViewInstanceOnlineTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.OpenedURL, expected);
         end
 
-        function testOpensLivePreviewUrl(testCase)
+        function testOpensPreviewUrl(testCase)
             ebrains.kg.viewInstanceOnline(testCase.Uuid, ...
-                View="Live", Opener=testCase.makeOpener());
+                View="Preview", Opener=testCase.makeOpener());
 
             expected = ebrains.common.constant.KgInstanceLivePreviewURL() + testCase.Uuid;
             testCase.verifyEqual(testCase.OpenedURL, expected);

@@ -5,12 +5,15 @@ classdef InstanceView
 %   as text, in its View option.
 %
 %   InstanceView members:
-%       Search - The released version, on the KG Search site. This is the
-%                only page that opens without an EBRAINS login.
-%       Live   - The in-progress version, on the KG Search site. The page
-%                stays empty until you log in to EBRAINS in the browser.
-%       Editor - The instance in the KG Editor, which sends you to the
-%                EBRAINS login before it opens the page.
+%       Search  - The released version, on the KG Search site. This is the
+%                 only page that opens without an EBRAINS login.
+%       Preview - The in-progress version, on the KG Search site, shown as
+%                 the card will look once published. Links to instances
+%                 that are not released themselves may be inactive. The
+%                 page stays empty until you log in to EBRAINS in the
+%                 browser.
+%       Editor  - The instance in the KG Editor, which sends you to the
+%                 EBRAINS login before it opens the page.
 %
 %   InstanceView methods:
 %       baseURL - URL that the page is served under
@@ -19,7 +22,7 @@ classdef InstanceView
 
     enumeration
         Search
-        Live
+        Preview
         Editor
     end
 
@@ -39,7 +42,8 @@ classdef InstanceView
             switch obj
                 case InstanceView.Search
                     url = ebrains.common.constant.KgInstanceViewURL();
-                case InstanceView.Live
+                case InstanceView.Preview
+                    % The KG Search site serves the preview under /live/.
                     url = ebrains.common.constant.KgInstanceLivePreviewURL();
                 case InstanceView.Editor
                     url = ebrains.common.constant.KgInstanceEditorURL();

@@ -7,14 +7,15 @@ function viewInstanceOnline(target, options)
 %
 %       ebrains.kg.viewInstanceOnline(target, View=VIEW) opens it on the
 %       given page instead. VIEW must be:
-%           "Search" - (default) The released version, on the KG Search
-%                      site. This is the only page that opens without an
-%                      EBRAINS login.
-%           "Live"   - The in-progress version, on the KG Search site.
-%                      The page stays empty until you log in to EBRAINS
-%                      in the browser.
-%           "Editor" - The instance in the KG Editor, which sends you to
-%                      the EBRAINS login before it opens the page.
+%           "Search"  - (default) The released version, on the KG Search
+%                       site. This is the only page that opens without
+%                       an EBRAINS login.
+%           "Preview" - The in-progress version, on the KG Search site,
+%                       shown as the card will look once published. The
+%                       page stays empty until you log in to EBRAINS in
+%                       the browser.
+%           "Editor"  - The instance in the KG Editor, which sends you
+%                       to the EBRAINS login before it opens the page.
 %
 %   Input Arguments
 %       target : Instance to view, given either as a scalar openminds.Node
