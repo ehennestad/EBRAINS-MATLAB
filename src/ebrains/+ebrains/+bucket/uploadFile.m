@@ -27,7 +27,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       Uploader    : Function that performs the transfer, called as
 %                     [wasSuccess, response] = Uploader(sourceFile, url,
 %                     Name=Value) with the name-value arguments of
-%                     ebrains.external.filedownload.uploadFile, which is
+%                     ebrains.external.webprogress.upload, which is
 %                     the default. Meant for tests.
 %
 %   See also ebrains.bucket.downloadFile, ebrains.bucket.getBucketObject
@@ -39,7 +39,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
         options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
-        options.Uploader (1,1) function_handle = @ebrains.external.filedownload.uploadFile
+        options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
     end
 
     objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
