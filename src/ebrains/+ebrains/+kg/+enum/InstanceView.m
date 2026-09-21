@@ -15,45 +15,28 @@ classdef InstanceView
 %       Editor  - The instance in the KG Editor, which sends you to the
 %                 EBRAINS login before it opens the page.
 %
-%   InstanceView methods:
-%       baseURL - URL that the page is served under
+%   InstanceView properties:
+%       BaseURL - URL that the page is served under
 %
 %   See also ebrains.kg.viewInstanceOnline
 
     enumeration
-        Search
-        Preview
-        Editor
+        Search(ebrains.common.constant.KgInstanceViewURL())
+        % The KG Search site serves the preview under /live/.
+        Preview(ebrains.common.constant.KgInstanceLivePreviewURL())
+        Editor(ebrains.common.constant.KgInstanceEditorURL())
+    end
+
+    properties
+        % BaseURL - URL, with a trailing slash, that the page is served
+        % under. Append the UUID of an instance to it to get the address
+        % of that instance on the page.
+        BaseURL
     end
 
     methods
-        function url = baseURL(obj)
-        %baseURL - URL that the page is served under
-        %   URL = baseURL(VIEW) returns the URL, with a trailing slash,
-        %   that serves the page. Append the UUID of an instance to it to
-        %   get the address of that instance on the page.
-
-            arguments
-                obj (1,1) ebrains.kg.enum.InstanceView
-            end
-
-            import ebrains.kg.enum.InstanceView
-
-            switch obj
-                case InstanceView.Search
-                    url = ebrains.common.constant.KgInstanceViewURL();
-                case InstanceView.Preview
-                    % The KG Search site serves the preview under /live/.
-                    url = ebrains.common.constant.KgInstanceLivePreviewURL();
-                case InstanceView.Editor
-                    url = ebrains.common.constant.KgInstanceEditorURL();
-                otherwise
-                    % Every member above has a URL. A member added to the
-                    % enumeration without one lands here rather than
-                    % returning an unassigned url.
-                    error("EBRAINS:KG:UnmappedInstanceView", ...
-                        'No URL is defined for the "%s" view.', string(obj))
-            end
+        function obj = InstanceView(baseURL)
+            obj.BaseURL = baseURL;
         end
     end
 end

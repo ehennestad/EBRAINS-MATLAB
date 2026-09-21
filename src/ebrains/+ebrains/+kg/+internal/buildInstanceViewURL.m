@@ -27,7 +27,7 @@ function url = buildInstanceViewURL(identifier, options)
 
     uuid = resolveUUID(identifier);
 
-    url = options.View.baseURL() + uuid;
+    url = options.View.BaseURL + uuid;
 end
 
 function uuid = resolveUUID(identifier)
