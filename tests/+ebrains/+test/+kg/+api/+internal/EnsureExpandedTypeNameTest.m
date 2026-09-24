@@ -20,7 +20,8 @@ classdef EnsureExpandedTypeNameTest < matlab.unittest.TestCase
                 "openMINDS_MATLAB is on the path; this test targets the branch used without it.")
 
             testCase.verifyError(...
-                @() ebrains.kg.api.internal.ensureExpandedTypeName("Dataset"), ?MException);
+                @() ebrains.kg.api.internal.ensureExpandedTypeName("Dataset"), ...
+                'EBRAINS:KG_API:UnexpandedTypeName');
         end
     end
 end

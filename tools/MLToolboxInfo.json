@@ -5,7 +5,7 @@
         "ToolboxName": "EBRAINS Services Toolbox",
         "AuthorName": "Eivind Hennestad",
         "AuthorEmail": "eivihe@uio.no",
-        "AuthorCompany": "Nesys",
+        "AuthorCompany": "University of Oslo",
         "Summary": "A collection of api clients and utility functions for interacting with EBRAINS services in MATLAB",
         "Description": "",
         "MinimumMatlabRelease": "R2022b",

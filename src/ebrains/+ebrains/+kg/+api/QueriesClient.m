@@ -82,7 +82,7 @@ classdef QueriesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.QueriesClient
-                identifier string
+                identifier (1,1) string
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
                 responseOptions.RawOutput (1,1) logical = false
             end

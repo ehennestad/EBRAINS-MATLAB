@@ -223,8 +223,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 
             authClientObject = [];
 
-            className = string( mfilename('class') );
-            singletonName = eval( className + "." + "SINGLETON_NAME" );
+            singletonName = ebrains.iam.DeviceFlowTokenClient.SINGLETON_NAME;
 
             rootUserData = get(0, 'UserData');
             if isstruct(rootUserData)
@@ -274,8 +273,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         %   ebrains.iam.DeviceFlowTokenClient.reset() deletes the stored
         %   client so that the next INSTANCE call creates a new one.
 
-            className = string( mfilename('class') );
-            singletonName = eval( className + "." + "SINGLETON_NAME" );
+            singletonName = ebrains.iam.DeviceFlowTokenClient.SINGLETON_NAME;
             ebrains.iam.OidcTokenClient.reset(singletonName)
         end
     end

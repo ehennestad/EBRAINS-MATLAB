@@ -123,7 +123,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 stage (1,:) ebrains.kg.enum.KGStage {mustBeNonempty} = "RELEASED"
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
@@ -276,7 +276,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 payloadJson       (1,1) string {mustBeNonzeroLengthText}
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
@@ -318,7 +318,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 payloadJson       (1,1) string {mustBeNonzeroLengthText}
                 optionalParams.?ebrains.kg.query.ReturnOptions
                 optionalParams.returnIncomingLinks logical
@@ -356,7 +356,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
 
@@ -441,7 +441,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 optionalParams.revision string
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
@@ -487,7 +487,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
-                identifier string
+                identifier (1,1) string
                 requiredParams.releaseTreeScope ebrains.kg.enum.ReleaseTreeScope = "TOP_INSTANCE_ONLY"
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
             end
