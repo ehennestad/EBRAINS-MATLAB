@@ -31,7 +31,6 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 %       releaseInstance         - Release an instance
 %       getReleaseStatus        - Get the release status of an instance
 %       listTypes               - List the types available in a space
-%       runDynamicQuery         - Run a query given as a JSON-LD payload
 %
 %   See also QueriesClient, ebrains.kg.enum.KGServer,
 %   ebrains.kg.enum.KGStage, ebrains.kg.query.ReturnOptions
@@ -621,58 +620,6 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 result = resp.Body.Data.data;
             else
                 obj.throwError("listTypes", resp, serverOptions.Server)
-            end
-        end
-
-        function result = runDynamicQuery(obj, jsonldPayload, requiredParams, optionalParams, serverOptions)
-        %runDynamicQuery - Run a query given as a JSON-LD payload
-        %   RESULT = runDynamicQuery(OBJ,jsonldPayload) runs the KG query
-        %   specification jsonldPayload against the released stage and
-        %   returns the data array of the response.
-        %
-        %   RESULT = runDynamicQuery(OBJ,jsonldPayload,stage=STAGE) also
-        %   specifies the stage to query. STAGE must be:
-        %       "RELEASED"    - (default) Released instances.
-        %       "IN_PROGRESS" - Instances that are still in progress.
-        %
-        %   RESULT = runDynamicQuery(...,Name=VALUE) also specifies one or more
-        %   of the following:
-        %       from=FROM                - Offset of the first result.
-        %       size=SIZE                - Maximum number of results.
-        %       returnTotalResults=TF    - Whether to include the total count.
-        %       instanceId=ID            - Restrict the query to one instance.
-        %       restrictToSpaces=SPACES  - Restrict the query to these spaces.
-        %
-        %   RESULT = runDynamicQuery(...,Server=SERVER) also specifies the KG
-        %   server to send the request to.
-
-            arguments
-                obj (1,1) ebrains.kg.api.InstancesClient
-                jsonldPayload (1,1) string
-                requiredParams.stage (1,1) ebrains.kg.enum.KGStage = "RELEASED"
-                optionalParams.from int64
-                optionalParams.size int64
-                optionalParams.returnTotalResults logical
-                optionalParams.instanceId string
-                optionalParams.restrictToSpaces string
-                optionalParams.allRequestParams string % ??
-                serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
-            end
-
-            OPERATION = "POST";
-            ENDPOINT_PATH = "/queries";
-
-            req = obj.initializeRequestMessage(OPERATION, "JSONPayload", jsonldPayload);
-
-            % Process input parameters and build full api url
-            apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
-
-            resp = obj.sendRequest(req, apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
-
-            if resp.StatusCode == "OK"
-                result = resp.Body.Data.data;
-            else
-                obj.throwError("runDynamicQuery", resp, serverOptions.Server)
             end
         end
     end
