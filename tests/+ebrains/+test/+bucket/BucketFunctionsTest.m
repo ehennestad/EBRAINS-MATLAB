@@ -332,6 +332,34 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfolder(fullfile(rootPath, "emptydir")));
         end
 
+        function testCreateVirtualBucketCreatesNamesWithShellMetacharacters(testCase)
+            % The empty files were once created with a shell "touch", which
+            % left a literal "\ " in the name of every file with a space in
+            % it. A "$" or a quote would break any return to shell quoting,
+            % and none of these characters is reserved in a Windows file name.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            objectNames = [ ...
+                "a file with spaces.txt", ...
+                "cost $5.txt", ...
+                "o'brien.txt", ...
+                "nested folder/deeper $dir/it's here.txt"];
+            testCase.Client.addResponse('OK', makeStat(numel(objectNames), 0));
+            testCase.Client.addResponse('OK', makePage(objectNames));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            for objectName = objectNames
+                filePath = fullfile(rootPath, objectName);
+                % Asserted, since the size check below cannot run without it
+                testCase.assertTrue(isfile(filePath), ...
+                    sprintf('No file was created at "%s".', filePath));
+                fileInfo = dir(filePath);
+                testCase.verifyEqual(fileInfo.bytes, 0);
+            end
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "nested folder", "deeper $dir")));
+        end
+
         function testCreateVirtualBucketKeepsExistingFiles(testCase)
             % Cloning again over a bucket whose files were downloaded must
             % not replace them with empty files.
