@@ -93,5 +93,109 @@ classdef QueriesClientTest < matlab.unittest.TestCase
             testCase.verifyError(@() testCase.Client.getQuery("q1"), ...
                 'EBRAINS:KG_API:getQuery:NotFound');
         end
+
+        %% runDynamicQuery Tests
+        function testRunDynamicQuerySuccess(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1', 'result2'}}));
+
+            result = testCase.Client.runDynamicQuery('{"@context": {}, "query": {}}');
+
+            testCase.verifyLength(result, 2);
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            testCase.Client.verifyRequestURL(1, '/queries');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+
+        function testRunDynamicQueryRepeatsRestrictToSpaces(testCase)
+            % The endpoint expects one restrictToSpaces parameter per space,
+            % not a single comma separated value.
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runDynamicQuery('{"query": {}}', ...
+                restrictToSpaces=["dataset", "common"]);
+
+            testCase.Client.verifyRequestURL(1, 'restrictToSpaces=dataset&restrictToSpaces=common');
+        end
+
+        function testRunDynamicQueryRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.runDynamicQuery('{"query": {}}', stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        %% runQueryById Tests
+        function testRunQueryByIdSuccess(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1', 'result2'}}));
+
+            result = testCase.Client.runQueryById("query-uuid-12345");
+
+            testCase.verifyLength(result, 2);
+            testCase.Client.verifyRequestMethod(1, 'GET');
+            testCase.Client.verifyRequestURL(1, '/queries/query-uuid-12345/instances');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+
+        function testRunQueryByIdPassesOptionalParams(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runQueryById("query-uuid-12345", ...
+                stage="IN_PROGRESS", from=int64(10), size=int64(5), ...
+                returnTotalResults=true, instanceId="instance-uuid-67890");
+
+            testCase.Client.verifyRequestURL(1, 'stage=IN_PROGRESS');
+            testCase.Client.verifyRequestURL(1, 'from=10');
+            testCase.Client.verifyRequestURL(1, 'size=5');
+            testCase.Client.verifyRequestURL(1, 'returnTotalResults=1');
+            testCase.Client.verifyRequestURL(1, 'instanceId=instance-uuid-67890');
+        end
+
+        function testRunQueryByIdRepeatsRestrictToSpaces(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runQueryById("query-uuid-12345", ...
+                restrictToSpaces=["dataset", "common"]);
+
+            testCase.Client.verifyRequestURL(1, 'restrictToSpaces=dataset&restrictToSpaces=common');
+        end
+
+        function testRunQueryByIdNormalizesIRI(testCase)
+            rawId = "query-uuid-12345";
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runQueryById( ...
+                ebrains.common.constant.KgInstanceIRIPrefix + "/" + rawId);
+
+            actualURL = char(testCase.Client.getRequest(1).URL.EncodedURI);
+            testCase.verifySubstring(actualURL, "/queries/" + rawId + "/instances");
+            testCase.verifyFalse(contains(actualURL, ...
+                ebrains.common.constant.KgInstanceIRIPrefix));
+        end
+
+        function testRunQueryByIdRawOutput(testCase)
+            rawData = '{"data": [{"@id": "test"}]}';
+            testCase.Client.addResponse('OK', rawData);
+
+            result = testCase.Client.runQueryById("query-uuid-12345", RawOutput=true);
+
+            testCase.verifyEqual(result, rawData);
+            request = testCase.Client.getRequest(1);
+            testCase.verifyFalse(request.Options.ConvertResponse);
+        end
+
+        function testRunQueryByIdNotFound(testCase)
+            testCase.Client.addResponse('NotFound', "Query does not exist");
+
+            testCase.verifyError(...
+                @() testCase.Client.runQueryById("missing-query"), ...
+                'EBRAINS:KG_API:runQueryById:NotFound');
+        end
+
+        function testRunQueryByIdRejectsAnyStage(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.runQueryById("query-uuid-12345", stage="ANY"), ...
+                'MATLAB:validation:UnableToConvert');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
     end
 end
