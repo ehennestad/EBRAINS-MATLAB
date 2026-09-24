@@ -15,8 +15,8 @@ authors:
 repository-code: "https://github.com/ehennestad/EBRAINS-MATLAB"
 url: "https://www.mathworks.com/matlabcentral/fileexchange/182284-ebrains-services-toolbox"
 license: MIT
-version: "0.10.1"
-date-released: "2026-09-15"
+version: "0.11.0"
+date-released: "2026-09-24"
 keywords:
   - EBRAINS
   - Knowledge Graph

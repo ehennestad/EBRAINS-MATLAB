@@ -21,7 +21,7 @@
     "API client",
     "neuroscience"
   ],
-  "releaseNotes": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/tag/v0.10.1",
+  "releaseNotes": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/tag/v0.11.0",
   "developmentStatus": "active",
   "programmingLanguage": [
     "MATLAB"
@@ -49,9 +49,9 @@
     "givenName": "Eivind",
     "familyName": "Hennestad"
   },
-  "version": "0.10.1",
-  "downloadUrl": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/download/v0.10.1/EBRAINS_MATLAB_v0_10_1.mltbx",
+  "version": "0.11.0",
+  "downloadUrl": "https://github.com/ehennestad/EBRAINS-MATLAB/releases/download/v0.11.0/EBRAINS_MATLAB_v0_11_0.mltbx",
   "dateCreated": "2024-03-15",
   "datePublished": "2025-10-12",
-  "dateModified": "2026-09-15"
+  "dateModified": "2026-09-24"
 }
