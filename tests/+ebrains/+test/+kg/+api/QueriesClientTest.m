@@ -8,6 +8,12 @@ classdef QueriesClientTest < matlab.unittest.TestCase
         Client ebrains.mocks.MockQueriesClient
     end
 
+    properties (TestParameter)
+        % Names the query endpoints bind to their own request parameters
+        ReservedName = {'stage', 'from', 'size', 'returnTotalResults', ...
+            'instanceId', 'restrictToSpaces'}
+    end
+
     methods (TestMethodSetup)
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockQueriesClient();
@@ -196,6 +202,55 @@ classdef QueriesClientTest < matlab.unittest.TestCase
                 @() testCase.Client.runQueryById("query-uuid-12345", stage="ANY"), ...
                 'MATLAB:validation:UnableToConvert');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        %% Query filter parameter Tests
+        function testRunQueryByIdSendsFilterParametersUnderTheirOwnNames(testCase)
+            % A filter declaring "parameter": "search" reads the request
+            % parameter of that name, so each one is sent under its own name.
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runQueryById("query-uuid-12345", ...
+                QueryParameters=struct(search="hippocampus", region="CA1"));
+
+            testCase.Client.verifyRequestURL(1, 'search=hippocampus');
+            testCase.Client.verifyRequestURL(1, 'region=CA1');
+            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
+        end
+
+        function testRunDynamicQuerySendsFilterParametersUnderTheirOwnNames(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runDynamicQuery('{"query": {}}', ...
+                QueryParameters=struct(search="hippocampus"));
+
+            testCase.Client.verifyRequestURL(1, 'search=hippocampus');
+        end
+
+        function testQueryParametersDefaultToNone(testCase)
+            testCase.Client.addResponse('OK', struct('data', {{'result1'}}));
+
+            testCase.Client.runQueryById("query-uuid-12345");
+
+            actualURL = char(testCase.Client.getRequest(1).URL.EncodedURI);
+            testCase.verifyEqual(count(actualURL, '&'), 0);
+        end
+
+        function testQueryParametersRejectReservedNames(testCase, ReservedName)
+            % The endpoint binds these names to its own request parameters, so
+            % a filter of the same name would silently read the wrong value.
+            testCase.verifyError(...
+                @() testCase.Client.runQueryById("query-uuid-12345", ...
+                    QueryParameters=struct((ReservedName), "value")), ...
+                'EBRAINS:KG_API:ReservedQueryParameter');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testReservedNameErrorNamesEveryOffendingParameter(testCase)
+            testCase.verifyError(...
+                @() testCase.Client.runDynamicQuery('{"query": {}}', ...
+                    QueryParameters=struct(stage="X", search="ok", size="10")), ...
+                'EBRAINS:KG_API:ReservedQueryParameter');
         end
     end
 end
