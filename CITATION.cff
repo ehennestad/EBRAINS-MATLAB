@@ -1,5 +1,5 @@
-# Keep version and date-released in step with Contents.m and codemeta.json
-# when a release is prepared.
+# version and date-released are set by the release workflow, through the
+# update-citation action of matbox-actions. Leave them to it.
 cff-version: 1.2.0
 message: "If you use this toolbox in your work, please cite it as below."
 type: software
@@ -15,7 +15,7 @@ authors:
 repository-code: "https://github.com/ehennestad/EBRAINS-MATLAB"
 url: "https://www.mathworks.com/matlabcentral/fileexchange/182284-ebrains-services-toolbox"
 license: MIT
-version: 0.10.1
+version: "0.10.1"
 date-released: "2026-09-15"
 keywords:
   - EBRAINS
