@@ -27,6 +27,22 @@ classdef PreferencesTest < matlab.unittest.TestCase
             testCase.verifyTrue(testCase.SettingsGroup.hasSetting("AutoRenew"));
         end
 
+        function testDefinitionsMatchPropertiesAndSettings(testCase)
+            % The definitions are the one place the defaults are declared:
+            % the factory tree is built from them, and they are read when
+            % the settings are not loaded. Each needs a property of the
+            % same name for getpref and setpref to reach it.
+            definitions = ebrains.internal.getPreferenceDefinitions();
+
+            testCase.verifyEqual(sort([definitions.Name]), ...
+                sort(string(properties("ebrains.util.Preferences")))');
+            for definition = definitions
+                testCase.verifyEqual( ...
+                    testCase.SettingsGroup.(definition.Name).FactoryValue, ...
+                    definition.FactoryValue, definition.Name);
+            end
+        end
+
         function testDefaultsComeFromTheFactoryValues(testCase)
             testCase.verifyFalse(ebrains.getpref("AutoLogin"));
             testCase.verifyTrue(ebrains.getpref("AutoRenew"));

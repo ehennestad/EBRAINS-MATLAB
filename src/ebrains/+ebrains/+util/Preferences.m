@@ -22,9 +22,10 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %   A value set here is the personal value of a MATLAB setting under
 %   settings().ebrains, which MATLAB saves for later sessions. The default
 %   of each preference is its factory value, declared in
-%   ebrains.internal.createFactoryTree and loaded through
+%   ebrains.internal.getPreferenceDefinitions and loaded through
 %   resources/settingsInfo.json. RESET returns the preferences to those
-%   defaults.
+%   defaults. When the settings are not loaded, the preferences read as
+%   their defaults and setting one raises an error.
 %
 %   Example:
 %       ebrains.setpref(AutoLogin=true)
@@ -116,7 +117,16 @@ classdef Preferences < matlab.mixin.CustomDisplay
     methods (Access = private)
         function value = readValue(obj, preferenceName)
         %readValue - The value that applies for a preference
-            value = obj.getSettingsGroup().(preferenceName).ActiveValue;
+            if obj.areSettingsLoaded()
+                value = settings().(obj.GroupName).(preferenceName).ActiveValue;
+            else
+                % Every API request reads a preference, so a toolbox whose
+                % settings were not loaded would otherwise fail every
+                % request. The defaults still apply; only setting a value
+                % needs the settings, and raises the error that says so.
+                definitions = ebrains.internal.getPreferenceDefinitions();
+                value = definitions([definitions.Name] == preferenceName).FactoryValue;
+            end
         end
 
         function writeValue(obj, preferenceName, value)
@@ -145,13 +155,12 @@ classdef Preferences < matlab.mixin.CustomDisplay
     methods (Static, Access = private)
         function settingsGroup = getSettingsGroup()
         %getSettingsGroup - The settings group holding the preferences
-            settingsRoot = settings;
 
             % MATLAB reads resources/settingsInfo.json of a toolbox folder
-            % on the path, so the group is missing only when the toolbox
-            % is on the path without that file, such as when the folder
-            % holding the ebrains namespace was copied on its own.
-            if ~settingsRoot.hasGroup(ebrains.util.Preferences.GroupName)
+            % on the path, so the settings are missing only when the
+            % toolbox is on the path without that file, such as when the
+            % folder holding the ebrains namespace was copied on its own.
+            if ~ebrains.util.Preferences.areSettingsLoaded()
                 error("EBRAINS:Preferences:SettingsGroupNotFound", ...
                     "The settings of the EBRAINS Services Toolbox were not " + ...
                     "found. Add the folder that holds both the ebrains " + ...
@@ -159,7 +168,26 @@ classdef Preferences < matlab.mixin.CustomDisplay
                     "the MATLAB path.")
             end
 
-            settingsGroup = settingsRoot.(ebrains.util.Preferences.GroupName);
+            settingsGroup = settings().(ebrains.util.Preferences.GroupName);
+        end
+
+        function tf = areSettingsLoaded()
+        %areSettingsLoaded - Whether the settings of every preference exist
+        %   The group alone is not enough: MATLAB also creates it from the
+        %   file holding the values a user has set, without the settings
+        %   that only the factory tree declares.
+            settingsRoot = settings;
+            groupName = ebrains.util.Preferences.GroupName;
+
+            tf = settingsRoot.hasGroup(groupName);
+            if ~tf
+                return
+            end
+
+            definitions = ebrains.internal.getPreferenceDefinitions();
+            for definition = definitions
+                tf = tf && settingsRoot.(groupName).hasSetting(definition.Name);
+            end
         end
     end
 end
