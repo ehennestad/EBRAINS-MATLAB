@@ -19,8 +19,8 @@ classdef (Abstract) HttpClient < handle
 %   Subclasses set ErrorIdPrefix, which starts the identifier of every error
 %   thrown for a failed response: <ErrorIdPrefix>:<operation>:<status name>.
 %
-%   Test doubles override getDefaultHeader and sendRequest so that no token
-%   is needed and no request reaches a server.
+%   Test doubles override getDefaultHeader and transmitRequest so that no
+%   token is needed and no request reaches a server.
 %
 %   See also ebrains.kg.api.base.BaseClient, ebrains.bucket.api.BucketsClient,
 %   ebrains.collab.api.CollabsClient
@@ -30,10 +30,31 @@ classdef (Abstract) HttpClient < handle
     end
 
     properties (Access = private)
-        % Whether the request built last carries an access token. The
+        % Whether the request sent last carried an access token. The
         % response to it does not say, and a refusal is reported differently
-        % for a request that was sent without one.
-        LastRequestHasToken (1,1) logical = false
+        % for a request that was sent without one. Every method reports the
+        % response of the request it has just sent, so the request sent
+        % last is the one being reported.
+        LastSentRequestHasToken (1,1) logical = false
+    end
+
+    methods (Sealed, Access = protected)
+        function response = sendRequest(obj, request, apiUri, httpOptions)
+        % sendRequest - Send a request and return the response
+        %
+        %   Sealed, so that a test double replaces only the transport
+        %   (transmitRequest) and every request records whether it carried
+        %   a token.
+            arguments
+                obj (1,1) ebrains.common.internal.HttpClient
+                request (1,1) matlab.net.http.RequestMessage
+                apiUri (1,1) matlab.net.URI
+                httpOptions matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
+            end
+
+            obj.LastSentRequestHasToken = ~isempty(request.getFields("Authorization"));
+            response = obj.transmitRequest(request, apiUri, httpOptions);
+        end
     end
 
     methods (Access = protected)
@@ -54,7 +75,6 @@ classdef (Abstract) HttpClient < handle
 
             headers = obj.getDefaultHeader();
             request = matlab.net.http.RequestMessage(char(method), headers);
-            obj.LastRequestHasToken = ~isempty(request.getFields("Authorization"));
 
             if ~ismissing(options.JSONPayload)
                 % The payload is already JSON text, so it is assigned to the
@@ -85,8 +105,11 @@ classdef (Abstract) HttpClient < handle
             end
         end
 
-        function response = sendRequest(obj, request, apiUri, httpOptions)
-        % sendRequest - Send a request and return the response
+        function response = transmitRequest(obj, request, apiUri, httpOptions)
+        % transmitRequest - Send a request over the network and return the response
+        %
+        %   Called by sendRequest only. Test doubles override this method
+        %   to answer without a server.
             arguments
                 obj (1,1) ebrains.common.internal.HttpClient %#ok<INUSA>
                 request (1,1) matlab.net.http.RequestMessage
@@ -155,7 +178,7 @@ classdef (Abstract) HttpClient < handle
             refusalStatusCodes = [ ...
                 matlab.net.http.StatusCode.Unauthorized, ...
                 matlab.net.http.StatusCode.Forbidden];
-            isRefusedWithoutToken = ~obj.LastRequestHasToken ...
+            isRefusedWithoutToken = ~obj.LastSentRequestHasToken ...
                 && ismember(response.StatusCode, refusalStatusCodes);
 
             if ~ismissing(options.Description)

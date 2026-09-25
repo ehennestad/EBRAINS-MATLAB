@@ -55,7 +55,7 @@ classdef MockHttpClient < ebrains.common.internal.HttpClient & ebrains.mocks.Moc
             end
         end
 
-        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
+        function response = transmitRequest(obj, requestObj, apiURL, httpOpts)
             arguments
                 obj (1,1) ebrains.mocks.MockHttpClient
                 requestObj (1,1) matlab.net.http.RequestMessage

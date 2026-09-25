@@ -59,10 +59,10 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
         %% Error reporting
         function testUnauthorizedWithoutTokenAsksForLogin(testCase)
-            testCase.Client.buildRequest("GET");
+            request = testCase.Client.buildRequest("GET");
             response = makeResponse('Unauthorized', 'You are not authenticated.');
 
-            exception = testCase.Client.buildError("fetchThing", response);
+            exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifyEqual(exception.identifier, 'EBRAINS:Test:fetchThing:Unauthorized');
             testCase.verifySubstring(exception.message, 'requires authentication');
@@ -73,10 +73,10 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
         function testUnauthorizedWithoutBodyAsksForLogin(testCase)
             % The KG answers a request without a token with an empty body.
-            testCase.Client.buildRequest("GET");
+            request = testCase.Client.buildRequest("GET");
             response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.Unauthorized);
 
-            exception = testCase.Client.buildError("fetchThing", response);
+            exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
             testCase.verifyFalse(contains(exception.message, 'The server answered'));
@@ -85,10 +85,10 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
         function testForbiddenWithoutTokenAsksForLogin(testCase)
             % The Data Proxy answers a request for an upload URL without a
             % token with 403.
-            testCase.Client.buildRequest("PUT");
+            request = testCase.Client.buildRequest("PUT");
             response = makeResponse('Forbidden', 'Not authenticated');
 
-            exception = testCase.Client.buildError("fetchThing", response);
+            exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifyEqual(exception.identifier, 'EBRAINS:Test:fetchThing:Forbidden');
             testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
@@ -96,21 +96,34 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
         function testUnauthorizedWithTokenKeepsServerText(testCase)
             testCase.DeviceClient.seedTokens("access-0", "refresh-0", 7200);
-            testCase.Client.buildRequest("GET");
+            request = testCase.Client.buildRequest("GET");
             response = makeResponse('Unauthorized', 'Token is not active');
 
-            exception = testCase.Client.buildError("fetchThing", response);
+            exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifyEqual(exception.message, 'Unauthorized: Token is not active');
         end
 
         function testOtherErrorWithoutTokenKeepsServerText(testCase)
-            testCase.Client.buildRequest("GET");
+            request = testCase.Client.buildRequest("GET");
             response = makeResponse('NotFound', 'no such bucket');
 
-            exception = testCase.Client.buildError("fetchThing", response);
+            exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifyEqual(exception.message, 'NotFound: no such bucket');
+        end
+
+        function testRefusalIsJudgedByTheRequestThatWasSent(testCase)
+            % A second request, built after the first and carrying a token,
+            % must not change how the refusal of the first is reported.
+            requestWithoutToken = testCase.Client.buildRequest("GET");
+            testCase.DeviceClient.seedTokens("access-0", "refresh-0", 7200);
+            testCase.Client.buildRequest("GET");
+            response = makeResponse('Unauthorized', 'You are not authenticated.');
+
+            exception = sendAndReport(testCase.Client, requestWithoutToken, response);
+
+            testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
         end
     end
 end
@@ -118,4 +131,11 @@ end
 function response = makeResponse(statusName, bodyText)
     response = matlab.net.http.ResponseMessage(...
         matlab.net.http.StatusCode(statusName), [], matlab.net.http.MessageBody(bodyText));
+end
+
+function exception = sendAndReport(client, request, response)
+% sendAndReport - Send a request to the test double and build the error for its answer
+    client.CannedResponses{end+1} = response;
+    sentResponse = client.dispatch(request, matlab.net.URI("https://example.org/resource"));
+    exception = client.buildError("fetchThing", sentResponse);
 end
