@@ -138,6 +138,16 @@ classdef PreferencesTest < matlab.unittest.TestCase
             testCase.verifyTrue(testCase.SettingsGroup.AutoLogin.hasTemporaryValue());
         end
 
+        function testNoPreferenceIsNamedScope(testCase)
+            % ebrains.setpref takes Scope as its own option next to the
+            % preference names, so a preference with that name could not be
+            % set through it.
+            preferenceNames = string(properties("ebrains.util.Preferences"));
+
+            testCase.verifyFalse(ismember("Scope", preferenceNames), ...
+                "Scope is reserved for the option of ebrains.setpref.");
+        end
+
         function testSetprefRejectsUnknownScope(testCase)
             testCase.verifyError(@() ebrains.setpref(AutoLogin=true, Scope="forever"), ...
                 'MATLAB:validators:mustBeMember');

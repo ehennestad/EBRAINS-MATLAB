@@ -38,6 +38,9 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %   See also ebrains.getpref, ebrains.setpref,
 %   ebrains.internal.createFactoryTree
 
+    % Each preference is also an element of
+    % ebrains.internal.getPreferenceDefinitions. No preference may be named
+    % Scope, which ebrains.setpref takes as its own option.
     properties (Dependent)
         AutoLogin (1,1) logical
         AutoRenew (1,1) logical
