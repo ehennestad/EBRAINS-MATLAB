@@ -4,9 +4,17 @@ classdef MockHttpClient < ebrains.common.internal.HttpClient & ebrains.mocks.Moc
     % Exposes the protected request and error helpers of
     % ebrains.common.internal.HttpClient so that tests can exercise them
     % without the API client of a real service.
+    %
+    % Requests are built without a token unless UseTokenManager is true, in
+    % which case the headers come from HttpClient.getDefaultHeader and its
+    % token lookup. Tests that set it install mock token clients first.
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:Test"
+    end
+
+    properties
+        UseTokenManager (1,1) logical = false
     end
 
     methods
@@ -40,7 +48,11 @@ classdef MockHttpClient < ebrains.common.internal.HttpClient & ebrains.mocks.Moc
 
     methods (Access = protected)
         function headers = getDefaultHeader(obj)
-            headers = obj.getMockHeaders();
+            if obj.UseTokenManager
+                headers = getDefaultHeader@ebrains.common.internal.HttpClient(obj);
+            else
+                headers = obj.getMockHeaders();
+            end
         end
 
         function response = sendRequest(obj, requestObj, apiURL, httpOpts)

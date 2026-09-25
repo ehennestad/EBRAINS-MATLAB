@@ -290,14 +290,14 @@ classdef InstancesClientTest < matlab.unittest.TestCase
         
         function testErrorMessageIncludesJsonResponseBody(testCase)
             % A decoded JSON error body is a struct and must still be shown
-            testCase.Client.addResponse('Forbidden', struct('error', 'no access to space'));
-            
+            testCase.Client.addResponse('BadRequest', struct('error', 'invalid stage'));
+
             try
                 testCase.Client.getInstance("abc", "RELEASED");
                 testCase.verifyFail('Expected getInstance to throw');
             catch ME
-                testCase.verifyEqual(ME.identifier, 'EBRAINS:KG_API:getInstance:Forbidden');
-                testCase.verifySubstring(ME.message, 'no access to space');
+                testCase.verifyEqual(ME.identifier, 'EBRAINS:KG_API:getInstance:BadRequest');
+                testCase.verifySubstring(ME.message, 'invalid stage');
             end
         end
         

@@ -17,6 +17,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %       authenticate         - Fetch a token, or refresh the active one
 %       hasActiveToken       - Whether the access token is still valid
 %       canAuthenticate      - Whether the client has held a token before
+%       tryRenewToken        - Renew an expired access token without a login
 %       getFlowName          - Name of the authentication flow
 %       getAuthHeaderField   - Authorization header for matlab.net.http
 %       getWebOptions        - weboptions carrying the Authorization header
@@ -264,16 +265,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             end
 
             try
-                % Request a new access token using the refresh token
-                tokenResponse = obj.requestToken({ ...
-                    "grant_type", "refresh_token", ...
-                    "client_id", obj.ClientId, ...
-                    "refresh_token", obj.RefreshToken ...
-                    });
-
-                % Update object properties with new token values
-                obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
-                obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
+                obj.requestTokenWithRefreshToken()
 
                 % Log success
                 disp("Access token successfully refreshed.");
@@ -289,6 +281,25 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                         throwAsCaller(ME);
                 end
             end
+        end
+    end
+
+    methods (Access = private)
+        function requestTokenWithRefreshToken(obj)
+        %requestTokenWithRefreshToken - Replace the tokens with ones fetched with the refresh token
+            tokenResponse = obj.requestToken({ ...
+                "grant_type", "refresh_token", ...
+                "client_id", obj.ClientId, ...
+                "refresh_token", obj.RefreshToken ...
+                });
+
+            obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
+            obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
+        end
+
+        function tf = hasRefreshToken(obj)
+        %hasRefreshToken - Whether the client holds a refresh token
+            tf = ~ismissing(obj.RefreshToken) && obj.RefreshToken ~= "";
         end
     end
 
@@ -372,6 +383,36 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         %   assumed to be able to do so again.
 
             tf = ~ismissing(obj.AccessToken_);
+        end
+
+        function isActive = tryRenewToken(obj)
+        %tryRenewToken - Renew an expired access token without a login
+        %   isActive = tryRenewToken(OBJ) fetches a new access token with
+        %   the refresh token when the access token has expired, and
+        %   returns whether the client holds an active access token
+        %   afterwards. Unlike AUTHENTICATE it never starts a login: a
+        %   client without a refresh token, or whose refresh token the
+        %   identity provider refuses, is left without an active token.
+        %   A refused refresh token is discarded, so that it is not sent
+        %   again. Errors other than a refusal, such as a timeout, are
+        %   rethrown.
+        %
+        %   See also hasActiveToken, authenticate
+
+            % The recorded expiry of the refresh token is not checked: the
+            % identity provider decides whether it is still valid, and a
+            % refusal costs one request.
+            if ~obj.isTokenActive() && obj.hasRefreshToken()
+                try
+                    obj.requestTokenWithRefreshToken()
+                catch exception
+                    if exception.identifier ~= "MATLAB:webservices:HTTP400StatusCodeError"
+                        rethrow(exception)
+                    end
+                    obj.clearRefreshToken()
+                end
+            end
+            isActive = obj.isTokenActive();
         end
 
         function copyTokenToClipboard(obj)

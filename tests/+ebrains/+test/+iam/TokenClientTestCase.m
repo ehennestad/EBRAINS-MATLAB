@@ -7,6 +7,10 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
     % moved aside and gets them back afterwards. The session's own clients
     % are moved, not deleted; only the instances a test created are
     % deleted at teardown.
+    %
+    % The AutoLogin and AutoRenew preferences decide whether a token is
+    % looked up with a login or a renewal, so each test also runs with the
+    % default preferences (see ebrains.test.fixtures.PreferencesFixture).
 
     properties (Constant)
         DeviceFlowSingletonName = "IAM_DeviceFlow_Client"
@@ -25,6 +29,8 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
                 testCase.addTeardown(@() restoreEnvironmentVariable(name, isenv(name), getenv(name)));
                 unsetenv(name);
             end
+
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
         end
     end
 
