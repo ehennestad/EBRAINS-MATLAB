@@ -146,9 +146,12 @@ classdef (Abstract) HttpClient < handle
             % Without a token, the Data Proxy refuses a read of a private
             % bucket with 401 and a request for an upload URL with 403, and
             % the KG answers 401 with an empty body. None of these tells the
-            % user that logging in is the fix. A request that did carry a
-            % token keeps the text of the server, which is the only account
-            % of why that token was refused.
+            % user that logging in is the fix, so the message leads with it.
+            % The text of the server follows, since a refusal can have
+            % another cause, such as a proxy that limits the request rate.
+            % A request that did carry a token keeps only the text of the
+            % server, which is the only account of why that token was
+            % refused.
             refusalStatusCodes = [ ...
                 matlab.net.http.StatusCode.Unauthorized, ...
                 matlab.net.http.StatusCode.Forbidden];
@@ -162,6 +165,10 @@ classdef (Abstract) HttpClient < handle
                     "Run ebrains.authenticate() to log in to EBRAINS, then try again. " + ...
                     "To log in automatically when a request needs it, run " + ...
                     "ebrains.setpref(AutoLogin=true).";
+                serverText = ebrains.common.internal.getResponseBodyText(response);
+                if strlength(serverText) > 0
+                    description = description + " The server answered: " + serverText;
+                end
             else
                 description = ebrains.common.internal.getResponseBodyText(response);
             end

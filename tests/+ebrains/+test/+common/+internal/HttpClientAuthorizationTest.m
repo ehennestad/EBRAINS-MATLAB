@@ -68,6 +68,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifySubstring(exception.message, 'requires authentication');
             testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
             testCase.verifySubstring(exception.message, 'ebrains.setpref(AutoLogin=true)');
+            testCase.verifySubstring(exception.message, 'The server answered: You are not authenticated.');
         end
 
         function testUnauthorizedWithoutBodyAsksForLogin(testCase)
@@ -78,6 +79,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
             exception = testCase.Client.buildError("fetchThing", response);
 
             testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
+            testCase.verifyFalse(contains(exception.message, 'The server answered'));
         end
 
         function testForbiddenWithoutTokenAsksForLogin(testCase)
