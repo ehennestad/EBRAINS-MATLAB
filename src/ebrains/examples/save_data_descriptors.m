@@ -1,6 +1,10 @@
 collabInventoryFile = "path/to/collab_inventory_file";
 targetFolder = "path/to/data_descriptor_target_folder";
 
+% Reading the bucket of a private collab needs a login. Without one, the
+% loop below would skip every private collab.
+ebrains.authenticate()
+
 collabIds = jsondecode(fileread(collabInventoryFile));
 for i = 1:numel(collabIds)
     try
