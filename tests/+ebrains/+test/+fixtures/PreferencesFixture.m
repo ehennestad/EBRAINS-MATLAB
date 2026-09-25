@@ -29,11 +29,9 @@ end
 
 function recordedValues = captureValues(preferences)
 % captureValues - The personal and temporary value of each preference, if any
-    settingsGroup = settings().(preferences.GroupName);
-
     recordedValues = struct("Personal", struct(), "Temporary", struct());
     for preferenceName = reshape(string(properties(preferences)), 1, [])
-        setting = settingsGroup.(preferenceName);
+        setting = ebrains.util.Preferences.getSetting(preferenceName);
         if setting.hasPersonalValue()
             recordedValues.Personal.(preferenceName) = setting.PersonalValue;
         end

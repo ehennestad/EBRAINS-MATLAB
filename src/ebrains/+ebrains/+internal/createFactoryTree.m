@@ -6,20 +6,24 @@ function factoryTree = createFactoryTree()
 %   the factory settings named in resources/settingsInfo.json, and reaches
 %   the result as settings().ebrains.
 %
-%   There is one setting per element of
-%   ebrains.internal.getPreferenceDefinitions, whose FactoryValue is the
-%   default. A value a user sets becomes the personal value of the
-%   setting, which is saved by MATLAB and takes precedence; clearing it
-%   returns the preference to the default.
+%   The default of a preference is its FactoryValue here. A value a user
+%   sets becomes the personal value of the setting, which is saved by
+%   MATLAB and takes precedence; clearing it returns the preference to the
+%   default given here.
 %
-%   See also ebrains.internal.getPreferenceDefinitions,
-%   ebrains.util.Preferences, ebrains.getpref, ebrains.setpref
+%   Add a preference by adding a setting below and a property of the same
+%   name to ebrains.util.Preferences, whose help describes what each
+%   preference does.
+%
+%   See also ebrains.util.Preferences, ebrains.getpref, ebrains.setpref
 
     factoryTree = matlab.settings.FactoryGroup.createToolboxGroup("ebrains", Hidden=false);
 
-    for definition = ebrains.internal.getPreferenceDefinitions()
-        addSetting(factoryTree, definition.Name, ...
-            FactoryValue=definition.FactoryValue, Hidden=false, ...
-            ValidationFcn=definition.ValidationFcn);
-    end
+    addSetting(factoryTree, "AutoLogin", ...
+        FactoryValue=false, Hidden=false, ...
+        ValidationFcn=@matlab.settings.mustBeLogicalScalar);
+
+    addSetting(factoryTree, "AutoRenew", ...
+        FactoryValue=true, Hidden=false, ...
+        ValidationFcn=@matlab.settings.mustBeLogicalScalar);
 end

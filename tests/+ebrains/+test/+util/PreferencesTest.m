@@ -27,19 +27,23 @@ classdef PreferencesTest < matlab.unittest.TestCase
             testCase.verifyTrue(testCase.SettingsGroup.hasSetting("AutoRenew"));
         end
 
-        function testDefinitionsMatchPropertiesAndSettings(testCase)
-            % The definitions are the one place the defaults are declared:
-            % the factory tree is built from them, and they are read when
-            % the settings are not loaded. Each needs a property of the
-            % same name for getpref and setpref to reach it.
-            definitions = ebrains.internal.getPreferenceDefinitions();
+        function testEveryPreferenceHasASetting(testCase)
+            % A property added to ebrains.util.Preferences without a setting
+            % in ebrains.internal.createFactoryTree cannot be read or set.
+            for preferenceName = reshape(string(properties("ebrains.util.Preferences")), 1, [])
+                testCase.verifyTrue(testCase.SettingsGroup.hasSetting(preferenceName), preferenceName);
+            end
+        end
 
-            testCase.verifyEqual(sort([definitions.Name]), ...
-                sort(string(properties("ebrains.util.Preferences")))');
-            for definition = definitions
-                testCase.verifyEqual( ...
-                    testCase.SettingsGroup.(definition.Name).FactoryValue, ...
-                    definition.FactoryValue, definition.Name);
+        function testMissingSettingErrorSaysHowToLoadIt(testCase)
+            testCase.verifyError(@() ebrains.util.Preferences.getSetting("NotLoaded"), ...
+                'EBRAINS:Preferences:SettingNotFound');
+
+            try
+                ebrains.util.Preferences.getSetting("NotLoaded");
+            catch exception
+                testCase.verifySubstring(exception.message, 'restart MATLAB');
+                testCase.verifySubstring(exception.message, 'resources folder');
             end
         end
 
