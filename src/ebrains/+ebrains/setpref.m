@@ -30,13 +30,13 @@ function preferences = setpref(preferenceValues, options)
 
     preferenceObject = ebrains.util.Preferences();
 
-    preferenceNames = string(fieldnames(preferenceValues));
-    for preferenceName = reshape(preferenceNames, 1, [])
-        value = preferenceValues.(preferenceName);
-        if options.Scope == "temporary"
-            preferenceObject.setTemporaryValue(preferenceName, value)
-        else
-            preferenceObject.(preferenceName) = value;
+    if options.Scope == "temporary"
+        nameValuePairs = namedargs2cell(preferenceValues);
+        preferenceObject.setTemporaryValue(nameValuePairs{:})
+    else
+        preferenceNames = string(fieldnames(preferenceValues));
+        for preferenceName = reshape(preferenceNames, 1, [])
+            preferenceObject.(preferenceName) = preferenceValues.(preferenceName);
         end
     end
 

@@ -51,7 +51,6 @@ function restoreValues(recordedValues)
     for preferenceName = reshape(string(fieldnames(recordedValues.Personal)), 1, [])
         preferences.(preferenceName) = recordedValues.Personal.(preferenceName);
     end
-    for preferenceName = reshape(string(fieldnames(recordedValues.Temporary)), 1, [])
-        preferences.setTemporaryValue(preferenceName, recordedValues.Temporary.(preferenceName))
-    end
+    nameValuePairs = namedargs2cell(recordedValues.Temporary);
+    preferences.setTemporaryValue(nameValuePairs{:})
 end

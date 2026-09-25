@@ -98,10 +98,20 @@ classdef PreferencesTest < matlab.unittest.TestCase
         function testSetTemporaryValueOnPreferencesObject(testCase)
             preferences = ebrains.getpref();
 
-            preferences.setTemporaryValue("AutoRenew", false);
+            preferences.setTemporaryValue(AutoRenew=false);
 
             testCase.verifyFalse(ebrains.getpref("AutoRenew"));
             testCase.verifyFalse(testCase.SettingsGroup.AutoRenew.hasPersonalValue());
+        end
+
+        function testSetTemporaryValueConvertsLikeTheProperty(testCase)
+            % Assigning 1 to the logical property sets true, and a
+            % temporary value is converted the same way.
+            preferences = ebrains.getpref();
+
+            preferences.setTemporaryValue(AutoLogin=1);
+
+            testCase.verifyEqual(ebrains.getpref("AutoLogin"), true);
         end
 
         function testResetClearsTemporaryValue(testCase)
@@ -136,8 +146,8 @@ classdef PreferencesTest < matlab.unittest.TestCase
         function testSetTemporaryValueRejectsUnknownName(testCase)
             preferences = ebrains.getpref();
 
-            testCase.verifyError(@() preferences.setTemporaryValue("NoSuchPreference", true), ...
-                'EBRAINS:Preferences:UnknownPreference');
+            testCase.verifyError(@() preferences.setTemporaryValue(NoSuchPreference=true), ...
+                'MATLAB:TooManyInputs');
         end
 
         %% Validation

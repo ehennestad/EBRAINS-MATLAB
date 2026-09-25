@@ -32,7 +32,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %       ebrains.getpref("AutoLogin")
 %
 %   Preferences methods:
-%       setTemporaryValue - Set a preference for this MATLAB session only
+%       setTemporaryValue - Set preferences for this MATLAB session only
 %       reset             - Return every preference to its default value
 %
 %   See also ebrains.getpref, ebrains.setpref,
@@ -64,29 +64,28 @@ classdef Preferences < matlab.mixin.CustomDisplay
             obj.writeValue("AutoRenew", value)
         end
 
-        function setTemporaryValue(obj, preferenceName, value)
-        %setTemporaryValue - Set a preference for this MATLAB session only
-        %   setTemporaryValue(OBJ,preferenceName,value) gives the
-        %   preference a value that applies until MATLAB closes and that
-        %   takes precedence over the value the user has set, which is left
-        %   as it is. RESET removes it, as does clearTemporaryValue on the
-        %   setting itself.
+        function setTemporaryValue(obj, preferenceValues)
+        %setTemporaryValue - Set preferences for this MATLAB session only
+        %   setTemporaryValue(OBJ,Name=Value) gives one or more preferences
+        %   a value that applies until MATLAB closes and that takes
+        %   precedence over the value the user has set, which is left as it
+        %   is. A value is validated and converted as when it is assigned
+        %   to the property, so AutoLogin=1 sets true. RESET removes the
+        %   values, as does clearTemporaryValue on a setting itself.
         %
-        %   ebrains.setpref(...,Scope="temporary") is the shorter way to
-        %   set one.
+        %   ebrains.setpref(...,Scope="temporary") does the same.
         %
         %   See also ebrains.setpref, reset
 
             arguments
                 obj (1,1) ebrains.util.Preferences
-                preferenceName (1,1) string
-                value
+                preferenceValues.?ebrains.util.Preferences
             end
 
-            obj.assertIsPreferenceName(preferenceName)
-
             settingsGroup = obj.getSettingsGroup();
-            settingsGroup.(preferenceName).TemporaryValue = value;
+            for preferenceName = reshape(string(fieldnames(preferenceValues)), 1, [])
+                settingsGroup.(preferenceName).TemporaryValue = preferenceValues.(preferenceName);
+            end
         end
 
         function reset(obj)
@@ -147,9 +146,9 @@ classdef Preferences < matlab.mixin.CustomDisplay
         %assertIsPreferenceName - Raise an error for a name that is not a preference
         %   ebrains.util.Preferences.assertIsPreferenceName(preferenceName)
         %   raises EBRAINS:Preferences:UnknownPreference, listing the
-        %   preferences, when preferenceName is not one of them. Both
-        %   setTemporaryValue and ebrains.getpref use it, so that an
-        %   unknown name raises the same error wherever it is given.
+        %   preferences, when preferenceName is not one of them.
+        %   ebrains.getpref uses it to check the name it is given; the
+        %   functions that take Name=Value pairs have MATLAB check them.
 
             arguments
                 preferenceName (1,1) string
