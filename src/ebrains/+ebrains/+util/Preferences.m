@@ -140,15 +140,29 @@ classdef Preferences < matlab.mixin.CustomDisplay
             preferenceNames = reshape(string(properties(obj)), 1, []);
         end
 
-        function assertIsPreferenceName(obj, preferenceName)
+    end
+
+    methods (Static, Hidden)
+        function assertIsPreferenceName(preferenceName)
         %assertIsPreferenceName - Raise an error for a name that is not a preference
-            if ismember(preferenceName, obj.getPreferenceNames())
+        %   ebrains.util.Preferences.assertIsPreferenceName(preferenceName)
+        %   raises EBRAINS:Preferences:UnknownPreference, listing the
+        %   preferences, when preferenceName is not one of them. Both
+        %   setTemporaryValue and ebrains.getpref use it, so that an
+        %   unknown name raises the same error wherever it is given.
+
+            arguments
+                preferenceName (1,1) string
+            end
+
+            preferenceNames = reshape(string(properties("ebrains.util.Preferences")), 1, []);
+            if ismember(preferenceName, preferenceNames)
                 return
             end
 
             error("EBRAINS:Preferences:UnknownPreference", ...
                 "There is no preference named ""%s"". The preferences are: %s.", ...
-                preferenceName, strjoin(obj.getPreferenceNames(), ", "))
+                preferenceName, strjoin(preferenceNames, ", "))
         end
     end
 

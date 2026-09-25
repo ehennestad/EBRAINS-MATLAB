@@ -21,14 +21,8 @@ function preference = getpref(preferenceName)
 end
 
 function mustBePreferenceName(preferenceName)
-    if ismissing(preferenceName)
-        return
-    end
-
-    preferenceNames = string(properties("ebrains.util.Preferences"));
-    if ~ismember(preferenceName, preferenceNames)
-        error("EBRAINS:getpref:UnknownPreference", ...
-            "There is no preference named ""%s"". The preferences are: %s.", ...
-            preferenceName, strjoin(preferenceNames, ", "))
+    % Without a name, getpref returns every preference.
+    if ~ismissing(preferenceName)
+        ebrains.util.Preferences.assertIsPreferenceName(preferenceName)
     end
 end

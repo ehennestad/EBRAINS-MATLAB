@@ -148,7 +148,7 @@ classdef PreferencesTest < matlab.unittest.TestCase
 
         function testGetprefRejectsUnknownName(testCase)
             testCase.verifyError(@() ebrains.getpref("NoSuchPreference"), ...
-                'EBRAINS:getpref:UnknownPreference');
+                'EBRAINS:Preferences:UnknownPreference');
         end
 
         %% Display
