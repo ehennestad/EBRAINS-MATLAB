@@ -113,6 +113,21 @@ classdef PreferencesTest < matlab.unittest.TestCase
             testCase.verifyFalse(testCase.SettingsGroup.AutoRenew.hasTemporaryValue());
         end
 
+        function testFixtureRestoresTemporaryValue(testCase)
+            % A temporary value set in the session before the tests run is
+            % cleared for the test and set again afterwards.
+            ebrains.setpref(AutoLogin=true, Scope="temporary");
+
+            fixture = ebrains.test.fixtures.PreferencesFixture();
+            fixture.setup();
+            testCase.verifyFalse(ebrains.getpref("AutoLogin"));
+
+            fixture.teardown();
+
+            testCase.verifyTrue(ebrains.getpref("AutoLogin"));
+            testCase.verifyTrue(testCase.SettingsGroup.AutoLogin.hasTemporaryValue());
+        end
+
         function testSetprefRejectsUnknownScope(testCase)
             testCase.verifyError(@() ebrains.setpref(AutoLogin=true, Scope="forever"), ...
                 'MATLAB:validators:mustBeMember');

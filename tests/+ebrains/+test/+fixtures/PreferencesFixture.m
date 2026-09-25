@@ -1,43 +1,57 @@
 classdef PreferencesFixture < matlab.unittest.fixtures.Fixture
     % PreferencesFixture - Default preferences for a test, the user's restored after
     %
-    % The preferences are personal values of the settings under
-    % settings().ebrains, which MATLAB saves for later sessions. Applying
-    % this fixture records the values the user has set, clears them so that
-    % a test runs with the factory defaults, and sets the recorded ones
-    % again at teardown.
+    % The preferences are settings under settings().ebrains, whose
+    % personal values MATLAB saves for later sessions and whose temporary
+    % values last until MATLAB closes. Applying this fixture records both,
+    % clears them so that a test runs with the factory defaults, and sets
+    % the recorded ones again at teardown.
     %
     % Usage:
     %   testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
 
+    properties (Access = private)
+        RecordedValues struct  % Personal and temporary values found at setup
+    end
+
     methods
         function setup(fixture)
             preferences = ebrains.getpref();
-            personalValues = capturePersonalValues(preferences);
-            fixture.addTeardown(@() restorePersonalValues(personalValues));
+            fixture.RecordedValues = captureValues(preferences);
             preferences.reset();
         end
-    end
-end
 
-function personalValues = capturePersonalValues(preferences)
-% capturePersonalValues - The value the user set for each preference, if any
-    settingsGroup = settings().(preferences.GroupName);
-
-    personalValues = struct();
-    for preferenceName = reshape(string(properties(preferences)), 1, [])
-        if settingsGroup.(preferenceName).hasPersonalValue()
-            personalValues.(preferenceName) = settingsGroup.(preferenceName).PersonalValue;
+        function teardown(fixture)
+            restoreValues(fixture.RecordedValues)
         end
     end
 end
 
-function restorePersonalValues(personalValues)
-% restorePersonalValues - Set the recorded values again, and clear the rest
+function recordedValues = captureValues(preferences)
+% captureValues - The personal and temporary value of each preference, if any
+    settingsGroup = settings().(preferences.GroupName);
+
+    recordedValues = struct("Personal", struct(), "Temporary", struct());
+    for preferenceName = reshape(string(properties(preferences)), 1, [])
+        setting = settingsGroup.(preferenceName);
+        if setting.hasPersonalValue()
+            recordedValues.Personal.(preferenceName) = setting.PersonalValue;
+        end
+        if setting.hasTemporaryValue()
+            recordedValues.Temporary.(preferenceName) = setting.TemporaryValue;
+        end
+    end
+end
+
+function restoreValues(recordedValues)
+% restoreValues - Set the recorded values again, and clear the rest
     preferences = ebrains.getpref();
     preferences.reset()
 
-    for preferenceName = reshape(string(fieldnames(personalValues)), 1, [])
-        preferences.(preferenceName) = personalValues.(preferenceName);
+    for preferenceName = reshape(string(fieldnames(recordedValues.Personal)), 1, [])
+        preferences.(preferenceName) = recordedValues.Personal.(preferenceName);
+    end
+    for preferenceName = reshape(string(fieldnames(recordedValues.Temporary)), 1, [])
+        preferences.setTemporaryValue(preferenceName, recordedValues.Temporary.(preferenceName))
     end
 end
