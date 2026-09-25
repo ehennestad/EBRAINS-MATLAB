@@ -141,7 +141,6 @@ classdef Preferences < matlab.mixin.CustomDisplay
         %getPreferenceNames - Names of the preferences, as a string row
             preferenceNames = reshape(string(properties(obj)), 1, []);
         end
-
     end
 
     methods (Static, Hidden)
