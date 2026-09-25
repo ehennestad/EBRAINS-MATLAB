@@ -262,7 +262,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             % running it anyway would spend the new refresh token on a
             % second round trip, and would report a failure of that request
             % as a failed refresh although the login itself succeeded.
-            if obj.RefreshToken == "" || ismissing(obj.RefreshToken)
+            if ~obj.hasRefreshToken()
                 obj.fetchToken()
                 return
             end
