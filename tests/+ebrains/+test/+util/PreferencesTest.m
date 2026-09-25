@@ -128,16 +128,19 @@ classdef PreferencesTest < matlab.unittest.TestCase
         end
 
         function testFixtureRestoresTemporaryValue(testCase)
-            % A temporary value set in the session before the tests run is
-            % cleared for the test and set again afterwards.
+            % A temporary value set in the session before a test runs is
+            % cleared for that test and set again afterwards. The framework
+            % runs the restore the fixture registers with addTeardown, so it
+            % is checked around a run of a test that applies the fixture:
+            % testDefaultsComeFromTheFactoryValues passes only if the value
+            % was cleared.
             ebrains.setpref(AutoLogin=true, Scope="temporary");
 
-            fixture = ebrains.test.fixtures.PreferencesFixture();
-            fixture.setup();
-            testCase.verifyFalse(ebrains.getpref("AutoLogin"));
+            suite = matlab.unittest.TestSuite.fromMethod(?ebrains.test.util.PreferencesTest, ...
+                "testDefaultsComeFromTheFactoryValues");
+            result = matlab.unittest.TestRunner.withNoPlugins().run(suite);
 
-            fixture.teardown();
-
+            testCase.verifyTrue(result.Passed, "The fixture did not clear the temporary value for the test.");
             testCase.verifyTrue(ebrains.getpref("AutoLogin"));
             testCase.verifyTrue(testCase.SettingsGroup.AutoLogin.hasTemporaryValue());
         end
