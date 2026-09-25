@@ -210,17 +210,19 @@ classdef GetTokenManagerTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEmpty(client.TokenRequests);
         end
 
-        function testNonInteractiveIgnoresDeviceFlowWhenForced(testCase)
-            % The device flow client is not used when the client credentials
-            % flow is forced, even when it holds an active token.
+        function testNonInteractiveErrorsWhenForcedWithoutToken(testCase)
+            % A job that forces the client credentials flow expects to
+            % authenticate with its credentials. Sending its requests
+            % without a token would fail with advice to log in through the
+            % device flow, which the forced flow never uses. The device flow
+            % client is ignored even when it holds an active token.
             setenv("EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW", "true");
             client = ebrains.mocks.MockDeviceFlowTokenClient();
             client.seedTokens("access-0", "refresh-0", 7200);
             testCase.installSingleton(testCase.DeviceFlowSingletonName, client);
 
-            tokenManager = ebrains.getTokenManager(Interactive=false);
-
-            testCase.verifyEmpty(tokenManager);
+            testCase.verifyError(@() ebrains.getTokenManager(Interactive=false), ...
+                'EBRAINS:GetTokenManager:Unauthenticated');
         end
     end
 end

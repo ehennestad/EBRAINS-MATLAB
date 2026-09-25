@@ -27,8 +27,10 @@ function tokenManager = getTokenManager(options)
 %   Set the environment variable
 %   EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW to "true" to never
 %   use the device flow client. When the client credentials client cannot
-%   supply a token, ebrains.getTokenManager() then raises an error, and
-%   ebrains.getTokenManager(Interactive=false) returns [].
+%   supply a token, ebrains.getTokenManager then raises an error, also
+%   with Interactive=false: a job that forces this flow is meant to
+%   authenticate with its credentials, and a request sent without a token
+%   would fail with advice to log in through the device flow instead.
 %
 %   See also authenticate, ebrains.getpref, ebrains.iam.OidcTokenClient,
 %   ebrains.iam.DeviceFlowTokenClient,
@@ -47,10 +49,6 @@ function tokenManager = getTokenManager(options)
 
     forceClientCredentialsFlow = getenv('EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW');
     if strcmpi(forceClientCredentialsFlow, "true")
-        if ~options.Interactive
-            tokenManager = [];
-            return
-        end
         error(...
             'EBRAINS:GetTokenManager:Unauthenticated', ...
             ['Client Credentials token manager does not have an active access token. ', ...
