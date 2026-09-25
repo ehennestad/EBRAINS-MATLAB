@@ -7,6 +7,10 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
     % moved aside and gets them back afterwards. The session's own clients
     % are moved, not deleted; only the instances a test created are
     % deleted at teardown.
+    %
+    % The AutoLogin and AutoRenew preferences decide whether a token is
+    % looked up with a login or a renewal, so each test also runs with the
+    % default preferences (see ebrains.test.fixtures.PreferencesFixture).
 
     properties (Constant)
         DeviceFlowSingletonName = "IAM_DeviceFlow_Client"
@@ -22,9 +26,16 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
             end
 
             for name = ["EBRAINS_TOKEN", "EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW"]
-                testCase.addTeardown(@() restoreEnvironmentVariable(name, isenv(name), getenv(name)));
+                % Read here, before the test runs. Called inside the
+                % teardown handle, isenv and getenv would read the value the
+                % test left behind, and restore that instead.
+                wasSet = isenv(name);
+                value = getenv(name);
+                testCase.addTeardown(@() restoreEnvironmentVariable(name, wasSet, value));
                 unsetenv(name);
             end
+
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
         end
     end
 

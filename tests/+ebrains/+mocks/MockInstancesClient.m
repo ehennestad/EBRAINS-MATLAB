@@ -1,7 +1,7 @@
 classdef MockInstancesClient < ebrains.kg.api.InstancesClient & ebrains.mocks.MockHttpTransport
     % MockInstancesClient - Test double that mocks HTTP responses
     %
-    % This mock client subclasses InstancesClient and overrides sendRequest
+    % This mock client subclasses InstancesClient and overrides transmitRequest
     % to return canned responses instead of making real HTTP calls.
     %
     % Example:
@@ -14,7 +14,7 @@ classdef MockInstancesClient < ebrains.kg.api.InstancesClient & ebrains.mocks.Mo
             headers = obj.getMockHeaders();
         end
 
-        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
+        function response = transmitRequest(obj, requestObj, apiURL, httpOpts)
             arguments
                 obj (1,1) ebrains.mocks.MockInstancesClient
                 requestObj (1,1) matlab.net.http.RequestMessage

@@ -1,7 +1,7 @@
 classdef MockBucketsClient < ebrains.bucket.api.BucketsClient & ebrains.mocks.MockHttpTransport
     % MockBucketsClient - Test double that mocks HTTP responses
     %
-    % This mock client subclasses BucketsClient and overrides sendRequest
+    % This mock client subclasses BucketsClient and overrides transmitRequest
     % to return canned responses instead of making real HTTP calls.
     %
     % Example:
@@ -14,7 +14,7 @@ classdef MockBucketsClient < ebrains.bucket.api.BucketsClient & ebrains.mocks.Mo
             headers = obj.getMockHeaders();
         end
 
-        function response = sendRequest(obj, requestObj, apiURL, httpOpts)
+        function response = transmitRequest(obj, requestObj, apiURL, httpOpts)
             arguments
                 obj (1,1) ebrains.mocks.MockBucketsClient
                 requestObj (1,1) matlab.net.http.RequestMessage

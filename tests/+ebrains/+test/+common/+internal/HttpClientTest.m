@@ -52,9 +52,9 @@ classdef HttpClientTest < matlab.unittest.TestCase
         end
 
         function testErrorMessageWithoutBodyIsStatusName(testCase)
-            response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.Forbidden);
+            response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.NotFound);
             exception = testCase.Client.buildError("fetchThing", response);
-            testCase.verifyEqual(exception.message, 'Forbidden');
+            testCase.verifyEqual(exception.message, 'NotFound');
         end
 
         function testErrorMessageKeepsFormatCharacters(testCase)

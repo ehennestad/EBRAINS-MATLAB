@@ -1,10 +1,23 @@
-function tokenManager = getTokenManager()
+function tokenManager = getTokenManager(options)
 %getTokenManager - Get the token client that holds the EBRAINS token
-%   tokenManager = getTokenManager() returns the token client to use for
-%   authenticated requests. The client credentials client is returned
-%   when it can supply a valid access token. Otherwise the device flow
-%   client is returned, after logging in through the browser when it has
-%   no active token.
+%   tokenManager = ebrains.getTokenManager() returns the token client to
+%   use for authenticated requests. The client credentials client is
+%   returned when it can supply a valid access token. Otherwise the device
+%   flow client is returned, after logging in through the browser when it
+%   has no active token.
+%
+%   tokenManager = ebrains.getTokenManager(Interactive=false) never logs
+%   in. It returns the client credentials client when it can supply a
+%   valid access token, the device flow client when it has an active
+%   token, and [] otherwise. The API clients call it this way unless the
+%   AutoLogin preference is true, so that a request is sent without a
+%   token when none is available.
+%
+%   tokenManager = ebrains.getTokenManager(AutoRenew=TF) also specifies
+%   whether an expired device flow token is renewed with its refresh
+%   token before a login is considered. The renewal needs no user
+%   interaction. The default is the AutoRenew preference (see
+%   ebrains.getpref).
 %
 %   A token given through the EBRAINS_TOKEN environment variable is held
 %   by the client credentials client, which cannot renew it. Once such a
@@ -12,12 +25,21 @@ function tokenManager = getTokenManager()
 %   logging in with ebrains.authenticate takes effect.
 %
 %   Set the environment variable
-%   EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW to "true" to raise
-%   an error instead of falling back to the device flow.
+%   EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW to "true" to never
+%   use the device flow client. When the client credentials client cannot
+%   supply a token, ebrains.getTokenManager then raises an error, also
+%   with Interactive=false: a job that forces this flow is meant to
+%   authenticate with its credentials, and a request sent without a token
+%   would fail with advice to log in through the device flow instead.
 %
-%   See also authenticate, ebrains.iam.OidcTokenClient,
+%   See also authenticate, ebrains.getpref, ebrains.iam.OidcTokenClient,
 %   ebrains.iam.DeviceFlowTokenClient,
 %   ebrains.iam.ClientCredentialsFlowTokenClient
+
+    arguments
+        options.Interactive (1,1) logical = true
+        options.AutoRenew (1,1) logical = ebrains.getpref("AutoRenew")
+    end
 
     tokenClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance();
     if tokenClient.canProvideToken()
@@ -35,7 +57,27 @@ function tokenManager = getTokenManager()
 
     % Fall back to use DeviceFlowTokenClient
     tokenManager = ebrains.iam.DeviceFlowTokenClient.instance();
+
+    % Renewing before hasActiveToken below means a token that is renewed
+    % raises no warning that it has expired.
+    if options.AutoRenew
+        try
+            tokenManager.tryRenewToken();
+        catch exception
+            % The renewal is a convenience: when it fails, for example
+            % because the identity provider cannot be reached, the client
+            % is left without an active token and is handled below like
+            % any other. A request that needs no token then still goes out.
+            warning("EBRAINS:GetTokenManager:RenewalFailed", ...
+                "Could not renew the EBRAINS access token: %s", exception.message)
+        end
+    end
+
     if ~tokenManager.hasActiveToken()
+        if ~options.Interactive
+            tokenManager = [];
+            return
+        end
         tokenManager.authenticate()
     end
 

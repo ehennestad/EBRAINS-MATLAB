@@ -1,0 +1,5 @@
+{
+    "ToolboxGroupName": "ebrains",
+    "Hidden": false,
+    "CreateTreeFcn": "ebrains.internal.createFactoryTree"
+}

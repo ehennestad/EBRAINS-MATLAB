@@ -51,6 +51,16 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyFalse(isActive);
         end
 
+        function testExpiredTokenWarnsOncePerTenMinutes(testCase)
+            % Every request asks while the token is expired, so without the
+            % limit a paged listing would warn once per page.
+            client = ebrains.mocks.MockClientCredentialsFlowTokenClient();
+            client.seedToken("stale", -60);
+
+            testCase.verifyWarning(@() client.hasActiveToken(), 'EBRAINS:IAM:TokenExpired');
+            testCase.verifyWarningFree(@() client.hasActiveToken());
+        end
+
         function testTokenExpiringSoonWarnsOncePerTenMinutes(testCase)
             client = ebrains.mocks.MockClientCredentialsFlowTokenClient();
             client.seedToken("soon", 1800);
@@ -171,6 +181,68 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyError(@() client.authenticate(), 'MATLAB:webservices:Timeout');
 
             testCase.verifyEqual(client.ErrorDialogs(1).Title, "Token Refresh Failed");
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
+        %% tryRenewToken
+        function testTryRenewTokenRenewsExpiredToken(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addTokenResponse(testCase.makeTokenResponse("access-1"));
+
+            isActive = client.tryRenewToken();
+
+            testCase.verifyTrue(isActive);
+            formFields = client.TokenRequests{1};
+            testCase.verifyEqual(formFields{2}, "refresh_token");
+            testCase.verifyEqual(formFields{6}, "refresh-0");
+            testCase.verifyEqual(client.AccessToken, "access-1");
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
+        function testTryRenewTokenLeavesActiveTokenAlone(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", 7200);
+
+            isActive = client.tryRenewToken();
+
+            testCase.verifyTrue(isActive);
+            testCase.verifyEmpty(client.TokenRequests);
+        end
+
+        function testTryRenewTokenWithoutRefreshTokenDoesNotLogIn(testCase)
+            % No poll response is queued, so a login attempt would error.
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+
+            isActive = client.tryRenewToken();
+
+            testCase.verifyFalse(isActive);
+            testCase.verifyEmpty(client.TokenRequests);
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
+        function testTryRenewTokenDiscardsRefusedRefreshToken(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addTokenResponse(MException('MATLAB:webservices:HTTP400StatusCodeError', 'invalid_grant'));
+
+            isActive = client.tryRenewToken();
+            isActiveOnRetry = client.tryRenewToken();
+
+            testCase.verifyFalse(isActive);
+            testCase.verifyFalse(isActiveOnRetry);
+            testCase.verifyNumElements(client.TokenRequests, 1);
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
+        function testTryRenewTokenRethrowsOtherErrorsWithoutDialog(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addTokenResponse(MException('MATLAB:webservices:Timeout', 'timed out'));
+
+            testCase.verifyError(@() client.tryRenewToken(), 'MATLAB:webservices:Timeout');
+
+            testCase.verifyEmpty(client.ErrorDialogs);
             testCase.verifyEqual(client.PollCount, 0);
         end
     end
