@@ -18,11 +18,8 @@ classdef PreferencesFixture < matlab.unittest.fixtures.Fixture
         function setup(fixture)
             preferences = ebrains.getpref();
             fixture.RecordedValues = captureValues(preferences);
+            fixture.addTeardown(@() restoreValues(fixture.RecordedValues));
             preferences.reset();
-        end
-
-        function teardown(fixture)
-            restoreValues(fixture.RecordedValues)
         end
     end
 end
