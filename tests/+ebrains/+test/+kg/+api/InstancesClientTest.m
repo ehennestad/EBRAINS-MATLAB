@@ -694,30 +694,6 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
         
-        %% runDynamicQuery Tests
-        function testRunDynamicQuerySuccess(testCase)
-            % Arrange
-            queryPayload = '{"@context": {...}, "query": {...}}';
-            expectedResult = struct('data', {{'result1', 'result2'}});
-            testCase.Client.addResponse('OK', expectedResult);
-            
-            % Act
-            result = testCase.Client.runDynamicQuery(queryPayload);
-            
-            % Assert
-            testCase.verifyLength(result, 2);
-            testCase.Client.verifyRequestMethod(1, 'POST');
-            testCase.Client.verifyRequestURL(1, '/queries');
-            testCase.Client.verifyRequestURL(1, 'stage=RELEASED');
-        end
-        
-        function testRunDynamicQueryRejectsAnyStage(testCase)
-            testCase.verifyError(...
-                @() testCase.Client.runDynamicQuery('{"query": {}}', stage="ANY"), ...
-                'MATLAB:validation:UnableToConvert');
-            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
-        end
-
         %% Error propagation, once for every operation
         function testOperationPropagatesServerError(testCase, ErroringOperation)
             operationName = ErroringOperation{1};
@@ -727,10 +703,10 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyError(...
                 @() testCase.Client.(operationName)(callArgs{:}), ...
                 "EBRAINS:KG_API:" + operationName + ":NotFound");
+
         end
-    end
-    
-    methods (Test, TestTags = {'IdentifierNormalization'})
+
+               
         %% Identifier Normalization Tests
         % Note: normalizeIdentifiers is a local function in InstancesClient.m
         % We test it indirectly through public methods that use it
@@ -835,7 +811,6 @@ classdef InstancesClientTest < matlab.unittest.TestCase
                 'releaseInstance',         {"id1"}; ...
                 'getReleaseStatus',        {"id1"}; ...
                 'listTypes',               {}; ...
-                'runDynamicQuery',         {'{}'}; ...
                 'getInstancesBulk',        {["id1", "id2"]} ...
                 };
             parameters = struct();

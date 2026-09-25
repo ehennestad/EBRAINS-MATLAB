@@ -37,14 +37,14 @@ savepath  % optional
 ```matlab
 ebrains.authenticate()
 ```
-This opens a browser window that redirects to the EBRAINS login page. Scripts and CI jobs can use the client credentials flow instead:
+This opens a browser window that redirects to the EBRAINS login page. Scripts and CI jobs can use the client credentials flow instead. Read the secret from an environment variable of your choice rather than typing it in: MATLAB keeps what is typed in the Command Window in its command history.
 
 ```matlab
 ebrains.authenticate(OAuthFlow="ClientCredentialsFlow", ...
-    OIDCClientID="my-client", OIDCClientSecret="my-secret")
+    OIDCClientID="my-client", OIDCClientSecret=getenv("EBRAINS_CLIENT_SECRET"))
 ```
 > [!TIP]
-> You can also provide an access token via the environment variable `EBRAINS_TOKEN`.
+> You can also provide an access token via the environment variable `EBRAINS_TOKEN`. See [Running without a display](#running-without-a-display) for how it is used.
 
 ### 2) Work with Data Proxy buckets
 List objects and compute the total size of a bucket:
@@ -79,6 +79,13 @@ collabs = collabClient.searchCollabs(limit=50);
 
 More complete examples are in [`src/ebrains/examples`](src/ebrains/examples).
 
+## Running without a display
+Scheduled jobs and CI runners have no browser to log in with and no screen for progress dialogs. Three settings cover that:
+
+- **`EBRAINS_TOKEN`** holds an access token to use instead of logging in. It is used while it is valid. The toolbox cannot renew it, so once it expires, requests fall back to logging in with the device flow.
+- **`EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW`** set to `"true"` makes that fallback an error instead: when there is neither a client credentials login nor a valid `EBRAINS_TOKEN`, an unattended job fails rather than waits for a browser login nobody will complete.
+- **`DisplayMode="Command Window"`**, an option of `ebrains.bucket.uploadFile` and `ebrains.bucket.downloadFile`, prints transfer progress instead of opening a dialog.
+
 ## See Also
 ### [openMINDS KG Sync](https://github.com/ehennestad/openminds-kg-sync)
 A MATLAB toolbox that builds upon the EBRAINS MATLAB KG API to provide high-level functions for synchronizing [openMINDS](https://openminds.docs.om-i.org/en/latest/) metadata to and from the [EBRAINS Knowledge Graph](https://docs.kg.ebrains.eu). It offers convenient methods like `kglist`, `kgpull`, and `kgsave` for working with [openMINDS metadata types](https://github.com/openMetadataInitiative/openMINDS_MATLAB), handling serialization and deserialization of instances. If you need to work with structured neuroscience metadata using the openMINDS standard, this toolbox provides a streamlined interface on top of the lower-level `ebrains.kg.api.InstancesClient` functionality.
@@ -86,3 +93,8 @@ A MATLAB toolbox that builds upon the EBRAINS MATLAB KG API to provide high-leve
 ## Contributing
 - Open an issue to discuss ideas/bugs.
 - Fork, create a feature branch, add tests where practical, and open a PR.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run the tests.
+
+## License
+Released under the [MIT License](LICENSE). The bundled transfer package in [`src/ebrains/external/+ebrains/+external/+webprogress`](src/ebrains/external/+ebrains/+external/+webprogress) is distributed under its own MIT License, in the `LICENSE` file beside it, whose notice has to be kept with any copy of that package.

@@ -20,6 +20,7 @@ function url = KGCoreApiBaseURL(serverOpts)
     elseif serverOpts.Server == "PREPROD"
         url = "https://core.kg-ppd.ebrains.eu/v3";
     else
-        error('Unsupported server option: %s', serverOpts.Server)
+        error('EBRAINS:Common:UnsupportedServer', ...
+            'Unsupported server option: %s', string(serverOpts.Server))
     end
 end

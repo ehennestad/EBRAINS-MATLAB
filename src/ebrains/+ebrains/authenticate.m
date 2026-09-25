@@ -75,7 +75,8 @@ function authenticate(mode, options, oidcOptions)
             end
 
         otherwise
-            error('Unsupported flow type: "%s"', string(options.OAuthFlow))
+            error('EBRAINS:authenticate:UnsupportedFlow', ...
+                'Unsupported flow type: "%s"', string(options.OAuthFlow))
     end
 
     if mode == "refresh" || ~tokenClient.hasActiveToken()

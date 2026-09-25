@@ -1,4 +1,8 @@
-name: Run live integration tests
+# Named after "Live test", the workflow to run, and marked as the job that
+# workflow calls. GitHub lists this file in the Actions sidebar too, but it
+# only has a workflow_call trigger, so it cannot be started from there and its
+# runs are recorded under the workflows that call it.
+name: Live test (reusable job)
 
 # Reusable job: runs the tests tagged "LiveIntegration" against the real
 # EBRAINS Data Proxy, Knowledge Graph, and Collaboratory APIs, authenticated

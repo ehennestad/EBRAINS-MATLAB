@@ -101,6 +101,20 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEmpty(objects);
         end
 
+        function testListBucketObjectsSendsPrefix(testCase)
+            testCase.Client.addResponse('OK', makeStat(5, 4096));
+            testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/y.txt"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            objects = ebrains.bucket.listBucketObjects("my-bucket", ...
+                Prefix="set-a/", Client=testCase.Client);
+
+            testCase.verifyNumElements(objects, 2);
+            testCase.Client.verifyRequestURL(2, 'prefix=set-a');
+            testCase.Client.verifyRequestURL(3, 'prefix=set-a');
+            testCase.Client.verifyRequestURL(3, 'marker=set-a');
+        end
+
         function testListBucketObjectsStatErrorPropagates(testCase)
             testCase.Client.addResponse('NotFound', 'Bucket not found');
             testCase.verifyError(...
@@ -250,13 +264,12 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         end
 
         function testDownloadFileFailedTransferLeavesTargetUntouched(testCase)
-            % A refused connection fails the transfer before any byte is
-            % written. The file at the target must be as it was, and no
-            % part file may remain.
+            % A refused connection fails the transfer of the default
+            % downloader. The file at the target must be as it was, and the
+            % downloader's temporary file must not remain next to it.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "existing.bin");
             writelines("previous content", targetFile);
-            fileInfoBefore = dir(targetFile);
             testCase.Client.addResponse('OK', struct('url', 'http://127.0.0.1:9/existing.bin'));
 
             testCase.verifyError(...
@@ -264,46 +277,43 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                     Client=testCase.Client, DisplayMode="Command Window"), ...
                 'MATLAB:webservices:ConnectionRefused');
 
-            fileInfoAfter = dir(targetFile);
-            testCase.verifyEqual(fileInfoAfter.bytes, fileInfoBefore.bytes);
-            testCase.verifyFalse(isfile(targetFile + ".part"));
+            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "previous content");
+            testCase.verifyEqual(listFileNames(folderFixture.Folder), "existing.bin");
         end
 
-        function testDownloadFileMovesTheReceivedFileIntoPlace(testCase)
-            % The transfer writes to the part file; only a completed
-            % transfer replaces the target, in a folder created on demand.
+        function testDownloadFileHandsTheTargetAndSignedUrlToTheDownloader(testCase)
+            % The downloader writes the target itself, in a folder that is
+            % created on demand.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "new folder", "file.txt");
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
-            downloader = @(partFile, url, varargin) writelines("received", partFile);
+            downloads = {};
+            downloader = @(target, url, varargin) recordDownload(target, url, varargin);
+            function recordDownload(target, url, nameValues)
+                downloads{end+1} = {target, url, nameValues};
+                writelines("received", target);
+            end
 
-            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+            ebrains.bucket.downloadFile("my-bucket", "sub/file.txt", targetFile, ...
                 Client=testCase.Client, Downloader=downloader);
 
+            testCase.assertNumElements(downloads, 1);
+            testCase.verifyEqual(downloads{1}{1}, targetFile);
+            testCase.verifyEqual(downloads{1}{2}, "https://store.example.org/file?sig=1");
+            testCase.verifyEqual(downloads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
             testCase.verifyEqual(strtrim(string(fileread(targetFile))), "received");
-            testCase.verifyFalse(isfile(targetFile + ".part"));
         end
 
-        function testDownloadFileRemovesAPartialFileAndKeepsTheTarget(testCase)
-            % A transfer that fails after writing leaves a partial part
-            % file; it must go, and the target must stay as it was.
+        function testDownloadFileDownloaderErrorPropagates(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "file.txt");
-            writelines("previous", targetFile);
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
-            downloader = @(partFile, url, varargin) writeThenFail(partFile);
-            function writeThenFail(partFile)
-                writelines("partial", partFile);
-                error('Test:TransferBroke', 'connection lost');
-            end
+            downloader = @(target, url, varargin) error('Test:TransferBroke', 'connection lost');
 
             testCase.verifyError(...
                 @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
                     Client=testCase.Client, Downloader=downloader), ...
                 'Test:TransferBroke');
-
-            testCase.verifyEqual(strtrim(string(fileread(targetFile))), "previous");
-            testCase.verifyFalse(isfile(targetFile + ".part"));
         end
 
         %% createVirtualBucket
@@ -320,6 +330,52 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             bInfo = dir(fullfile(rootPath, "sub", "b.txt"));
             testCase.verifyEqual(bInfo.bytes, 0);
             testCase.verifyTrue(isfolder(fullfile(rootPath, "emptydir")));
+        end
+
+        function testCreateVirtualBucketCreatesNamesWithShellMetacharacters(testCase)
+            % The empty files were once created with a shell "touch", which
+            % left a literal "\ " in the name of every file with a space in
+            % it. A "$" or a quote would break any return to shell quoting,
+            % and none of these characters is reserved in a Windows file name.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            objectNames = [ ...
+                "a file with spaces.txt", ...
+                "cost $5.txt", ...
+                "o'brien.txt", ...
+                "nested folder/deeper $dir/it's here.txt"];
+            testCase.Client.addResponse('OK', makeStat(numel(objectNames), 0));
+            testCase.Client.addResponse('OK', makePage(objectNames));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            for objectName = objectNames
+                filePath = fullfile(rootPath, objectName);
+                % Asserted, since the size check below cannot run without it
+                testCase.assertTrue(isfile(filePath), ...
+                    sprintf('No file was created at "%s".', filePath));
+                fileInfo = dir(filePath);
+                testCase.verifyEqual(fileInfo.bytes, 0);
+            end
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "nested folder", "deeper $dir")));
+        end
+
+        function testCreateVirtualBucketKeepsExistingFiles(testCase)
+            % Cloning again over a bucket whose files were downloaded must
+            % not replace them with empty files.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            mkdir(rootPath)
+            fileID = fopen(fullfile(rootPath, "a.txt"), "w");
+            fprintf(fileID, "downloaded");
+            fclose(fileID);
+            testCase.Client.addResponse('OK', makeStat(2, 0));
+            testCase.Client.addResponse('OK', makePage(["a.txt", "b.txt"]));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyEqual(fileread(fullfile(rootPath, "a.txt")), 'downloaded');
+            testCase.verifyTrue(isfile(fullfile(rootPath, "b.txt")));
         end
 
         function testCreateVirtualBucketCreatesExtensionlessObjectsAsFiles(testCase)
@@ -354,6 +410,44 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyTrue(isfolder(fullfile(rootPath, "markedFolder")));
             testCase.verifyTrue(isfile(fullfile(rootPath, "markedFolder", "notes.txt")));
+        end
+
+        function testCreateVirtualBucketCreatesUntypedFolderMarkersAsFolders(testCase)
+            % Buckets migrated from the old object storage mark a folder
+            % with an empty object that has neither a trailing "/" nor a
+            % directory content type. Only the objects below it show that
+            % it is a folder.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            page = struct('objects', struct(...
+                'name', {'Sbj001'; 'Sbj001/A160216'; 'Sbj001/A160216/trace.ibw'; 'notes'}, ...
+                'bytes', {0; 0; 0; 0}, ...
+                'content_type', {'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'}));
+            testCase.Client.addResponse('OK', makeStat(4, 0));
+            testCase.Client.addResponse('OK', page);
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
+
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "Sbj001")));
+            testCase.verifyTrue(isfolder(fullfile(rootPath, "Sbj001", "A160216")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "Sbj001", "A160216", "trace.ibw")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "notes")), ...
+                'An empty object with nothing below it stays a file.')
+        end
+
+        function testCreateVirtualBucketCreatesOnlyObjectsUnderPrefix(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            testCase.Client.addResponse('OK', makeStat(4, 0));
+            testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/sub/y.txt"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            ebrains.bucket.createVirtualBucket("my-bucket", rootPath, ...
+                Prefix="set-a/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestURL(2, 'prefix=set-a');
+            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "x.txt")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "sub", "y.txt")));
         end
 
         function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)
@@ -403,4 +497,10 @@ function page = makePage(objectNames, byteSizes)
     names = cellstr(reshape(objectNames, [], 1));
     sizes = num2cell(reshape(byteSizes, [], 1));
     page = struct('objects', struct('name', names, 'bytes', sizes));
+end
+
+function fileNames = listFileNames(folder)
+% listFileNames - Names of the files directly in a folder, as a string row
+    listing = dir(folder);
+    fileNames = string({listing(~[listing.isdir]).name});
 end

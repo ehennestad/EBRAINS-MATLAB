@@ -9,7 +9,13 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %           creates the virtual dataset for a bucket in the folder
 %           specified by virtualBucketRootPath
 %
+%       ebrains.bucket.createVirtualBucket(..., Prefix=PREFIX) creates only
+%           the objects whose name starts with PREFIX. Their paths below
+%           virtualBucketRootPath keep the prefix.
+%
 %   Name-Value Arguments
+%       Prefix  : Only create objects whose name starts with this text.
+%                 Default is "", which creates every object.
 %       Verbose : Print progress while the pages of the listing arrive.
 %       Client  : ebrains.bucket.api.BucketsClient that sends the requests.
 %                 Meant for tests and custom clients; a default client is
@@ -18,11 +24,23 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     arguments
         bucketName (1,1) string
         virtualBucketRootPath (1,1) string
+        options.Prefix (1,1) string = ""
         options.Verbose = false
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    S = ebrains.bucket.listBucketObjects(bucketName, "Verbose", options.Verbose, "Client", options.Client);
+    S = ebrains.bucket.listBucketObjects(bucketName, "Prefix", options.Prefix, ...
+        "Verbose", options.Verbose, "Client", options.Client);
+
+    % A name that another object lives below is a folder, whatever the
+    % entry itself says. Buckets migrated from the old object storage mark
+    % their folders with empty objects that have neither a trailing "/"
+    % nor a directory content type.
+    objectNames = strings(1, 0);
+    if ~isempty(S)
+        objectNames = string({S.name});
+    end
+    parentPaths = unique(getParentPaths(objectNames));
 
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
@@ -34,7 +52,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         % folders implied by their names, so an entry stands for a folder
         % only where the bucket says so. Whether the name has an extension
         % says nothing: "README" and "Snakefile" are files.
-        if isFolderEntry(S(i))
+        if isFolderEntry(S(i)) || ismember(objectName, parentPaths)
             if ~isfolder(filePath); mkdir(filePath); end
             continue
         end
@@ -44,6 +62,12 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         parentFolderPath = fileparts(filePath);
         if strlength(parentFolderPath) > 0 && ~isfolder(parentFolderPath)
             mkdir(parentFolderPath)
+        end
+
+        % A file that exists is kept: it may hold data downloaded since the
+        % bucket was first cloned, and opening it for writing would empty it.
+        if isfile(filePath)
+            continue
         end
 
         % Create the empty file from MATLAB rather than via a shell command,
@@ -61,6 +85,22 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             if options.Verbose
                 fprintf("Created %d/%d virtual files\n", i, numel(S))
             end
+        end
+    end
+end
+
+function parentPaths = getParentPaths(objectNames)
+% getParentPaths - Every folder path implied by a list of object names
+%
+%   For "a/b/c.txt" the implied folders are "a" and "a/b".
+
+    parentPaths = strings(1, 0);
+    for objectName = objectNames
+        separatorIndices = strfind(objectName, "/");
+        % A trailing "/" names the object itself as a folder, not a parent
+        separatorIndices(separatorIndices == strlength(objectName)) = [];
+        for separatorIndex = separatorIndices
+            parentPaths(end+1) = extractBefore(objectName, separatorIndex); %#ok<AGROW>
         end
     end
 end
