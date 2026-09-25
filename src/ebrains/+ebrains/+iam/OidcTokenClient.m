@@ -76,6 +76,9 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     properties (Access = private)
         LastWarnTime uint64 = 0
+        % Kept apart from LastWarnTime, so that a warning that the token
+        % expires soon does not hold back the warning that it has expired.
+        LastExpiredWarnTime uint64 = 0
     end
 
     properties (Constant, Access = protected)
@@ -355,7 +358,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         %hasActiveToken - Whether the access token is still valid
         %   TF = hasActiveToken(OBJ) is true when the client holds an access
         %   token that has not expired. A warning is issued when the token
-        %   has expired or expires within the hour.
+        %   has expired or expires within the hour, at most once every 10
+        %   minutes for each of the two.
 
             tf = obj.isTokenActive();
 
@@ -363,8 +367,14 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 warnState = warning('off', 'backtrace');
                 warningCleanup = onCleanup(@() warning(warnState));
                 if obj.ExpiresIn < 0
-                    warning("EBRAINS:IAM:TokenExpired", ...
-                        "EBRAINS Access token expired %d minutes ago.", abs(round(seconds(obj.ExpiresIn)/60)))
+                    % Requests that need no token are sent while the token is
+                    % expired, and each of them asks, so the warning is
+                    % limited the same way as the one below.
+                    if toc(obj.LastExpiredWarnTime) > 60*10 % 10 minutes
+                        warning("EBRAINS:IAM:TokenExpired", ...
+                            "EBRAINS Access token expired %d minutes ago.", abs(round(seconds(obj.ExpiresIn)/60)))
+                        obj.LastExpiredWarnTime = tic;
+                    end
                 elseif obj.ExpiresIn < seconds(3600)
                     elapsed = toc(obj.LastWarnTime);
                     if elapsed > 60*10 % 10 minutes

@@ -51,6 +51,16 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyFalse(isActive);
         end
 
+        function testExpiredTokenWarnsOncePerTenMinutes(testCase)
+            % Every request asks while the token is expired, so without the
+            % limit a paged listing would warn once per page.
+            client = ebrains.mocks.MockClientCredentialsFlowTokenClient();
+            client.seedToken("stale", -60);
+
+            testCase.verifyWarning(@() client.hasActiveToken(), 'EBRAINS:IAM:TokenExpired');
+            testCase.verifyWarningFree(@() client.hasActiveToken());
+        end
+
         function testTokenExpiringSoonWarnsOncePerTenMinutes(testCase)
             client = ebrains.mocks.MockClientCredentialsFlowTokenClient();
             client.seedToken("soon", 1800);
