@@ -264,6 +264,65 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(result, rawData);
         end
         
+        function testListInstancesRawOutput(testCase)
+            % The whole response, envelope and all, so that a caller can
+            % write the instances out as the server wrote them.
+            % Arrange
+            rawData = '{"data": [{"@id": "a", "p": [{"@id": "b"}]}]}';
+            testCase.Client.addResponse('OK', rawData);
+            
+            % Act
+            result = testCase.Client.listInstances(...
+                testCase.TestData.type, RawOutput=true);
+            
+            % Assert
+            testCase.verifyEqual(result, rawData);
+        end
+        
+        function testGetInstancesBulkRawOutput(testCase)
+            % Arrange
+            rawData = '{"data": {"id1": {"data": {"@id": "id1"}, "error": null}}}';
+            testCase.Client.addResponse('OK', rawData);
+            
+            % Act
+            [result, missingIds] = testCase.Client.getInstancesBulk(...
+                ["id1", "id2"], "RELEASED", RawOutput=true);
+            
+            % Assert
+            testCase.verifyEqual(result, rawData);
+            % Which identifiers went unanswered is in the text, and reading
+            % the text is what RawOutput exists to avoid.
+            testCase.verifyEmpty(missingIds);
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            testCase.Client.verifyRequestURL(1, '/instancesByIds');
+        end
+        
+        function testGetInstancesBulkRawOutputUsesBulkEndpointForOneId(testCase)
+            % The decoded path sends a single identifier to getInstance,
+            % whose response is shaped differently. The raw path must not,
+            % or a caller would have two shapes to read.
+            % Arrange
+            rawData = '{"data": {"id1": {"data": {"@id": "id1"}, "error": null}}}';
+            testCase.Client.addResponse('OK', rawData);
+            
+            % Act
+            result = testCase.Client.getInstancesBulk("id1", "RELEASED", RawOutput=true);
+            
+            % Assert
+            testCase.verifyEqual(result, rawData);
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            testCase.Client.verifyRequestURL(1, '/instancesByIds');
+        end
+        
+        function testGetInstancesBulkRawOutputRejectsSeveralStages(testCase)
+            % Falling back to the next stage means reading the response.
+            testCase.verifyError(...
+                @() testCase.Client.getInstancesBulk(...
+                    ["id1", "id2"], ["RELEASED", "IN_PROGRESS"], RawOutput=true), ...
+                "EBRAINS:KG_API:getInstancesBulk:StageNotScalar");
+        end
+        
         function testGetInstanceNotFound(testCase)
             % Arrange
             testCase.Client.addResponse('NotFound', "Not found");
