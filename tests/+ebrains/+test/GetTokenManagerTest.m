@@ -183,6 +183,22 @@ classdef GetTokenManagerTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(client.PollCount, 0);
         end
 
+        function testFailedRenewalFallsBackToNoToken(testCase)
+            % A timeout reaching the identity provider must not fail a
+            % request that needs no token, such as a read of a public bucket.
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addTokenResponse(MException('MATLAB:webservices:Timeout', 'timed out'));
+            testCase.installSingleton(testCase.DeviceFlowSingletonName, client);
+
+            tokenManager = testCase.verifyWarning(...
+                @() ebrains.getTokenManager(Interactive=false, AutoRenew=true), ...
+                'EBRAINS:GetTokenManager:RenewalFailed');
+
+            testCase.verifyEmpty(tokenManager);
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
         function testAutoRenewComesBeforeLogin(testCase)
             % A renewal needs no browser, so it is tried before a login even
             % when a login is allowed.

@@ -61,7 +61,16 @@ function tokenManager = getTokenManager(options)
     % Renewing before hasActiveToken below means a token that is renewed
     % raises no warning that it has expired.
     if options.AutoRenew
-        tokenManager.tryRenewToken();
+        try
+            tokenManager.tryRenewToken();
+        catch exception
+            % The renewal is a convenience: when it fails, for example
+            % because the identity provider cannot be reached, the client
+            % is left without an active token and is handled below like
+            % any other. A request that needs no token then still goes out.
+            warning("EBRAINS:GetTokenManager:RenewalFailed", ...
+                "Could not renew the EBRAINS access token: %s", exception.message)
+        end
     end
 
     if ~tokenManager.hasActiveToken()
