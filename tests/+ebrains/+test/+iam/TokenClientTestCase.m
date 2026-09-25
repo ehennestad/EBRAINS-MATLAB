@@ -26,7 +26,12 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
             end
 
             for name = ["EBRAINS_TOKEN", "EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW"]
-                testCase.addTeardown(@() restoreEnvironmentVariable(name, isenv(name), getenv(name)));
+                % Read here, before the test runs. Called inside the
+                % teardown handle, isenv and getenv would read the value the
+                % test left behind, and restore that instead.
+                wasSet = isenv(name);
+                value = getenv(name);
+                testCase.addTeardown(@() restoreEnvironmentVariable(name, wasSet, value));
                 unsetenv(name);
             end
 
