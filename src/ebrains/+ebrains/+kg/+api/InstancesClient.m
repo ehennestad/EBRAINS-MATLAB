@@ -36,7 +36,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
 %   ebrains.kg.enum.KGStage, ebrains.kg.query.ReturnOptions
 
     methods
-        function result = listInstances(obj, type, requiredParams, optionalParams, serverOptions)
+        function result = listInstances(obj, type, requiredParams, optionalParams, serverOptions, responseOptions)
         %listInstances - List instances of a given type
         %   RESULT = listInstances(OBJ,TYPE) returns the released instances of
         %   type TYPE in the "dataset" space. TYPE is an openMINDS type given
@@ -77,6 +77,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 optionalParams.size                   uint64
                 optionalParams.returnTotalResults     logical
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
+                responseOptions.RawOutput (1,1) logical = false
             end
 
             OPERATION = "GET";
@@ -88,12 +89,20 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             requiredParams.type = ebrains.kg.api.internal.ensureExpandedTypeName(type);
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            resp = obj.sendRequest(req, apiURL);
-
-            if resp.StatusCode == "OK"
-                result = resp.Body.Data.data;
+            if responseOptions.RawOutput
+                resp = obj.sendRequest(req, apiURL, obj.getOptionsForRawResponse());
             else
+                resp = obj.sendRequest(req, apiURL);
+            end
+
+            if resp.StatusCode ~= "OK"
                 obj.throwError("listInstances", resp, serverOptions.Server)
+            end
+
+            if responseOptions.RawOutput
+                result = resp.Body.Data;
+            else
+                result = resp.Body.Data.data;
             end
         end
 
@@ -510,7 +519,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             end
         end
 
-        function [result, missingIds] = getInstancesBulk(obj, identifiers, stage, optionalParams, serverOptions)
+        function [result, missingIds] = getInstancesBulk(...
+                obj, identifiers, stage, optionalParams, serverOptions, responseOptions)
         %getInstancesBulk - Retrieve several instances by identifier
         %   RESULT = getInstancesBulk(OBJ,IDENTIFIERS) returns the released
         %   instances with the given IDENTIFIERS, a string array of UUIDs or
@@ -537,6 +547,20 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         %
         %   [...] = getInstancesBulk(...,Server=SERVER) also specifies the KG
         %   server to send the request to.
+        %
+        %   [...] = getInstancesBulk(...,RawOutput=TF) also specifies whether to
+        %   return the response body as text instead of decoded data. The text
+        %   is the whole response, envelope and all, and holds one entry per
+        %   requested identifier. Use it when the instances are to be written
+        %   out or sent on as they arrived: jsondecode renames the JSON-LD key
+        %   "@id" to "x_id" and turns an array holding one element into that
+        %   element, and jsonencode can undo neither.
+        %
+        %   RawOutput returns the body of a single request, so STAGE must name
+        %   one stage: looking in the next stage for what the first did not
+        %   hold means reading the response, which is what RawOutput avoids.
+        %   missingIds is empty for the same reason, and the caller finds the
+        %   identifiers that were not answered in the text.
 
             arguments
                 obj (1,1) ebrains.kg.api.InstancesClient
@@ -546,6 +570,20 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                 optionalParams.returnIncomingLinks logical
                 optionalParams.incomingLinksPageSize int64
                 serverOptions.Server (1,1) ebrains.kg.enum.KGServer = "prod"
+                responseOptions.RawOutput (1,1) logical = false
+            end
+
+            if responseOptions.RawOutput
+                if ~isscalar(stage)
+                    error("EBRAINS:KG_API:getInstancesBulk:StageNotScalar", ...
+                        "RawOutput returns the body of a single request, so " + ...
+                        "STAGE must name one stage rather than %d.", numel(stage))
+                end
+                result = obj.requestInstancesByIdsRaw(...
+                    ebrains.kg.api.internal.normalizeIdentifiers(identifiers), ...
+                    stage, optionalParams, serverOptions.Server);
+                missingIds = string.empty(1, 0);
+                return
             end
 
             nvPairs = namedargs2cell(optionalParams);
@@ -662,8 +700,16 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             end
         end
 
-        function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
-        %requestInstancesByIds - One bulk request against a single stage
+        function rawText = requestInstancesByIdsRaw(obj, identifiers, stage, optionalParams, server)
+        %requestInstancesByIdsRaw - One bulk request, body returned unconverted
+
+            response = obj.sendInstancesByIdsRequest(...
+                identifiers, stage, optionalParams, server, true);
+            rawText = response.Body.Data;
+        end
+
+        function response = sendInstancesByIdsRequest(obj, identifiers, stage, optionalParams, server, raw)
+        %sendInstancesByIdsRequest - Post one bulk request and check its status
 
             OPERATION = "POST";
             ENDPOINT_PATH = "/instancesByIds";
@@ -677,11 +723,22 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             requiredParams = struct('stage', stage);
             fullApiURL = obj.buildApiURL(server, ENDPOINT_PATH, requiredParams, optionalParams);
 
-            response = obj.sendRequest(req, fullApiURL);
+            if raw
+                response = obj.sendRequest(req, fullApiURL, obj.getOptionsForRawResponse());
+            else
+                response = obj.sendRequest(req, fullApiURL);
+            end
 
             if response.StatusCode ~= "OK"
                 obj.throwError("getInstancesBulk", response, server)
             end
+        end
+
+        function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
+        %requestInstancesByIds - One bulk request against a single stage
+
+            response = obj.sendInstancesByIdsRequest(...
+                identifiers, stage, optionalParams, server, false);
 
             % The response holds one entry per requested id, keyed by the
             % id itself, with either data or an error. The requested ids
