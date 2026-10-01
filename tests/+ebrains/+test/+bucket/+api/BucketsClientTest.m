@@ -145,6 +145,92 @@ classdef BucketsClientTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:getUploadUrl:UnprocessableEntity');
         end
 
+        %% initiateMultipartUpload
+        function testInitiateMultipartUploadReturnsUploadId(testCase)
+            testCase.Client.addResponse('OK', struct('uploadId', 'upload-1'));
+
+            uploadId = testCase.Client.initiateMultipartUpload("my-bucket", "sub dir/file.bin");
+
+            testCase.verifyEqual(uploadId, "upload-1");
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir/file.bin/multipart');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testInitiateMultipartUploadForbidden(testCase)
+            testCase.Client.addResponse('Forbidden', struct('detail', 'Not authenticated'));
+            testCase.verifyError(@() testCase.Client.initiateMultipartUpload("my-bucket", "file.bin"), ...
+                'EBRAINS:Bucket:initiateMultipartUpload:Forbidden');
+        end
+
+        %% getMultipartUploadUrl
+        function testGetMultipartUploadUrlReturnsTemporaryUrl(testCase)
+            testCase.Client.addResponse('OK', struct('url', ...
+                'https://rgw.example.org/b/file.bin?partNumber=2&uploadId=upload-1&X-Amz-Signature=1'));
+
+            partUrl = testCase.Client.getMultipartUploadUrl("my-bucket", "sub dir/file.bin", "upload-1", 2);
+
+            testCase.verifyEqual(partUrl, ...
+                "https://rgw.example.org/b/file.bin?partNumber=2&uploadId=upload-1&X-Amz-Signature=1");
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, ...
+                '/api/v1/buckets/my-bucket/sub%20dir/file.bin/multipart/upload-1/2');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testGetMultipartUploadUrlEncodesRawCharactersInReturnedUrl(testCase)
+            testCase.Client.addResponse('OK', struct('url', 'https://rgw.example.org/b/blå fil.bin?uploadId=1'));
+
+            partUrl = testCase.Client.getMultipartUploadUrl("my-bucket", "blå fil.bin", "1", 1);
+
+            testCase.verifyEqual(partUrl, "https://rgw.example.org/b/bl%C3%A5%20fil.bin?uploadId=1");
+        end
+
+        function testGetMultipartUploadUrlNotFound(testCase)
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            testCase.verifyError(...
+                @() testCase.Client.getMultipartUploadUrl("my-bucket", "file.bin", "upload-1", 1), ...
+                'EBRAINS:Bucket:getMultipartUploadUrl:NotFound');
+        end
+
+        %% completeMultipartUpload
+        function testCompleteMultipartUploadSendsETagMapWithoutQuotes(testCase)
+            % The store returns each ETag in double quotes; the Data Proxy
+            % takes the map without them.
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.completeMultipartUpload("my-bucket", "sub dir/file.bin", "upload-1", ...
+                ["""etag-a""", "etag-b"]);
+
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir/file.bin/multipart/upload-1');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(1), '{"1":"etag-a","2":"etag-b"}');
+        end
+
+        function testCompleteMultipartUploadKeysEveryPartByItsNumber(testCase)
+            % With ten parts or more the keys no longer sort as numbers,
+            % which does not matter to a JSON object.
+            testCase.Client.addResponse('OK', struct());
+            etags = "etag" + string(1:12);
+
+            testCase.Client.completeMultipartUpload("my-bucket", "file.bin", "upload-1", etags);
+
+            % jsondecode prefixes a numeric key with "x" to make a field name
+            etagMap = jsondecode(testCase.Client.getRequestPayload(1));
+            testCase.verifyNumElements(fieldnames(etagMap), 12);
+            testCase.verifyEqual(etagMap.x1, 'etag1');
+            testCase.verifyEqual(etagMap.x12, 'etag12');
+        end
+
+        function testCompleteMultipartUploadServerError(testCase)
+            testCase.Client.addResponse('InternalServerError', struct('detail', 'Internal Server Error'));
+            testCase.verifyError(...
+                @() testCase.Client.completeMultipartUpload("my-bucket", "file.bin", "upload-1", "etag"), ...
+                'EBRAINS:Bucket:completeMultipartUpload:InternalServerError');
+        end
+
         %% renameObject
         function testRenameObjectKeepsTrailingSlashOfFolderName(testCase)
             testCase.Client.addResponse('OK', struct());

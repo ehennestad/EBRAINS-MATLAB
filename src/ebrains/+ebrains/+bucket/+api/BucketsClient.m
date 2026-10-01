@@ -3,7 +3,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %
 %   Each method mirrors one endpoint under /buckets of the Data Proxy API:
 %   bucket stat, one page of the object listing, temporary download and
-%   upload URLs, rename, and delete.
+%   upload URLs, the three requests of a multipart upload, rename, and
+%   delete.
 %   An object name that holds "/" (a folder within the bucket) is sent with
 %   the "/" as path separators, since the proxy takes the rest of the path
 %   as the name. The temporary URLs the proxy returns are made valid URLs
@@ -147,6 +148,105 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 uploadUrl = encodeRawUrlCharacters(response.Body.Data.url);
             else
                 obj.throwError("getUploadUrl", response)
+            end
+        end
+
+        function uploadId = initiateMultipartUpload(obj, bucketName, objectName)
+        % initiateMultipartUpload - Start a multipart upload of an object
+        %
+        %   uploadId = client.initiateMultipartUpload(bucketName, objectName)
+        %   returns the id of the new multipart upload as a string. The
+        %   requests for the part URLs and for the completion carry it;
+        %   see getMultipartUploadUrl and completeMultipartUpload. The
+        %   object appears in the bucket once the upload is completed.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+            end
+
+            % The endpoint is a PUT without a body, which MATLAB warns
+            % about on purpose. The warning is off for this request only.
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
+            request = obj.initializeRequestMessage("PUT");
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName), "multipart"]);
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode == "OK"
+                uploadId = string(response.Body.Data.uploadId);
+            else
+                obj.throwError("initiateMultipartUpload", response)
+            end
+        end
+
+        function partUrl = getMultipartUploadUrl(obj, bucketName, objectName, uploadId, partNumber)
+        % getMultipartUploadUrl - Get a temporary URL to which one part of a multipart upload can be sent
+        %
+        %   partUrl = client.getMultipartUploadUrl(bucketName, objectName, uploadId, partNumber)
+        %   returns the URL as a string. A PUT of the bytes of the part to
+        %   that URL stores the part, and the response carries the ETag
+        %   that completeMultipartUpload needs. Part numbers start at 1.
+        %   ebrains.external.webprogress.upload sends a byte range of a
+        %   file this way with its Offset and NumBytes options.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+                uploadId (1,1) string {mustBeNonzeroLengthText}
+                partNumber (1,1) double {mustBeInteger, mustBePositive}
+            end
+
+            % The endpoint is a PUT without a body, which MATLAB warns
+            % about on purpose. The warning is off for this request only.
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
+            request = obj.initializeRequestMessage("PUT");
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName), ...
+                "multipart", uploadId, string(partNumber)]);
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode == "OK"
+                partUrl = encodeRawUrlCharacters(response.Body.Data.url);
+            else
+                obj.throwError("getMultipartUploadUrl", response)
+            end
+        end
+
+        function completeMultipartUpload(obj, bucketName, objectName, uploadId, partETags)
+        % completeMultipartUpload - Assemble the parts of a multipart upload into the object
+        %
+        %   client.completeMultipartUpload(bucketName, objectName, uploadId, partETags)
+        %   sends the ETags of the parts in part order, so partETags(n) is
+        %   the ETag the store returned for part n. The double quotes the
+        %   store puts around an ETag are removed, since the Data Proxy
+        %   takes the map without them. The object is in the bucket once
+        %   the request has been answered.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+                uploadId (1,1) string {mustBeNonzeroLengthText}
+                partETags (1,:) string {mustBeNonzeroLengthText}
+            end
+
+            % The map is a JSON object keyed by part number. A struct cannot
+            % have a field named "1", so it is built as a containers.Map.
+            partNumbers = cellstr(string(1:numel(partETags)));
+            etagMap = containers.Map(partNumbers, cellstr(strip(partETags, '"')));
+
+            request = obj.initializeRequestMessage("PUT", JSONPayload=jsonencode(etagMap));
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName), ...
+                "multipart", uploadId]);
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode ~= "OK"
+                obj.throwError("completeMultipartUpload", response)
             end
         end
 
