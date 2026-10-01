@@ -16,6 +16,9 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
 %       IndentSize      : Size of indentation if displaying progress in command window. Default = 0.
 %       Figure          : Parent figure for uiprogressdlg. Default = [].
 %       FileSizeBytes   : Known file size when ProgressMonitor.Max is unavailable. Default = NaN.
+%       StartBytes      : Bytes of the file transferred before this transfer, such as the part of
+%                         a resumed download already on disk. Default = 0. It can be changed until
+%                         the body starts to arrive.
 
 %   Inspired by example in matlab.net.http.ProgressMonitor
 %
@@ -28,6 +31,10 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         IndentSize = 0              % Size of indentation (number of spaces) if displaying progress in command window.
         Figure = []                 % Parent figure for uiprogressdlg.
         FileSizeBytes = nan         % Known file size when ProgressMonitor.Max is not available.
+    end
+
+    properties % User setting that can change until the body arrives
+        StartBytes (1,1) double {mustBeNonnegative} = 0 % Bytes of the file transferred before this transfer.
     end
 
     properties % Implement superclass properties (matlab.net.http.ProgressMonitor)
@@ -56,6 +63,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         BodySizeBytes               % Size in bytes of the message that carries the file
         HasDisplayedProgress = false % Whether progress has been displayed at least once
         WasCancelled = false        % Whether the user cancelled the transfer
+        BaselineBytes = []          % Bytes of the file transferred when this monitor saw the first byte
     end
 
     properties (Constant, Access = private)
@@ -75,6 +83,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
                 options.IndentSize     (1,1) uint8                        = 0
                 options.Figure                      {mustBeFigureOrEmpty} = []
                 options.FileSizeBytes  (1,1) double                       = nan
+                options.StartBytes     (1,1) double {mustBeNonnegative}   = 0
             end
 
             for optionName = string(fieldnames(options))'
@@ -179,6 +188,14 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
             % user has already given up on.
             if obj.WasCancelled
                 return
+            end
+
+            % The remaining time is estimated from the bytes this monitor
+            % has seen arrive. A body byte arrives only after a resumed
+            % download has set StartBytes, so StartBytes at that moment
+            % is where the measurement starts.
+            if isempty(obj.BaselineBytes) && ~isempty(obj.Value) && obj.Value > 0
+                obj.BaselineBytes = obj.StartBytes;
             end
 
             % A message without a body reports Max as 0. After an upload,
@@ -461,8 +478,18 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
     
         function str = getRemainingTimeEstimate(obj)
         %getRemainingTimeEstimate - Return the estimated remaining time
+            % The rate is measured over the bytes this monitor has seen,
+            % so the estimate leaves out bytes that were transferred
+            % before it started, such as those of a resumed download.
+            baselineBytes = obj.BaselineBytes;
+            if isempty(baselineBytes)
+                baselineBytes = obj.StartBytes;
+            end
             tElapsed = seconds( toc(obj.StartTime) );
-            str = obj.formatRemainingTimeEstimate(tElapsed, obj.PercentTransferred);
+            bytesSinceBaseline = obj.getTransferredBytes() - baselineBytes;
+            bytesAfterBaseline = double(obj.getFileSizeBytes()) - baselineBytes;
+            percentSinceBaseline = bytesSinceBaseline / bytesAfterBaseline * 100;
+            str = obj.formatRemainingTimeEstimate(tElapsed, percentSinceBaseline);
         end
 
         function strMessage = getTransferCompletedMessage(obj)
@@ -479,7 +506,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         function percentTransferred = computePercentTransferred(obj)
         %computePercentTransferred - Return the percentage of bytes transferred
             fileSizeBytes = obj.getFileSizeBytes();
-            percentTransferred = double(obj.Value) / double(fileSizeBytes) * 100;
+            percentTransferred = obj.getTransferredBytes() / double(fileSizeBytes) * 100;
         end
 
         function fileSizeMb = getFileSizeMb(obj)
@@ -490,15 +517,22 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
 
         function transferredMb = getTransferredMb(obj)
         %getTransferredMb - Return the transferred size rounded to megabytes
-            transferredMb = round( double(obj.Value) / 1024 / 1024 );
+            transferredMb = round( obj.getTransferredBytes() / 1024 / 1024 );
+        end
+
+        function transferredBytes = getTransferredBytes(obj)
+        %getTransferredBytes - Return the bytes of the file transferred so far
+            transferredBytes = obj.StartBytes + double(obj.Value);
         end
 
         function fileSizeBytes = getFileSizeBytes(obj)
         %getFileSizeBytes - Return the file size in bytes
+        %   The size of a message covers only this transfer, so it is
+        %   added to StartBytes. FileSizeBytes is the whole file.
             if ~isempty(obj.BodySizeBytes)
-                fileSizeBytes = obj.BodySizeBytes;
+                fileSizeBytes = obj.StartBytes + double(obj.BodySizeBytes);
             elseif ~isempty(obj.Max) && obj.Max > 0
-                fileSizeBytes = obj.Max;
+                fileSizeBytes = obj.StartBytes + double(obj.Max);
             else
                 fileSizeBytes = obj.FileSizeBytes;
             end

@@ -57,5 +57,33 @@ classdef WebprogressPackageTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(estimate, 'Estimated time remaining: 3 minutes...');
         end
+
+        function testMultipartMonitorResolvesItsSuperclass(testCase)
+            % The monitor of a multipart upload derives from the renamed
+            % FileTransferProgressMonitor.
+            monitor = ebrains.external.webprogress.MultipartProgressMonitor(100, ...
+                'DisplayMode', 'Command Window');
+            testCase.addTeardown(@() delete(monitor));
+
+            testCase.verifyTrue(isa(monitor, 'ebrains.external.webprogress.FileTransferProgressMonitor'));
+            testCase.verifyEqual(monitor.TotalBytes, 100);
+            testCase.verifyEqual(monitor.CompletedBytes, 0);
+        end
+
+        function testUploadResolvesTheRangeProvider(testCase)
+            % A byte range is sent through the provider in the internal
+            % sub-namespace, which upload names by its qualified name. The
+            % range check comes first, so no request is sent.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "file.bin");
+            writelines("content", sourceFile);
+
+            provider = ebrains.external.webprogress.internal.FileRangeProvider(sourceFile, 1, 2);
+            testCase.verifyEqual(provider.NumBytes, 2);
+            testCase.verifyError(...
+                @() ebrains.external.webprogress.upload(sourceFile, 'https://example.org/part', ...
+                    'Offset', 1000, 'NumBytes', 1), ...
+                'webprogress:upload:RangeOutsideFile');
+        end
     end
 end
