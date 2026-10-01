@@ -14,6 +14,7 @@ Lightweight MATLAB helpers and API clients for working with EBRAINS services: au
 ## Features
 - Authenticate to EBRAINS using the **device flow** or the **client credentials flow**
 - List, upload, download, rename, and delete objects in Data Proxy buckets, and compute bucket sizes
+- Sync a local folder to a bucket, or a bucket to a local folder, sending only new and changed files
 - Read, create, update, release, and delete Knowledge Graph instances, and run dynamic queries
 - Search collabs through the Collaboratory API
 
@@ -59,6 +60,16 @@ Upload, download, and delete files:
 ebrains.bucket.uploadFile("my-bucket", "results/summary.csv", "summary.csv");
 ebrains.bucket.downloadFile("my-bucket", "results/summary.csv", "summary_copy.csv");
 ebrains.bucket.deleteObject("my-bucket", "results/summary.csv");
+```
+
+Sync a whole folder, the way rsync does: only new and changed files are sent, so a sync that is interrupted picks up where it stopped when run again. `Delete=true` also deletes what the source does not have, which makes the target an exact mirror, and `DryRun=true` shows the plan without changing anything:
+```matlab
+% Make the "results" folder of the bucket match the local folder
+ebrains.bucket.syncToBucket("results", "my-bucket", Prefix="results", Delete=true, DryRun=true);
+ebrains.bucket.syncToBucket("results", "my-bucket", Prefix="results", Delete=true);
+
+% Make a local folder match the bucket
+actions = ebrains.bucket.syncFromBucket("my-bucket", "data", Exclude=["*.tmp", ".git"]);
 ```
 
 ### 3) Download Knowledge Graph metadata
