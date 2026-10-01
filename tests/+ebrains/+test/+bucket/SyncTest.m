@@ -315,7 +315,7 @@ classdef SyncTest < matlab.unittest.TestCase
 
         function testSyncToBucketByChecksumUploadsChangedContentOnly(testCase)
             writeFile(fullfile(testCase.Folder, "same.txt"), "abc");
-            writeFile(fullfile(testCase.Folder, "edited.txt"), "abd");
+            writeFile(fullfile(testCase.Folder, "edited.txt"), "xyz");
             % Uploaded before the files were written, so only the checksum
             % can tell that same.txt is unchanged
             past = "2000-01-01T00:00:00";
