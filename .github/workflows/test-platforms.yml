@@ -1,0 +1,67 @@
+name: Test on all platforms
+
+# Runs the tests tagged "PlatformSpecific" on Linux, Windows and macOS. They
+# cover code that calls tools of the operating system, whose names and
+# output differ between systems, such as the MD5 tool that computeMd5 runs.
+# The "Test code" workflow runs the whole suite, these tests included, on
+# Linux only.
+#
+# The paths below are the files these tests cover. Add the source file of a
+# new platform-specific test here, or a change to it will not run them.
+
+on:
+  push:
+    paths:
+      - 'src/ebrains/+ebrains/+bucket/+internal/computeMd5.m'
+      - 'tests/+ebrains/+test/+bucket/ComputeMd5Test.m'
+      - '.github/workflows/test-platforms.yml'
+
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'src/ebrains/+ebrains/+bucket/+internal/computeMd5.m'
+      - 'tests/+ebrains/+test/+bucket/ComputeMd5Test.m'
+      - '.github/workflows/test-platforms.yml'
+
+  workflow_dispatch:
+
+# Checking the repository out is all the job needs the token for.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-platform-specific:
+    name: Platform-specific tests (${{ matrix.os }})
+    strategy:
+      # Each system is tested on its own, so a failure on one still
+      # shows the result of the others.
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up MATLAB (latest)
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          release: latest
+          cache: true
+
+      - name: Run tests tagged PlatformSpecific
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            addpath(genpath("src"))
+            addpath("tests")
+            suite = matlab.unittest.TestSuite.fromPackage("ebrains.test", ...
+                IncludingSubpackages=true, Tag="PlatformSpecific");
+            assert(~isempty(suite), "No test is tagged PlatformSpecific.")
+            results = run(suite);
+            disp(table(results))
+            assertSuccess(results);
