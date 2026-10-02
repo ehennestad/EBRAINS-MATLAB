@@ -246,6 +246,25 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(uploads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
         end
 
+        function testUploadFileHandsProgressAndCancelFunctionsToTheUploader(testCase)
+            sourceFile = makeSourceFile(testCase, 5);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            spy = ebrains.mocks.SpyUploader();
+            progressFcn = @(progress) disp(progress);
+            cancelRequestedFcn = @() false;
+
+            ebrains.bucket.uploadFile("my-bucket", "file.bin", sourceFile, ...
+                DisplayMode="None", ProgressFcn=progressFcn, ...
+                CancelRequestedFcn=cancelRequestedFcn, ...
+                Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.assertNumElements(spy.Calls, 1);
+            options = spy.Calls{1}.Options;
+            testCase.verifyEqual(options.DisplayMode, "None");
+            testCase.verifyEqual(options.ProgressFcn, progressFcn);
+            testCase.verifyEqual(options.CancelRequestedFcn, cancelRequestedFcn);
+        end
+
         %% uploadFile, multipart
         function testUploadFileSendsPartsAboveThreshold(testCase)
             sourceFile = makeSourceFile(testCase, 25);
@@ -285,6 +304,36 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             monitors = cellfun(@(c) c.Options.ProgressMonitor, spy.Calls, UniformOutput=false);
             testCase.verifyClass(monitors{1}, 'ebrains.external.webprogress.MultipartProgressMonitor');
             testCase.verifyTrue(monitors{1} == monitors{2} && monitors{2} == monitors{3});
+        end
+
+        function testUploadFileHandsProgressAndCancelFunctionsToTheMultipartMonitor(testCase)
+            % The parts share one monitor, which reports the progress of
+            % the whole file to ProgressFcn.
+            % The monitor is deleted when the upload returns, so its
+            % options are read while a part is sent.
+            sourceFile = makeSourceFile(testCase, 25);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+            monitorOptions = struct.empty;
+            uploader = @(source, url, varargin) readMonitorAndUpload(source, url, varargin);
+            function [wasSuccess, response] = readMonitorAndUpload(source, url, nameValues)
+                monitor = struct(nameValues{:}).ProgressMonitor;
+                monitorOptions = struct("DisplayMode", monitor.DisplayMode, ...
+                    "ProgressFcn", monitor.ProgressFcn, ...
+                    "CancelRequestedFcn", monitor.CancelRequestedFcn);
+                [wasSuccess, response] = spy.upload(source, url, nameValues{:});
+            end
+            progressFcn = @(progress) disp(progress);
+            cancelRequestedFcn = @() false;
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=20, PartSize=10, DisplayMode="None", ...
+                ProgressFcn=progressFcn, CancelRequestedFcn=cancelRequestedFcn, ...
+                Client=testCase.Client, Uploader=uploader);
+
+            testCase.verifyEqual(monitorOptions.DisplayMode, "None");
+            testCase.verifyEqual(monitorOptions.ProgressFcn, progressFcn);
+            testCase.verifyEqual(monitorOptions.CancelRequestedFcn, cancelRequestedFcn);
         end
 
         function testUploadFileSendsTheWholeFileAtTheThreshold(testCase)
@@ -492,6 +541,28 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(downloads{1}{2}, "https://store.example.org/file?sig=1");
             testCase.verifyEqual(downloads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
             testCase.verifyEqual(strtrim(string(fileread(targetFile))), "received");
+        end
+
+        function testDownloadFileHandsProgressAndCancelFunctionsToTheDownloader(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
+            options = struct.empty;
+            downloader = @(target, url, varargin) recordDownload(varargin);
+            function recordDownload(nameValues)
+                options = struct(nameValues{:});
+            end
+            progressFcn = @(progress) disp(progress);
+            cancelRequestedFcn = @() false;
+
+            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                DisplayMode="None", ProgressFcn=progressFcn, ...
+                CancelRequestedFcn=cancelRequestedFcn, ...
+                Client=testCase.Client, Downloader=downloader);
+
+            testCase.verifyEqual(options.DisplayMode, "None");
+            testCase.verifyEqual(options.ProgressFcn, progressFcn);
+            testCase.verifyEqual(options.CancelRequestedFcn, cancelRequestedFcn);
         end
 
         function testDownloadFileDownloaderErrorPropagates(testCase)

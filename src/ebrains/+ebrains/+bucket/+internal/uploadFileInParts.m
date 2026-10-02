@@ -34,10 +34,18 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %                     10 MiB.
 %       Resume      : Record progress in the manifest file and resume
 %                     from it. Default is true.
-%       DisplayMode : Where progress is shown, "Dialog Box" (default) or
-%                     "Command Window".
+%       DisplayMode : Where progress is shown: "Dialog Box" (default),
+%                     "Command Window", or "None", which shows nothing.
 %       Figure      : Parent figure of the progress dialog. By default the
 %                     dialog gets a window of its own.
+%       ProgressFcn : Function called with the progress of the whole
+%                     file, as described for
+%                     ebrains.external.webprogress.MultipartProgressMonitor.
+%                     Default is [].
+%       CancelRequestedFcn : Function that returns true when the upload
+%                     should stop. The part in progress then raises the
+%                     error webprogress:upload:Cancelled, and the parts
+%                     already sent stay in the manifest. Default is [].
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
@@ -58,8 +66,10 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
         options.PartSize (1,1) double {mustBeInteger, mustBePositive} = 10*2^20
         options.Resume (1,1) logical = true
         options.DisplayMode (1,1) string ...
-            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
+            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window", "None"])} = "Dialog Box"
         options.Figure = []
+        options.ProgressFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
+        options.CancelRequestedFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
     end
@@ -87,7 +97,8 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
     % out, so an error leaves no dialog open. The parts of a resumed
     % upload count as done before the first request.
     monitor = ebrains.external.webprogress.MultipartProgressMonitor(fileSizeBytes, ...
-        DisplayMode=options.DisplayMode, Figure=options.Figure, Filename=objectName);
+        DisplayMode=options.DisplayMode, Figure=options.Figure, Filename=objectName, ...
+        ProgressFcn=options.ProgressFcn, CancelRequestedFcn=options.CancelRequestedFcn);
     monitorCleanup = onCleanup(@() delete(monitor));
     numCompletedParts = numel(manifest.PartETags);
     monitor.addCompletedBytes(min(numCompletedParts*options.PartSize, fileSizeBytes))

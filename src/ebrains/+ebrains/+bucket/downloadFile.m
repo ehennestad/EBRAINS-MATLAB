@@ -22,10 +22,17 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %                    created if it does not exist.
 %
 %   Name-Value Arguments
-%       DisplayMode : Where progress is shown, "Dialog Box" (default) or
-%                     "Command Window".
+%       DisplayMode : Where progress is shown: "Dialog Box" (default),
+%                     "Command Window", or "None", which shows nothing.
 %       Figure      : Parent figure of the progress dialog. By default the
 %                     dialog gets a window of its own.
+%       ProgressFcn : Function called with the progress of the download,
+%                     as described for ebrains.external.webprogress.download.
+%                     Default is [], which calls nothing.
+%       CancelRequestedFcn : Function that returns true when the download
+%                     should stop. The download then raises the error
+%                     webprogress:download:Cancelled and leaves the target
+%                     as it was. Default is [].
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
@@ -43,8 +50,10 @@ function downloadFile(bucketName, objectName, targetFile, options)
         bucketName (1,1) string {mustBeNonzeroLengthText}
         objectName (1,1) string {mustBeNonzeroLengthText}
         targetFile (1,1) string {mustBeNonzeroLengthText, mustNotBeFolder}
-        options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
+        options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window", "None"])} = "Dialog Box"
         options.Figure = []
+        options.ProgressFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
+        options.CancelRequestedFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
     end
@@ -67,7 +76,8 @@ function downloadFile(bucketName, objectName, targetFile, options)
     % the exact name given, without deriving an extension for a target that
     % has none.
     options.Downloader(targetFile, downloadUrl, ...
-        Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
+        Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure, ...
+        ProgressFcn=options.ProgressFcn, CancelRequestedFcn=options.CancelRequestedFcn);
 end
 
 function mustNotBeFolder(path)
