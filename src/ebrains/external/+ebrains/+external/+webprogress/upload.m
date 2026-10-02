@@ -18,6 +18,8 @@ function [wasSuccess, response] = upload(filePath, url, options)
 %   progress is shown. MODE must be:
 %       "Dialog Box"     - (default) Shows progress in a dialog box.
 %       "Command Window" - Prints progress in the Command Window.
+%       "None"           - Shows nothing. Use it with ProgressFcn to show
+%                          progress in a display of your own.
 %
 %   [...] = ebrains.external.webprogress.upload(...,UpdateInterval=SECONDS) specifies the
 %   minimum number of seconds between progress updates. The default is 1.
@@ -47,17 +49,30 @@ function [wasSuccess, response] = upload(filePath, url, options)
 %
 %   [...] = ebrains.external.webprogress.upload(...,NumBytes=N) sends N bytes of the file.
 %   The default is Inf, which sends the file to its end. With Offset or
-%   NumBytes, the body has no Content-Type, and the request carries no
-%   header that names the range. Add the headers that the service
-%   expects with RequestMessage. Use them to send one part of a file
-%   that a storage service receives in several requests.
+%   NumBytes, the request carries no header that names the range, and
+%   the Content-Type is not taken from the file. Add the headers that
+%   the service expects, such as a Content-Type, with RequestMessage.
+%   Use Offset and NumBytes to send one part of a file that a storage
+%   service receives in several requests.
+%
+%   [...] = ebrains.external.webprogress.upload(...,ProgressFcn=FCN) calls FCN with the
+%   progress of the upload, at most once per UpdateInterval and once more
+%   when it is done. FCN receives a struct with the fields ActionName
+%   ("Upload"), TransferredBytes and TotalBytes.
+%
+%   [...] = ebrains.external.webprogress.upload(...,CancelRequestedFcn=FCN) calls FCN
+%   before the upload and at most once per UpdateInterval while it runs.
+%   When FCN returns true, the upload stops and ebrains.external.webprogress.upload raises
+%   the error webprogress:upload:Cancelled, also when it has outputs. The
+%   Cancel button of the progress dialog stops the upload in the same way.
 %
 %   [...] = ebrains.external.webprogress.upload(...,ProgressMonitor=MONITOR) shows
 %   progress in MONITOR, a ebrains.external.webprogress.MultipartProgressMonitor, which
 %   stays open after the upload. Pass the same monitor to the upload of
 %   each part of a file to show the progress of the whole file. A part
 %   that the server accepts is added to MONITOR.CompletedBytes. The
-%   display options of ebrains.external.webprogress.upload are then ignored. If the user
+%   display options of ebrains.external.webprogress.upload, ProgressFcn and
+%   CancelRequestedFcn among them, are then ignored. If the user
 %   cancelled MONITOR, ebrains.external.webprogress.upload raises an error instead of
 %   sending the part.
 %
@@ -80,6 +95,8 @@ function [wasSuccess, response] = upload(filePath, url, options)
         options.NumBytes       (1,1) double {mustBeNonnegative, mustBeIntegerOrInf} = Inf
         options.ProgressMonitor ebrains.external.webprogress.MultipartProgressMonitor ...
                                                                  = ebrains.external.webprogress.MultipartProgressMonitor.empty
+        options.ProgressFcn    {mustBeFunctionHandleOrEmpty}     = []
+        options.CancelRequestedFcn {mustBeFunctionHandleOrEmpty} = []
     end
 
     if ~isempty(options.Filename)
@@ -98,10 +115,14 @@ function [wasSuccess, response] = upload(filePath, url, options)
         'UpdateInterval', options.UpdateInterval, ...
         'Filename', filename, ...
         'IndentSize', options.IndentSize, ...
-        'Figure', options.Figure };
+        'Figure', options.Figure, ...
+        'ProgressFcn', options.ProgressFcn, ...
+        'CancelRequestedFcn', options.CancelRequestedFcn };
     
     monitor = options.ProgressMonitor;
     if isempty(monitor)
+        isCancelRequested = options.CancelRequestedFcn;
+        raiseIfCancelled(isCancelRequested)
         progressMonitorFcn = @(varargin) ebrains.external.webprogress.FileTransferProgressMonitor(monitorOpts{:});
     else
         if monitor.IsCancelled
@@ -112,6 +133,7 @@ function [wasSuccess, response] = upload(filePath, url, options)
         % The HTTP stack calls the function for each request, so every
         % part reports to the same monitor.
         progressMonitorFcn = @(varargin) monitor;
+        isCancelRequested = [];
     end
 
     webOpts = matlab.net.http.HTTPOptions(...
@@ -119,10 +141,16 @@ function [wasSuccess, response] = upload(filePath, url, options)
         'UseProgressMonitor', true, ...
         'ConnectTimeout', 20);
 
+    if ~isfile(filePath)
+        error("webprogress:upload:FileNotFound", ...
+            "Cannot upload ""%s"" because there is no such file. Check the path.", filePath)
+    end
     fileInfo = dir(filePath);
     fileSizeBytes = fileInfo.bytes;
     numBytes = min(options.NumBytes, fileSizeBytes - options.Offset);
-    isOffsetPastEnd = options.Offset > fileSizeBytes;
+    % An offset at the end of the file leaves nothing to send, except
+    % for an empty file sent whole.
+    isOffsetPastEnd = options.Offset > 0 && options.Offset >= fileSizeBytes;
     isRangePastEnd = ~isinf(options.NumBytes) && options.Offset + options.NumBytes > fileSizeBytes;
     if isOffsetPastEnd || isRangePastEnd
         error("webprogress:upload:RangeOutsideFile", ...
@@ -131,7 +159,9 @@ function [wasSuccess, response] = upload(filePath, url, options)
             options.NumBytes, options.Offset, filePath, fileSizeBytes)
     end
 
-    if options.Offset == 0 && numBytes == fileSizeBytes
+    % The file provider names the Content-Type after the file, which
+    % suits a whole file but not a part of one.
+    if options.Offset == 0 && isinf(options.NumBytes)
         provider = matlab.net.http.io.FileProvider(filePath);
     else
         provider = ebrains.external.webprogress.internal.FileRangeProvider(filePath, options.Offset, numBytes);
@@ -151,7 +181,17 @@ function [wasSuccess, response] = upload(filePath, url, options)
     % reject every name with a space or other encoded character.
     uri = matlab.net.URI(url, 'literal');
     
-    [response, ~, ~] = req.send(uri, webOpts);
+    try
+        [response, ~, ~] = req.send(uri, webOpts);
+    catch exception
+        % The progress monitor stops a cancelled transfer with an error.
+        if isCancellation(exception)
+            raiseCancelled()
+        end
+        raiseIfCancelled(isCancelRequested)
+        rethrow(exception)
+    end
+    raiseIfCancelled(isCancelRequested)
     
     % Servers acknowledge an upload with any 2xx status, for example
     % 201 Created or 204 No Content, not only 200 OK.
@@ -174,6 +214,19 @@ function [wasSuccess, response] = upload(filePath, url, options)
     if nargout < 2
         clear response
     end
+end
+
+function raiseIfCancelled(isCancelRequested)
+    %raiseIfCancelled - Raise an error if CancelRequestedFcn asks to stop
+    if ~isempty(isCancelRequested) && isCancelRequested()
+        raiseCancelled()
+    end
+end
+
+function raiseCancelled()
+    %raiseCancelled - Raise the error for a cancelled upload
+    error("webprogress:upload:Cancelled", ...
+        "The upload was cancelled.")
 end
 
 function mustBeIntegerOrInf(value)

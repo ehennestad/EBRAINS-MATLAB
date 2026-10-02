@@ -10,7 +10,8 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
 %
 %   monitor = ebrains.external.webprogress.MultipartProgressMonitor(TOTALBYTES,Name=Value)
 %   sets display options:
-%       DisplayMode    - "Dialog Box" (default) or "Command Window".
+%       DisplayMode    - "Dialog Box" (default), "Command Window" or
+%                        "None".
 %       UpdateInterval - Minimum number of seconds between updates. The
 %                        default is 1.
 %       Filename       - Name shown in the progress title. The default
@@ -18,12 +19,16 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
 %       IndentSize     - Number of spaces before progress printed in the
 %                        Command Window. The default is 0.
 %       Figure         - Figure for a uiprogressdlg. The default is [].
+%       ProgressFcn    - Function called with the progress of the whole
+%                        file. See ebrains.external.webprogress.FileTransferProgressMonitor.
+%       CancelRequestedFcn - Function that returns true when the upload
+%                        should stop. It acts as the Cancel button does.
 %
 %   Call close(monitor) after the last part to close the dialog or to
 %   print the completion message. Deleting the monitor also closes the
-%   dialog. If the user presses Cancel, the current request is aborted
-%   and IsCancelled becomes true, and ebrains.external.webprogress.upload raises an error
-%   for each later part.
+%   dialog. If the user presses Cancel, IsCancelled becomes true and
+%   ebrains.external.webprogress.upload raises the error webprogress:upload:Cancelled for
+%   the part in progress and for each later part.
 %
 %   Example: Upload a file in parts of 100 MB
 %       fileInfo = dir(filePath);
@@ -52,8 +57,8 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
     end
 
     properties (Access = private)
-        IsClosing = false     % Whether done should close the display
-        IsPartCounted = false % Whether Value is already included in CompletedBytes
+        IsClosing = false % Whether done should close the display
+        PartBytes = 0     % Bytes sent of the part in progress
     end
 
     methods
@@ -65,6 +70,8 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
                 options.Filename       (1,1) string                       = ""
                 options.IndentSize     (1,1) uint8                        = 0
                 options.Figure                      {mustBeFigureOrEmpty} = []
+                options.ProgressFcn             {mustBeFunctionHandleOrEmpty} = []
+                options.CancelRequestedFcn      {mustBeFunctionHandleOrEmpty} = []
             end
             nameValues = namedargs2cell(options);
             obj@ebrains.external.webprogress.FileTransferProgressMonitor(nameValues{:}, ...
@@ -85,7 +92,7 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
         %close - Close the dialog or print the completion message
         %   The completion message counts the parts that were sent
         %   successfully, and leaves out a last part that failed.
-            obj.IsPartCounted = true;
+            obj.PartBytes = 0;
             obj.IsClosing = true;
             obj.done()
         end
@@ -98,7 +105,7 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
                 numBytes (1,1) double {mustBeNonnegative}
             end
             obj.StartBytes = obj.StartBytes + numBytes;
-            obj.IsPartCounted = true;
+            obj.PartBytes = 0;
         end
 
         function completedBytes = get.CompletedBytes(obj)
@@ -114,23 +121,24 @@ classdef MultipartProgressMonitor < ebrains.external.webprogress.FileTransferPro
         function update(obj, varargin)
         %update - Show the progress of a part as its request is sent
         %   The response to a part does not carry the file, so the bytes
-        %   of its body are not progress. Value counts the bytes of the
-        %   next part once its request reports them.
+        %   of its body are not progress. A Cancel pressed while the
+        %   response arrives still has to be noticed, because the
+        %   progress dialog only reports it when the monitor asks.
             if isequal(obj.Direction, matlab.net.http.MessageType.Response)
+                if obj.WasCancelled || obj.cancelWasRequested()
+                    obj.stopTransfer()
+                end
                 return
             end
-            obj.IsPartCounted = false;
+            if ~isempty(obj.Value)
+                obj.PartBytes = double(obj.Value);
+            end
             update@ebrains.external.webprogress.FileTransferProgressMonitor(obj, varargin{:})
         end
 
         function transferredBytes = getTransferredBytes(obj)
         %getTransferredBytes - Return the completed parts and the part in progress
-        %   Value keeps the size of a part after addCompletedBytes has
-        %   counted it, until the next request reports its first bytes.
-            transferredBytes = obj.StartBytes;
-            if ~obj.IsPartCounted
-                transferredBytes = transferredBytes + double(obj.Value);
-            end
+            transferredBytes = obj.StartBytes + obj.PartBytes;
         end
 
         function fileSizeBytes = getFileSizeBytes(obj)

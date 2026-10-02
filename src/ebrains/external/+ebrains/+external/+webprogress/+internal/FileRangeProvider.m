@@ -28,7 +28,7 @@ classdef FileRangeProvider < matlab.net.http.io.ContentProvider
     methods
         function obj = FileRangeProvider(filePath, offset, numBytes)
             arguments
-                filePath (1,1) string {mustBeFile}
+                filePath (1,1) string
                 offset   (1,1) double {mustBeNonnegative, mustBeInteger}
                 numBytes (1,1) double {mustBeNonnegative, mustBeInteger}
             end
@@ -40,7 +40,14 @@ classdef FileRangeProvider < matlab.net.http.io.ContentProvider
         function [data, stop] = getData(obj, requestedLength)
         %getData - Return the next buffer of the range
         %   MATLAB calls getData until stop is true. The first call of a
-        %   request opens the file at the start of the range.
+        %   request opens the file at the start of the range. A call
+        %   after the whole range was given returns no data, so the
+        %   range is never sent twice in one request.
+            if obj.SentBytes >= obj.NumBytes
+                data = uint8.empty;
+                stop = true;
+                return
+            end
             if obj.FileId < 0
                 obj.openAtOffset()
             end
@@ -101,7 +108,6 @@ classdef FileRangeProvider < matlab.net.http.io.ContentProvider
                     "Cannot read ""%s"": %s", obj.FilePath, message)
             end
             obj.FileId = fileId;
-            obj.SentBytes = 0;
             if fseek(fileId, obj.Offset, 'bof') ~= 0
                 message = ferror(fileId);
                 obj.closeFile()
