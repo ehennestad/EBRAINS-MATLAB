@@ -7,20 +7,22 @@ name: Test on all platforms
 # Linux only.
 #
 # The paths below are the files these tests cover. Add the source file of a
-# new platform-specific test here, or a change to it will not run them.
+# new platform-specific test here, or a change to it will not run them. "+"
+# repeats the character before it in a path pattern, so the "+" of a
+# namespace folder is escaped as "\+".
 
 on:
   push:
     paths:
-      - 'src/ebrains/+ebrains/+bucket/+internal/computeMd5.m'
-      - 'tests/+ebrains/+test/+bucket/ComputeMd5Test.m'
+      - 'src/ebrains/\+ebrains/\+bucket/\+internal/computeMd5.m'
+      - 'tests/\+ebrains/\+test/\+bucket/ComputeMd5Test.m'
       - '.github/workflows/test-platforms.yml'
 
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'src/ebrains/+ebrains/+bucket/+internal/computeMd5.m'
-      - 'tests/+ebrains/+test/+bucket/ComputeMd5Test.m'
+      - 'src/ebrains/\+ebrains/\+bucket/\+internal/computeMd5.m'
+      - 'tests/\+ebrains/\+test/\+bucket/ComputeMd5Test.m'
       - '.github/workflows/test-platforms.yml'
 
   workflow_dispatch:
