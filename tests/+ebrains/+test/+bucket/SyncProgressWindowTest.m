@@ -146,7 +146,48 @@ classdef SyncProgressWindowTest < matlab.uitest.TestCase
             closeButton = findall(window, 'Type', 'uibutton');
             testCase.verifyEqual(closeButton.Text, 'Close');
         end
+
+        function testBackgroundSyncInWindowCanBeCancelled(testCase)
+            % The Cancel button of the window reaches the worker through
+            % the job, which ends with the table of what was done. press
+            % takes over a second, so the sync is made long enough to
+            % still run when it lands.
+            folder = testCase.applyFixture( ...
+                matlab.unittest.fixtures.TemporaryFolderFixture).Folder;
+            for name = "file" + (1:12) + ".txt"
+                writelines("abc", fullfile(folder, name));
+            end
+            client = ebrains.mocks.MockBucketsClient();
+            client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', 0, 'bytes', 0));
+            client.addResponse('OK', struct('objects', []));
+            for k = 1:12
+                client.addResponse('OK', struct('url', 'https://store.example.org/upload'));
+            end
+
+            job = ebrains.bucket.syncToBucket(folder, "my-bucket", DisplayMode="Window", ...
+                Background=true, Uploader=@slowUploader, Client=client);
+            pause(0.8)
+            window = findall(groot, 'Type', 'figure', 'Name', testCase.WindowName);
+            % press processes the event queue, so the job can end, and
+            % warn, before wait is called.
+            function actions = pressCancelAndWait()
+                testCase.press(findall(window, 'Type', 'uibutton'))
+                actions = wait(job);
+            end
+            actions = testCase.verifyWarning(@pressCancelAndWait, 'EBRAINS:Bucket:Sync:Cancelled');
+
+            testCase.verifyEqual(job.State, "cancelled");
+            testCase.verifyTrue(any(actions.Status == "skipped"));
+            testCase.verifyEqual(findall(window, 'Type', 'uibutton').Text, 'Close');
+        end
     end
+end
+
+function [wasSuccess, response] = slowUploader(varargin)
+% slowUploader - Uploader that takes half a second per file
+    pause(0.5)
+    wasSuccess = true;
+    response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
 end
 
 function actions = makeActions()

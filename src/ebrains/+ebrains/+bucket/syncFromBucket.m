@@ -20,6 +20,11 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %       actions = ebrains.bucket.syncFromBucket(...) returns a table with
 %       one row per file, and what was done with it.
 %
+%       job = ebrains.bucket.syncFromBucket(..., Background=true) runs the
+%       sync on a background worker and returns an ebrains.bucket.SyncJob
+%       at once, so MATLAB stays free while it runs. wait(job) returns the
+%       table. Use DisplayMode="Window" to follow its progress.
+%
 %   Input Arguments
 %       bucketName  : Name of the bucket to download
 %       localFolder : Folder to make match it
@@ -68,6 +73,11 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %                     default client is created otherwise.
 %       Downloader  : Function that downloads a signed URL to a file, as
 %                     for ebrains.bucket.downloadFile. Meant for tests.
+%       Background  : Run the sync on a thread-based worker of
+%                     backgroundPool and return an ebrains.bucket.SyncJob
+%                     instead of the table. Default is false. Only
+%                     DisplayMode "Window" shows progress then; the other
+%                     modes and Verbose show nothing.
 %       ProgressObserver : ebrains.bucket.internal.SyncProgressObserver
 %                     that the sync reports its progress to, and asks
 %                     whether to cancel. Ignored with DisplayMode
@@ -123,6 +133,7 @@ function actions = syncFromBucket(bucketName, localFolder, options)
             {mustBeMember(options.DisplayMode, ["Command Window", "Dialog Box", "Window", "None"])} = "Command Window"
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
+        options.Background (1,1) logical = false
         options.ProgressObserver (1,1) ebrains.bucket.internal.SyncProgressObserver = ...
             ebrains.bucket.internal.SyncProgressObserver()
     end
@@ -133,6 +144,10 @@ function actions = syncFromBucket(bucketName, localFolder, options)
     end
 
     options.Uploader = @ebrains.external.webprogress.upload;
+    if options.Background
+        actions = ebrains.bucket.SyncJob("FromBucket", localFolder, bucketName, options);
+        return
+    end
     actions = ebrains.bucket.internal.runSync("FromBucket", localFolder, bucketName, options);
 
     if nargout == 0

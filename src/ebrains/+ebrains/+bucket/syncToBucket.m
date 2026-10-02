@@ -19,6 +19,11 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %       actions = ebrains.bucket.syncToBucket(...) returns a table with
 %       one row per file, and what was done with it.
 %
+%       job = ebrains.bucket.syncToBucket(..., Background=true) runs the
+%       sync on a background worker and returns an ebrains.bucket.SyncJob
+%       at once, so MATLAB stays free while it runs. wait(job) returns the
+%       table. Use DisplayMode="Window" to follow its progress.
+%
 %   Input Arguments
 %       localFolder : Folder to upload
 %       bucketName  : Name of the bucket to make match it
@@ -65,6 +70,11 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %                     default client is created otherwise.
 %       Uploader    : Function that uploads a file to a signed URL, as for
 %                     ebrains.bucket.uploadFile. Meant for tests.
+%       Background  : Run the sync on a thread-based worker of
+%                     backgroundPool and return an ebrains.bucket.SyncJob
+%                     instead of the table. Default is false. Only
+%                     DisplayMode "Window" shows progress then; the other
+%                     modes and Verbose show nothing.
 %       ProgressObserver : ebrains.bucket.internal.SyncProgressObserver
 %                     that the sync reports its progress to, and asks
 %                     whether to cancel. Ignored with DisplayMode
@@ -120,11 +130,16 @@ function actions = syncToBucket(localFolder, bucketName, options)
             {mustBeMember(options.DisplayMode, ["Command Window", "Dialog Box", "Window", "None"])} = "Command Window"
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
+        options.Background (1,1) logical = false
         options.ProgressObserver (1,1) ebrains.bucket.internal.SyncProgressObserver = ...
             ebrains.bucket.internal.SyncProgressObserver()
     end
 
     options.Downloader = @ebrains.external.webprogress.download;
+    if options.Background
+        actions = ebrains.bucket.SyncJob("ToBucket", localFolder, bucketName, options);
+        return
+    end
     actions = ebrains.bucket.internal.runSync("ToBucket", localFolder, bucketName, options);
 
     if nargout == 0

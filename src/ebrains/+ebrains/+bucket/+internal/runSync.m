@@ -1,4 +1,4 @@
-function actions = runSync(direction, localFolder, bucketName, options)
+function [actions, isCancelled] = runSync(direction, localFolder, bucketName, options)
 % runSync - Make a bucket match a local folder, or a local folder match a bucket
 %
 %   actions = ebrains.bucket.internal.runSync(direction, localFolder,
@@ -20,7 +20,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
 %   ebrains.bucket.internal.SyncProgressWindow when options.DisplayMode
 %   is "Window". When the observer asks to cancel, the file in progress
 %   stops, the files not yet copied or deleted are skipped, and a warning
-%   says that the sync is incomplete.
+%   says that the sync is incomplete. isCancelled is true then.
 
     arguments
         direction (1,1) string {mustBeMember(direction, ["ToBucket", "FromBucket"])}
@@ -29,16 +29,8 @@ function actions = runSync(direction, localFolder, bucketName, options)
         options (1,1) struct
     end
 
-    prefix = normalizePrefix(options.Prefix);
-    remoteLabel = "bucket """ + bucketName + """";
-    if prefix ~= ""
-        remoteLabel = remoteLabel + ", folder """ + prefix + """";
-    end
-    if direction == "ToBucket"
-        description = sprintf('Syncing "%s" to %s.', localFolder, remoteLabel);
-    else
-        description = sprintf('Syncing %s to "%s".', remoteLabel, localFolder);
-    end
+    prefix = ebrains.bucket.internal.normalizePrefix(options.Prefix);
+    description = ebrains.bucket.internal.describeSync(direction, localFolder, bucketName, prefix);
 
     % The per-file display of the transfers is turned off while the
     % window shows their progress.
@@ -48,14 +40,14 @@ function actions = runSync(direction, localFolder, bucketName, options)
     end
 
     try
-        actions = runSteps(direction, localFolder, bucketName, prefix, description, options);
+        [actions, isCancelled] = runSteps(direction, localFolder, bucketName, prefix, description, options);
     catch ME
         options.ProgressObserver.syncFailed(ME)
         rethrow(ME)
     end
 end
 
-function actions = runSteps(direction, localFolder, bucketName, prefix, description, options)
+function [actions, isCancelled] = runSteps(direction, localFolder, bucketName, prefix, description, options)
 % runSteps - List, plan, copy and delete, reporting to options.ProgressObserver
 
     isToBucket = direction == "ToBucket";
@@ -104,6 +96,7 @@ function actions = runSteps(direction, localFolder, bucketName, prefix, descript
         end
         observer.planReady(actions)
         observer.syncFinished(actions)
+        isCancelled = false;
         return
     end
     observer.planReady(actions)
@@ -233,33 +226,8 @@ function actions = runSteps(direction, localFolder, bucketName, prefix, descript
             sum(actions.Status == "failed"));
     end
 
-    isFailed = actions.Status == "failed";
-    if any(isFailed)
-        failedPaths = actions.Path(isFailed);
-        warning('EBRAINS:Bucket:Sync:Incomplete', ...
-            ['The sync is incomplete: %d file(s) failed, for example "%s". ' ...
-             'The Status and Message variables of the returned table say ' ...
-             'which and why. Run the sync again to retry them.'], ...
-            numel(failedPaths), failedPaths(1));
-    end
-
-    if isCancelled
-        warning('EBRAINS:Bucket:Sync:Cancelled', ...
-            ['The sync was cancelled: %d file(s) were not copied or deleted. ' ...
-             'The Status variable of the returned table says which. Run ' ...
-             'the sync again to finish it.'], ...
-            sum(ismember(actions.Status, ["cancelled", "skipped"])));
-    end
-
+    ebrains.bucket.internal.warnIfIncomplete(actions, isCancelled)
     observer.syncFinished(actions)
-end
-
-function prefix = normalizePrefix(prefix)
-% normalizePrefix - Folder name in the bucket, without a leading "/" and with a trailing one
-    prefix = regexprep(prefix, "^/+", "");
-    if prefix ~= "" && ~endsWith(prefix, "/")
-        prefix = prefix + "/";
-    end
 end
 
 function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, observer)
