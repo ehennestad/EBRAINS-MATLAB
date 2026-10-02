@@ -1,31 +1,54 @@
 function hash = computeMd5(filePath)
 % computeMd5 - MD5 checksum of a file, as lowercase hexadecimal text
 %
-%   hash = ebrains.bucket.internal.computeMd5(filePath) reads the file in
-%   blocks, so files larger than memory can be checked, and returns the
-%   checksum in the form the object store reports it.
+%   hash = ebrains.bucket.internal.computeMd5(filePath) returns the
+%   checksum in the form the object store reports it. The MD5 tool of the
+%   operating system computes it: md5 on macOS, md5sum on Linux and
+%   certutil on Windows. MATLAB has no MD5 function of its own, and Java,
+%   which has one, is not available on the thread-based worker that runs
+%   a background sync.
 
     arguments
         filePath (1,1) string {mustBeFile}
     end
 
-    [fileID, errorMessage] = fopen(filePath, "r");
-    if fileID == -1
+    if ismac
+        command = "md5 -q " + quoteForPosixShell(filePath);
+    elseif isunix
+        command = "md5sum " + quoteForPosixShell(filePath);
+    else
+        % A Windows path cannot hold a double quote, so quoting it in
+        % double quotes is enough.
+        command = "certutil -hashfile """ + filePath + """ MD5";
+    end
+
+    [status, output] = system(command);
+    if status ~= 0
         error('EBRAINS:Bucket:CouldNotReadFile', ...
-            'Could not open "%s" to compute its checksum: %s', filePath, errorMessage)
+            'Could not compute the checksum of "%s": %s', filePath, strtrim(output))
     end
-    closeFile = onCleanup(@() fclose(fileID));
+    hash = parseToolOutput(string(output));
+end
 
-    digest = java.security.MessageDigest.getInstance('MD5');
-    blockSize = 16 * 1024^2;
-    while true
-        block = fread(fileID, blockSize, '*uint8');
-        if isempty(block)
-            break
-        end
-        digest.update(typecast(block, 'int8'));
+function hash = parseToolOutput(output)
+% parseToolOutput - The checksum in the output of the MD5 tool of this system
+%
+%   md5 -q prints the checksum alone, and md5sum prints it before the file
+%   name. certutil prints a line that names the file, the checksum on the
+%   second line (with a space between bytes before Windows 8), and a line
+%   that reports success. The file name is not searched for the checksum,
+%   since a name can hold 32 hexadecimal characters too.
+
+    lines = splitlines(strtrim(output));
+    if ispc
+        hash = erase(strtrim(lines(min(2, end))), " ");
+    else
+        hash = extractBefore(lines(1) + " ", " ");
     end
+    hash = lower(hash);
+end
 
-    hashBytes = typecast(digest.digest(), 'uint8');
-    hash = lower(string(reshape(dec2hex(hashBytes, 2).', 1, [])));
+function quoted = quoteForPosixShell(text)
+% quoteForPosixShell - Text as one single-quoted word of a POSIX shell
+    quoted = "'" + replace(text, "'", "'\''") + "'";
 end
