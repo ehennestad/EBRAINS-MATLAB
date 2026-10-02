@@ -16,6 +16,11 @@ classdef (Abstract) HttpClient < handle
 %   ebrains.authenticate. With AutoLogin true, a request without an
 %   available token opens the login first.
 %
+%   Where the token manager is out of reach, such as on a thread-based
+%   worker, set AuthorizationFcn to a function that returns the
+%   Authorization header field to send, or [] for none. The client then
+%   never asks the token manager.
+%
 %   Subclasses set ErrorIdPrefix, which starts the identifier of every error
 %   thrown for a failed response: <ErrorIdPrefix>:<operation>:<status name>.
 %
@@ -27,6 +32,13 @@ classdef (Abstract) HttpClient < handle
 
     properties (Abstract, Constant, Access = protected)
         ErrorIdPrefix (1,1) string
+    end
+
+    properties
+        % Function that returns the Authorization header field of a
+        % request, or [] to send none. Empty, the default, asks
+        % ebrains.getTokenManager for the field.
+        AuthorizationFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
     end
 
     properties (Access = private)
@@ -85,12 +97,20 @@ classdef (Abstract) HttpClient < handle
             end
         end
 
-        function headers = getDefaultHeader(~)
+        function headers = getDefaultHeader(obj)
         % getDefaultHeader - Header fields for a JSON request, with a token when one is available
             headers = [ ...
                 matlab.net.http.HeaderField("Content-Type", "application/json"), ...
                 matlab.net.http.HeaderField("Accept", "application/json") ...
                 ];
+
+            if ~isempty(obj.AuthorizationFcn)
+                authField = obj.AuthorizationFcn();
+                if ~isempty(authField)
+                    headers = [headers, authField];
+                end
+                return
+            end
 
             % Unless the AutoLogin preference asks for it, no login is started
             % for a request: public data needs no token, and a refusal of a

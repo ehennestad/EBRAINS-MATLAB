@@ -57,6 +57,28 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(testCase.DeviceClient.PollCount, 1);
         end
 
+        function testAuthorizationFcnSuppliesTheField(testCase)
+            % The token manager is not asked, so a token it holds is not sent.
+            testCase.DeviceClient.seedTokens("access-0", "refresh-0", 7200);
+            testCase.Client.AuthorizationFcn = @() matlab.net.http.field.AuthorizationField( ...
+                "Authorization", "Bearer pushed-token");
+
+            request = testCase.Client.buildRequest("GET");
+
+            authField = request.getFields("Authorization");
+            testCase.verifyEqual(string(authField.Value), "Bearer pushed-token");
+        end
+
+        function testEmptyAuthorizationFcnResultSendsNoTokenAndStartsNoLogin(testCase)
+            ebrains.setpref(AutoLogin=true);
+            testCase.Client.AuthorizationFcn = @() [];
+
+            request = testCase.Client.buildRequest("GET");
+
+            testCase.verifyEmpty(request.getFields("Authorization"));
+            testCase.verifyEqual(testCase.DeviceClient.PollCount, 0);
+        end
+
         %% Error reporting
         function testUnauthorizedWithoutTokenAsksForLogin(testCase)
             request = testCase.Client.buildRequest("GET");
