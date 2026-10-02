@@ -12,6 +12,14 @@ function hash = computeMd5(filePath)
         filePath (1,1) string {mustBeFile}
     end
 
+    % certutil fails on an empty file (error 0x800703ee) instead of
+    % hashing it, so the checksum of no data is given directly.
+    md5OfNoData = "d41d8cd98f00b204e9800998ecf8427e";
+    if dir(filePath).bytes == 0
+        hash = md5OfNoData;
+        return
+    end
+
     if ismac
         command = "md5 -q " + quoteForPosixShell(filePath);
     elseif isunix
