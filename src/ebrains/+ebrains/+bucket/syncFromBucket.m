@@ -52,13 +52,26 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %                     deletes more, the sync stops before it changes
 %                     anything. Default is Inf.
 %       Verbose     : Print the plan and the progress. Default is true.
-%       DisplayMode : Where the progress of each download is shown:
-%                     "Command Window" (default) or "Dialog Box".
+%       DisplayMode : Where progress is shown:
+%                     "Command Window" - (default) the progress of each
+%                                        download is printed
+%                     "Dialog Box"     - a dialog shows the progress of
+%                                        each download
+%                     "Window"         - one window shows the progress of
+%                                        the whole sync and of each file,
+%                                        with a Cancel button
+%                     "None"           - nothing is shown
+%                     A cancelled sync stops the file in progress and
+%                     skips the files not yet downloaded or deleted.
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
 %       Downloader  : Function that downloads a signed URL to a file, as
 %                     for ebrains.bucket.downloadFile. Meant for tests.
+%       ProgressObserver : ebrains.bucket.internal.SyncProgressObserver
+%                     that the sync reports its progress to, and asks
+%                     whether to cancel. Ignored with DisplayMode
+%                     "Window", which makes its own. Meant for tests.
 %
 %   Output Arguments
 %       actions : Table with one row per file found on either side, and
@@ -69,9 +82,10 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %                           "unchanged", or "extraneous" for a local file
 %                           the bucket does not have
 %                 Bytes   - Size of the file
-%                 Status  - "done", "failed", "skipped", "planned" (with
-%                           DryRun), or "" for no action
-%                 Message - Why an action failed or was skipped
+%                 Status  - "done", "failed", "cancelled", "skipped",
+%                           "planned" (with DryRun), or "" for no action
+%                 Message - Why an action failed, was cancelled or was
+%                           skipped
 %
 %   A file that fails to download does not stop the sync. The other files
 %   are downloaded, nothing is deleted, and a warning names the failure.
@@ -106,9 +120,11 @@ function actions = syncFromBucket(bucketName, localFolder, options)
         options.MaxDelete (1,1) double {mustBeNonnegative} = Inf
         options.Verbose (1,1) logical = true
         options.DisplayMode (1,1) string ...
-            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Command Window"
+            {mustBeMember(options.DisplayMode, ["Command Window", "Dialog Box", "Window", "None"])} = "Command Window"
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
+        options.ProgressObserver (1,1) ebrains.bucket.internal.SyncProgressObserver = ...
+            ebrains.bucket.internal.SyncProgressObserver()
     end
 
     if isfile(localFolder)

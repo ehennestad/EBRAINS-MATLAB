@@ -13,6 +13,14 @@ function actions = runSync(direction, localFolder, bucketName, options)
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
+%
+%   The sync reports its progress to an
+%   ebrains.bucket.internal.SyncProgressObserver: the one in
+%   options.ProgressObserver, or a new
+%   ebrains.bucket.internal.SyncProgressWindow when options.DisplayMode
+%   is "Window". When the observer asks to cancel, the file in progress
+%   stops, the files not yet copied or deleted are skipped, and a warning
+%   says that the sync is incomplete.
 
     arguments
         direction (1,1) string {mustBeMember(direction, ["ToBucket", "FromBucket"])}
@@ -21,21 +29,48 @@ function actions = runSync(direction, localFolder, bucketName, options)
         options (1,1) struct
     end
 
-    isToBucket = direction == "ToBucket";
     prefix = normalizePrefix(options.Prefix);
     remoteLabel = "bucket """ + bucketName + """";
     if prefix ~= ""
         remoteLabel = remoteLabel + ", folder """ + prefix + """";
     end
+    if direction == "ToBucket"
+        description = sprintf('Syncing "%s" to %s.', localFolder, remoteLabel);
+    else
+        description = sprintf('Syncing %s to "%s".', remoteLabel, localFolder);
+    end
+
+    % The per-file display of the transfers is turned off while the
+    % window shows their progress.
+    if options.DisplayMode == "Window"
+        options.ProgressObserver = ebrains.bucket.internal.SyncProgressWindow(description);
+        options.DisplayMode = "None";
+    end
+
+    try
+        actions = runSteps(direction, localFolder, bucketName, prefix, description, options);
+    catch ME
+        options.ProgressObserver.syncFailed(ME)
+        rethrow(ME)
+    end
+end
+
+function actions = runSteps(direction, localFolder, bucketName, prefix, description, options)
+% runSteps - List, plan, copy and delete, reporting to options.ProgressObserver
+
+    isToBucket = direction == "ToBucket";
+    observer = options.ProgressObserver;
 
     % 1. List both sides
+    observer.phaseStarted("listing")
     localFiles = ebrains.bucket.internal.listLocalFiles(localFolder);
     remoteFiles = ebrains.bucket.internal.listRemoteFiles(bucketName, prefix, options.Client);
     localFiles = ebrains.bucket.internal.excludeFiles(localFiles, options.Exclude);
     remoteFiles = ebrains.bucket.internal.excludeFiles(remoteFiles, options.Exclude);
 
     if options.Comparison == "Checksum"
-        localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder);
+        observer.phaseStarted("checksums")
+        localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, observer);
     end
 
     % 2. Plan
@@ -58,11 +93,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
     checkDeletions(actions, isDelete, height(sourceFiles), options.MaxDelete)
 
     if options.Verbose
-        if isToBucket
-            fprintf('Syncing "%s" to %s.\n', localFolder, remoteLabel);
-        else
-            fprintf('Syncing %s to "%s".\n', remoteLabel, localFolder);
-        end
+        fprintf('%s\n', description);
         printPlanSummary(actions, isCopy, isDelete, copyAction)
     end
 
@@ -71,60 +102,107 @@ function actions = runSync(direction, localFolder, bucketName, options)
         if options.Verbose
             printPlannedActions(actions, isCopy | isDelete)
         end
+        observer.planReady(actions)
+        observer.syncFinished(actions)
         return
     end
+    observer.planReady(actions)
 
     % 3. Copy
     if ~isToBucket && ~isfolder(localFolder)
         mkdir(localFolder)
     end
     copyIndices = find(isCopy);
-    for k = 1:numel(copyIndices)
+    isCancelled = false;
+    if ~isempty(copyIndices)
+        observer.phaseStarted("copying")
+    end
+    k = 0;
+    while k < numel(copyIndices) && ~isCancelled
+        k = k + 1;
         i = copyIndices(k);
+        if observer.isCancelRequested()
+            isCancelled = true;
+            continue
+        end
         relativePath = actions.Path(i);
         if options.Verbose
             fprintf('[%d/%d] %s %s (%s)\n', k, numel(copyIndices), ...
-                capitalize(copyAction), relativePath, formatBytes(actions.Bytes(i)));
+                capitalize(copyAction), relativePath, ...
+                ebrains.bucket.internal.formatBytes(actions.Bytes(i)));
         end
+        observer.fileStarted(i)
+        progressFcn = @(progress) observer.bytesTransferred(i, ...
+            progress.TransferredBytes, progress.TotalBytes);
+        cancelRequestedFcn = @() observer.isCancelRequested();
         try
             localFile = fullfile(localFolder, relativePath);
             objectName = prefix + relativePath;
             if isToBucket
                 ebrains.bucket.uploadFile(bucketName, objectName, localFile, ...
                     DisplayMode=options.DisplayMode, Client=options.Client, ...
-                    Uploader=options.Uploader);
+                    Uploader=options.Uploader, ProgressFcn=progressFcn, ...
+                    CancelRequestedFcn=cancelRequestedFcn);
             else
                 ebrains.bucket.downloadFile(bucketName, objectName, localFile, ...
                     DisplayMode=options.DisplayMode, Client=options.Client, ...
-                    Downloader=options.Downloader);
+                    Downloader=options.Downloader, ProgressFcn=progressFcn, ...
+                    CancelRequestedFcn=cancelRequestedFcn);
                 verifyDownloadedSize(localFile, actions.Bytes(i))
             end
             actions.Status(i) = "done";
         catch ME
-            actions.Status(i) = "failed";
-            actions.Message(i) = string(ME.message);
+            isCancelled = isCancellation(ME);
+            if isCancelled
+                actions.Status(i) = "cancelled";
+                actions.Message(i) = "Cancelled while it was copied.";
+            else
+                actions.Status(i) = "failed";
+                actions.Message(i) = string(ME.message);
+            end
             if options.Verbose
-                fprintf('  Failed: %s\n', ME.message);
+                fprintf('  %s: %s\n', capitalize(actions.Status(i)), actions.Message(i));
             end
         end
+        observer.fileFinished(i, actions.Status(i), actions.Message(i))
+    end
+    if isCancelled
+        isNotCopied = isCopy & actions.Status == "";
+        actions.Status(isNotCopied) = "skipped";
+        actions.Message(isNotCopied) = "Not copied, since the sync was cancelled.";
     end
 
     % 4. Delete. A failed copy may mean the source was listed wrongly or
     % the connection is lost, so nothing is deleted after one, the way
-    % rsync and rclone hold back deletions after an error.
+    % rsync and rclone hold back deletions after an error. A cancelled
+    % sync deletes nothing either, since the target is not yet complete.
     hasFailedCopy = any(actions.Status == "failed");
     deleteIndices = find(isDelete);
-    if hasFailedCopy && ~isempty(deleteIndices)
+    if (hasFailedCopy || isCancelled) && ~isempty(deleteIndices)
         actions.Status(deleteIndices) = "skipped";
-        actions.Message(deleteIndices) = "Not deleted, since a file failed to copy.";
+        if isCancelled
+            actions.Message(deleteIndices) = "Not deleted, since the sync was cancelled.";
+        else
+            actions.Message(deleteIndices) = "Not deleted, since a file failed to copy.";
+        end
         deleteIndices = [];
     end
-    for k = 1:numel(deleteIndices)
+    if ~isempty(deleteIndices)
+        observer.phaseStarted("deleting")
+    end
+    k = 0;
+    while k < numel(deleteIndices) && ~isCancelled
+        k = k + 1;
         i = deleteIndices(k);
+        if observer.isCancelRequested()
+            isCancelled = true;
+            continue
+        end
         relativePath = actions.Path(i);
         if options.Verbose
             fprintf('[%d/%d] Delete %s\n', k, numel(deleteIndices), relativePath);
         end
+        observer.fileStarted(i)
         try
             if isToBucket
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
@@ -140,6 +218,12 @@ function actions = runSync(direction, localFolder, bucketName, options)
                 fprintf('  Failed: %s\n', ME.message);
             end
         end
+        observer.fileFinished(i, actions.Status(i), actions.Message(i))
+    end
+    if isCancelled
+        isNotDeleted = isDelete & actions.Status == "";
+        actions.Status(isNotDeleted) = "skipped";
+        actions.Message(isNotDeleted) = "Not deleted, since the sync was cancelled.";
     end
 
     if options.Verbose
@@ -158,6 +242,16 @@ function actions = runSync(direction, localFolder, bucketName, options)
              'which and why. Run the sync again to retry them.'], ...
             numel(failedPaths), failedPaths(1));
     end
+
+    if isCancelled
+        warning('EBRAINS:Bucket:Sync:Cancelled', ...
+            ['The sync was cancelled: %d file(s) were not copied or deleted. ' ...
+             'The Status variable of the returned table says which. Run ' ...
+             'the sync again to finish it.'], ...
+            sum(ismember(actions.Status, ["cancelled", "skipped"])));
+    end
+
+    observer.syncFinished(actions)
 end
 
 function prefix = normalizePrefix(prefix)
@@ -168,15 +262,22 @@ function prefix = normalizePrefix(prefix)
     end
 end
 
-function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
+function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, observer)
 % addLocalChecksums - Compute the checksums the comparison needs
 %
 %   Only a local file whose remote counterpart has the same size and a
 %   known checksum is read: for any other file the size or the time
 %   decides, and reading every file of a large folder would take long.
+%
+%   A cancel request stops the reading. The files left without a
+%   checksum are then judged by time, which does not matter, because a
+%   cancelled sync copies nothing after the plan.
 
     [isInRemote, remoteIndex] = ismember(localFiles.Path, remoteFiles.Path);
     for i = reshape(find(isInRemote), 1, [])
+        if observer.isCancelRequested()
+            return
+        end
         j = remoteIndex(i);
         if remoteFiles.Hash(j) ~= "" && remoteFiles.Bytes(j) == localFiles.Bytes(i)
             localFiles.Hash(i) = ebrains.bucket.internal.computeMd5( ...
@@ -228,7 +329,7 @@ end
 function printPlanSummary(actions, isCopy, isDelete, copyAction)
     isExtraneousKept = actions.Reason == "extraneous" & ~isDelete;
     fprintf('%d file(s) to %s (%s), %d to delete, %d unchanged.\n', ...
-        sum(isCopy), copyAction, formatBytes(sum(actions.Bytes(isCopy))), ...
+        sum(isCopy), copyAction, ebrains.bucket.internal.formatBytes(sum(actions.Bytes(isCopy))), ...
         sum(isDelete), sum(actions.Reason == "unchanged"));
     if any(isExtraneousKept)
         fprintf(['%d file(s) of the target are not in the source and are ' ...
@@ -247,12 +348,8 @@ function text = capitalize(text)
     text = upper(extractBefore(text, 2)) + extractAfter(text, 1);
 end
 
-function text = formatBytes(bytes)
-    units = ["B", "KB", "MB", "GB", "TB"];
-    exponent = min(floor(log(max(bytes, 1)) / log(1024)), numel(units) - 1);
-    if exponent == 0
-        text = sprintf('%d B', bytes);
-    else
-        text = sprintf('%.1f %s', bytes / 1024^exponent, units(exponent + 1));
-    end
+function tf = isCancellation(exception)
+% isCancellation - Return whether an error is the stop of a cancelled transfer
+    tf = ismember(exception.identifier, ...
+        ["webprogress:upload:Cancelled", "webprogress:download:Cancelled"]);
 end

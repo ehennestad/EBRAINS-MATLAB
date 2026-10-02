@@ -421,6 +421,122 @@ classdef SyncTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:Sync:TargetIsFile');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
+
+        %% Progress and cancel
+        function testSyncReportsProgressToObserver(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "abcd");
+            addListing(testCase.Client, makeObjects(string.empty));
+            addUploadUrls(testCase.Client, 2);
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@reportingUploader, ProgressObserver=spy, ...
+                DisplayMode="None", Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(spy.Calls, [ ...
+                "phaseStarted listing"; "planReady"; "phaseStarted copying"; ...
+                "fileStarted 1"; "bytesTransferred 1 3/3"; "fileFinished 1 done"; ...
+                "fileStarted 2"; "bytesTransferred 2 4/4"; "fileFinished 2 done"; ...
+                "syncFinished"]);
+            testCase.verifyEqual(spy.Plan.Status, ["";""]);
+            testCase.verifyEqual(spy.Result.Status, ["done"; "done"]);
+        end
+
+        function testSyncFromBucketReportsDownloadProgress(testCase)
+            addListing(testCase.Client, makeObjects("a.txt", 3));
+            addDownloadUrls(testCase.Client, 1);
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+                Downloader=@reportingDownloader, ProgressObserver=spy, ...
+                DisplayMode="None", Client=testCase.Client, Verbose=false);
+
+            testCase.verifyTrue(ismember("bytesTransferred 1 3/3", spy.Calls));
+            testCase.verifyEqual(spy.Result.Status, "done");
+        end
+
+        function testSyncByChecksumReportsChecksumPhase(testCase)
+            writeFile(fullfile(testCase.Folder, "same.txt"), "abc");
+            md5OfAbc = "900150983cd24fb0d6963f7d28e17f72";
+            addListing(testCase.Client, makeObjects("same.txt", 3, "2000-01-01T00:00:00", md5OfAbc));
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+                Comparison="Checksum", ProgressObserver=spy, ...
+                Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(spy.Calls, ["phaseStarted listing"; ...
+                "phaseStarted checksums"; "planReady"; "syncFinished"]);
+        end
+
+        function testSyncCancelledBetweenFilesSkipsTheRestAndDeletesNothing(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "abc");
+            addListing(testCase.Client, makeObjects("extra.txt", 1));
+            addUploadUrls(testCase.Client, 1);
+            spy = ebrains.mocks.SpySyncProgressObserver();
+            spy.CancelAfterFinishedFiles = 1;
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.syncToBucket( ...
+                testCase.Folder, "my-bucket", Delete=true, Uploader=recordingUploader(), ...
+                ProgressObserver=spy, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:Cancelled');
+
+            testCase.verifyEqual(actions.Path, ["a.txt"; "b.txt"; "extra.txt"]);
+            testCase.verifyEqual(actions.Status, ["done"; "skipped"; "skipped"]);
+            testCase.verifyEqual(actions.Message(2), "Not copied, since the sync was cancelled.");
+            testCase.verifyEqual(actions.Message(3), "Not deleted, since the sync was cancelled.");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3, ...
+                'Only the first file may be uploaded, and nothing deleted.');
+            testCase.verifyEqual(spy.Calls(end), "syncFinished");
+        end
+
+        function testSyncCancelledDuringTransferMarksTheFileCancelled(testCase)
+            % The uploader asks the observer through CancelRequestedFcn and
+            % stops with the error the webprogress upload raises.
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "abc");
+            addListing(testCase.Client, makeObjects(string.empty));
+            addUploadUrls(testCase.Client, 1);
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.syncToBucket( ...
+                testCase.Folder, "my-bucket", Uploader=@cancellingUploader, ...
+                ProgressObserver=spy, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:Cancelled');
+
+            testCase.verifyEqual(actions.Status, ["cancelled"; "skipped"]);
+            testCase.verifyEqual(spy.NumCancelChecks, 2, ...
+                'The observer is asked before the file and from the transfer.');
+            testCase.verifyTrue(ismember("fileFinished 1 cancelled", spy.Calls));
+        end
+
+        function testSyncErrorIsReportedToObserver(testCase)
+            addListing(testCase.Client, makeObjects(["x.txt", "y.txt"], [1, 1]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            testCase.verifyError(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+                Delete=true, MaxDelete=1, ProgressObserver=spy, ...
+                Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:TooManyDeletions');
+
+            testCase.verifyEqual(spy.Error.identifier, 'EBRAINS:Bucket:Sync:TooManyDeletions');
+            testCase.verifyEqual(spy.Calls(end), "syncFailed");
+        end
+
+        function testSyncDryRunReportsPlanOnly(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            addListing(testCase.Client, makeObjects(string.empty));
+            spy = ebrains.mocks.SpySyncProgressObserver();
+
+            ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", DryRun=true, ...
+                ProgressObserver=spy, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(spy.Calls, ["phaseStarted listing"; "planReady"; "syncFinished"]);
+            testCase.verifyEqual(spy.Result.Status, "planned");
+        end
     end
 end
 
@@ -492,6 +608,31 @@ function [wasSuccess, response] = recordUpload(record, source)
     record(record.Count + 1) = string(source);
     wasSuccess = true;
     response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
+end
+
+function [wasSuccess, response] = reportingUploader(source, ~, varargin)
+% reportingUploader - Uploader that reports the whole file as sent and accepts it
+    options = struct(varargin{:});
+    fileInfo = dir(source);
+    options.ProgressFcn(struct("ActionName", "Upload", ...
+        "TransferredBytes", fileInfo.bytes, "TotalBytes", fileInfo.bytes));
+    wasSuccess = true;
+    response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
+end
+
+function reportingDownloader(target, ~, varargin)
+% reportingDownloader - Downloader that writes three bytes and reports them
+    options = struct(varargin{:});
+    writeFile(target, "abc");
+    options.ProgressFcn(struct("ActionName", "Download", ...
+        "TransferredBytes", 3, "TotalBytes", 3));
+end
+
+function [wasSuccess, response] = cancellingUploader(~, ~, varargin) %#ok<STOUT>
+% cancellingUploader - Uploader that asks whether to cancel, then stops as a cancelled upload does
+    options = struct(varargin{:});
+    options.CancelRequestedFcn();
+    error("webprogress:upload:Cancelled", "The upload was cancelled.")
 end
 
 function writeAbc(target, varargin)
