@@ -579,9 +579,10 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
                         "RawOutput returns the body of a single request, so " + ...
                         "STAGE must name one stage rather than %d.", numel(stage))
                 end
-                result = obj.requestInstancesByIdsRaw(...
+                response = obj.postInstancesByIds(...
                     ebrains.kg.api.internal.normalizeIdentifiers(identifiers), ...
-                    stage, optionalParams, serverOptions.Server);
+                    stage, optionalParams, serverOptions.Server, true);
+                result = response.Body.Data;
                 missingIds = string.empty(1, 0);
                 return
             end
@@ -698,14 +699,6 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             else
                 advice = getAdviceForMissingIds(stage);
             end
-        end
-
-        function rawText = requestInstancesByIdsRaw(obj, identifiers, stage, optionalParams, server)
-        %requestInstancesByIdsRaw - One bulk request, body returned unconverted
-
-            response = obj.postInstancesByIds(...
-                identifiers, stage, optionalParams, server, true);
-            rawText = response.Body.Data;
         end
 
         function response = postInstancesByIds(obj, identifiers, stage, optionalParams, server, raw)
