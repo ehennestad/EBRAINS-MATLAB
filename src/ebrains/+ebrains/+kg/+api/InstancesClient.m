@@ -686,7 +686,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             result = cell(1, 0);
 
             for iStage = 1:numel(stage)
-                [found, missingIds] = obj.requestInstancesByIds(...
+                [found, missingIds] = obj.fetchInstancesByIdsFromStage(...
                     missingIds, stage(iStage), optionalParams, serverOptions.Server);
                 result = [result, found]; %#ok<AGROW> One append per stage
                 if isempty(missingIds)
@@ -727,8 +727,8 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             end
         end
 
-        function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
-        %requestInstancesByIds - One bulk request against a single stage
+        function [found, missingIds] = fetchInstancesByIdsFromStage(obj, identifiers, stage, optionalParams, server)
+        %fetchInstancesByIdsFromStage - One bulk request against a single stage
 
             response = obj.postInstancesByIds(...
                 identifiers, stage, optionalParams, server, false);
