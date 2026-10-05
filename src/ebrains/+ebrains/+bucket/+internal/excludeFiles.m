@@ -26,11 +26,11 @@ function files = excludeFiles(files, patterns)
 
     isExcluded = false(height(files), 1);
     for pattern = reshape(patterns, 1, [])
-        pattern = regexprep(pattern, "^/+|/+$", "");
-        if strlength(pattern) == 0
+        trimmedPattern = regexprep(pattern, "^/+|/+$", "");
+        if strlength(trimmedPattern) == 0
             continue
         end
-        isExcluded = isExcluded | matches(files.Path, patternToRegexp(pattern));
+        isExcluded = isExcluded | matches(files.Path, patternToRegexp(trimmedPattern));
     end
     files = files(~isExcluded, :);
 end

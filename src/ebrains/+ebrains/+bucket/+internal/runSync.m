@@ -274,7 +274,7 @@ function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, op
         mkdir(targetFolder)
     end
     temporaryFile = string(tempname(char(targetFolder))) + ".sync-part";
-    temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); %#ok<NASGU> runs on return or error
+    temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
 
     ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
         DisplayMode=options.DisplayMode, Client=options.Client, ...
