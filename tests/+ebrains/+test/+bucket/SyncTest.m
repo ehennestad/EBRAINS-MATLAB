@@ -178,7 +178,7 @@ classdef SyncTest < matlab.unittest.TestCase
 
         function testListRemoteFilesReadsTimesWithOffsets(testCase)
             addListing(testCase.Client, makeObjects(["a.txt", "b.txt", "c.txt", "d.txt"], [1, 1, 1, 1], ...
-                ["2024-05-03T12:22:33+02:00", "2024-05-03T12:22:33.5+0200", "2024-05-03T10:22:33Z", "yesterday"]));
+                ["2024-05-03T12:22:33+02:00", "2024-05-03T12:22:33.5+0200", "2024-05-03T10:22:33Z", "not a time"]));
 
             files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
 
