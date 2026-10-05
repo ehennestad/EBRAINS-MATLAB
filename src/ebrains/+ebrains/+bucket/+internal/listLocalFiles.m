@@ -12,7 +12,7 @@ function files = listLocalFiles(rootFolder)
 %
 %   A folder that does not exist has no files, so the table is empty.
 %
-%   See also ebrains.bucket.internal.listRemoteFiles, ebrains.bucket.internal.computeMd5
+%   See also ebrains.bucket.internal.listRemoteFiles, ebrains.bucket.internal.computeMD5
 
     arguments
         rootFolder (1,1) string

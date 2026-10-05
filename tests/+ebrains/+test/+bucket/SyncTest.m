@@ -206,12 +206,12 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(height(files), 0);
         end
 
-        %% computeMd5
+        %% computeMD5
         function testComputeMd5OfKnownContent(testCase)
             filePath = fullfile(testCase.Folder, "abc.txt");
             writeFile(filePath, "abc");
 
-            hash = ebrains.bucket.internal.computeMd5(filePath);
+            hash = ebrains.bucket.internal.computeMD5(filePath);
 
             testCase.verifyEqual(hash, "900150983cd24fb0d6963f7d28e17f72");
         end

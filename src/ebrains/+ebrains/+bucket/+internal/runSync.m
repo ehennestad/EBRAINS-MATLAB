@@ -223,7 +223,7 @@ function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
     for i = reshape(find(isInRemote), 1, [])
         j = remoteIndex(i);
         if remoteFiles.Hash(j) ~= "" && remoteFiles.Bytes(j) == localFiles.Bytes(i)
-            localFiles.Hash(i) = ebrains.bucket.internal.computeMd5( ...
+            localFiles.Hash(i) = ebrains.bucket.internal.computeMD5( ...
                 fullfile(localFolder, localFiles.Path(i)));
         end
     end

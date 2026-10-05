@@ -1,7 +1,7 @@
-function hash = computeMd5(filePath)
-% computeMd5 - MD5 checksum of a file, as lowercase hexadecimal text
+function hash = computeMD5(filePath)
+% computeMD5 - MD5 checksum of a file, as lowercase hexadecimal text
 %
-%   hash = ebrains.bucket.internal.computeMd5(filePath) reads the file in
+%   hash = ebrains.bucket.internal.computeMD5(filePath) reads the file in
 %   blocks, so files larger than memory can be checked, and returns the
 %   checksum in the form the object store reports it.
 
