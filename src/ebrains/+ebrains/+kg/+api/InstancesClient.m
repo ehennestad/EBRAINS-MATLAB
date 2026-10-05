@@ -703,13 +703,13 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         function rawText = requestInstancesByIdsRaw(obj, identifiers, stage, optionalParams, server)
         %requestInstancesByIdsRaw - One bulk request, body returned unconverted
 
-            response = obj.sendInstancesByIdsRequest(...
+            response = obj.postInstancesByIds(...
                 identifiers, stage, optionalParams, server, true);
             rawText = response.Body.Data;
         end
 
-        function response = sendInstancesByIdsRequest(obj, identifiers, stage, optionalParams, server, raw)
-        %sendInstancesByIdsRequest - Post one bulk request and check its status
+        function response = postInstancesByIds(obj, identifiers, stage, optionalParams, server, raw)
+        %postInstancesByIds - Post one bulk request and check its status
 
             OPERATION = "POST";
             ENDPOINT_PATH = "/instancesByIds";
@@ -737,7 +737,7 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
         function [found, missingIds] = requestInstancesByIds(obj, identifiers, stage, optionalParams, server)
         %requestInstancesByIds - One bulk request against a single stage
 
-            response = obj.sendInstancesByIdsRequest(...
+            response = obj.postInstancesByIds(...
                 identifiers, stage, optionalParams, server, false);
 
             % The response holds one entry per requested id, keyed by the
