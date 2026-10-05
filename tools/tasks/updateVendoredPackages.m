@@ -17,7 +17,7 @@ function updateVendoredPackages()
     % webprogress: file transfers with a progress display. toolboxdir and
     % toolboxversion locate the Contents.m file of an installed webprogress
     % toolbox, which the copy does not have.
-    sourceUri = "https://github.com/ehennestad/http-progressbar-matlab@v2.0.0";
+    sourceUri = "https://github.com/ehennestad/http-progressbar-matlab@v2.1.0";
     sourceFolder = "src/webprogress/+webprogress";
     targetFolder = "src/ebrains/external/+ebrains/+external/+webprogress";
     excludedFiles = ["toolboxdir.m", "toolboxversion.m"];
