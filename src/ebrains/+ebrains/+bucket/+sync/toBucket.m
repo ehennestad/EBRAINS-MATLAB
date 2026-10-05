@@ -1,22 +1,22 @@
-function actions = syncToBucket(localFolder, bucketName, options)
-% syncToBucket - Make a Data Proxy bucket match a local folder
+function actions = toBucket(localFolder, bucketName, options)
+% toBucket - Make a Data Proxy bucket match a local folder
 %
 %   Syntax:
-%       ebrains.bucket.syncToBucket(localFolder, bucketName) uploads the
+%       ebrains.bucket.sync.toBucket(localFolder, bucketName) uploads the
 %       files of localFolder and its subfolders that the bucket does not
 %       have or that have changed, the way rsync does. Files that are
 %       unchanged are not sent again, so running the sync again after an
 %       interruption picks up where it stopped. Object names are the paths
 %       relative to localFolder, with "/" separators.
 %
-%       ebrains.bucket.syncToBucket(..., Prefix=FOLDER) syncs to a folder
+%       ebrains.bucket.sync.toBucket(..., Prefix=FOLDER) syncs to a folder
 %       of the bucket instead of its root.
 %
-%       ebrains.bucket.syncToBucket(..., Delete=true) also deletes the
+%       ebrains.bucket.sync.toBucket(..., Delete=true) also deletes the
 %       objects that localFolder does not have, which makes the bucket (or
 %       the folder of it) an exact mirror of localFolder.
 %
-%       actions = ebrains.bucket.syncToBucket(...) returns a table with
+%       actions = ebrains.bucket.sync.toBucket(...) returns a table with
 %       one row per file, and what was done with it.
 %
 %   Input Arguments
@@ -48,7 +48,7 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %       Exclude     : Wildcard patterns of paths to leave out, such as
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither uploaded nor deleted. See
-%                     ebrains.bucket.internal.excludeFiles for the rules.
+%                     ebrains.bucket.sync.internal.excludeFiles for the rules.
 %       DryRun      : Only plan: list what would be uploaded and deleted,
 %                     and change nothing. A deletion that a real run would
 %                     refuse (see MaxDelete and below) is listed as skipped
@@ -91,28 +91,28 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %
 %   Example:
 %       % See what would happen, then mirror a results folder to a bucket
-%       ebrains.bucket.syncToBucket("results", "my-bucket", ...
+%       ebrains.bucket.sync.toBucket("results", "my-bucket", ...
 %           Prefix="results", Delete=true, DryRun=true);
-%       ebrains.bucket.syncToBucket("results", "my-bucket", ...
+%       ebrains.bucket.sync.toBucket("results", "my-bucket", ...
 %           Prefix="results", Delete=true);
 %
-%   The options other than Client are those of ebrains.bucket.SyncOptions,
+%   The options other than Client are those of ebrains.bucket.sync.SyncOptions,
 %   which holds their defaults and validation.
 %
-%   See also ebrains.bucket.syncFromBucket, ebrains.bucket.SyncOptions,
+%   See also ebrains.bucket.sync.fromBucket, ebrains.bucket.sync.SyncOptions,
 %   ebrains.bucket.uploadFile, ebrains.bucket.listBucketObjects
 
     arguments
         localFolder (1,1) string {mustBeFolder}
         bucketName (1,1) string {mustBeNonzeroLengthText}
-        options.?ebrains.bucket.SyncOptions
+        options.?ebrains.bucket.sync.SyncOptions
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
     client = options.Client;
-    syncOptions = ebrains.bucket.SyncOptions.fromStruct(rmfield(options, "Client"));
+    syncOptions = ebrains.bucket.sync.SyncOptions.fromStruct(rmfield(options, "Client"));
 
-    actions = ebrains.bucket.internal.runSync("ToBucket", localFolder, bucketName, syncOptions, client);
+    actions = ebrains.bucket.sync.internal.runSync("ToBucket", localFolder, bucketName, syncOptions, client);
 
     if nargout == 0
         clear actions

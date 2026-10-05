@@ -1,10 +1,10 @@
 function files = listRemoteFiles(bucketName, prefix, client)
 % listRemoteFiles - List the files of a bucket, or of a folder in it, for a sync
 %
-%   files = ebrains.bucket.internal.listRemoteFiles(bucketName, prefix,
+%   files = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix,
 %   client) returns a table with one row per object whose name starts with
 %   prefix, with the variables Path, Bytes, ModifiedTime and Hash of
-%   ebrains.bucket.internal.makeFileTable. Paths are relative to prefix,
+%   ebrains.bucket.sync.internal.makeFileTable. Paths are relative to prefix,
 %   which is "" for the whole bucket or a folder name that ends with "/".
 %   Objects that mark folders are left out (see
 %   ebrains.bucket.internal.isFolderObject).
@@ -22,7 +22,7 @@ function files = listRemoteFiles(bucketName, prefix, client)
 %   segment checksums. A smaller object uploaded in segments reports such
 %   a checksum too, and cannot be told apart in the listing.
 %
-%   See also ebrains.bucket.internal.listLocalFiles, ebrains.bucket.listBucketObjects
+%   See also ebrains.bucket.sync.internal.listLocalFiles, ebrains.bucket.listBucketObjects
 
     arguments
         bucketName (1,1) string
@@ -33,7 +33,7 @@ function files = listRemoteFiles(bucketName, prefix, client)
     objects = ebrains.bucket.listBucketObjects(bucketName, Prefix=prefix, Client=client);
 
     if isempty(objects)
-        files = ebrains.bucket.internal.makeFileTable(strings(0, 1), zeros(0, 1));
+        files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
         return
     end
 
@@ -69,7 +69,7 @@ function files = listRemoteFiles(bucketName, prefix, client)
     maxSingleObjectBytes = 5 * 1024^3;
     hashes(contains(hashes, "-") | bytes > maxSingleObjectBytes) = "";
 
-    files = ebrains.bucket.internal.makeFileTable(paths, bytes, modifiedTimes, hashes);
+    files = ebrains.bucket.sync.internal.makeFileTable(paths, bytes, modifiedTimes, hashes);
 end
 
 function values = getTextField(objects, fieldName)

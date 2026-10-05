@@ -65,11 +65,11 @@ ebrains.bucket.deleteObject("my-bucket", "results/summary.csv");
 Sync a whole folder, the way rsync does: only new and changed files are sent, so a sync that is interrupted picks up where it stopped when run again. `Delete=true` also deletes what the source does not have, which makes the target an exact mirror, and `DryRun=true` shows the plan without changing anything:
 ```matlab
 % Make the "results" folder of the bucket match the local folder
-ebrains.bucket.syncToBucket("results", "my-bucket", Prefix="results", Delete=true, DryRun=true);
-ebrains.bucket.syncToBucket("results", "my-bucket", Prefix="results", Delete=true);
+ebrains.bucket.sync.toBucket("results", "my-bucket", Prefix="results", Delete=true, DryRun=true);
+ebrains.bucket.sync.toBucket("results", "my-bucket", Prefix="results", Delete=true);
 
 % Make a local folder match the bucket
-actions = ebrains.bucket.syncFromBucket("my-bucket", "data", Exclude=["*.tmp", ".git"]);
+actions = ebrains.bucket.sync.fromBucket("my-bucket", "data", Exclude=["*.tmp", ".git"]);
 ```
 
 ### 3) Download Knowledge Graph metadata

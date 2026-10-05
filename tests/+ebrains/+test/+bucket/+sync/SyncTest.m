@@ -2,7 +2,7 @@ classdef SyncTest < matlab.unittest.TestCase
     % SyncTest - Unit tests for syncing local folders with Data Proxy buckets
     %
     % The planning and listing helpers are tested on their own, and
-    % ebrains.bucket.syncToBucket and ebrains.bucket.syncFromBucket with a
+    % ebrains.bucket.sync.toBucket and ebrains.bucket.sync.fromBucket with a
     % MockBucketsClient and stand-ins for the uploader and downloader, so
     % no request reaches the Data Proxy. A listing is answered by two
     % canned responses: the bucket stat, whose object count ends the
@@ -27,7 +27,7 @@ classdef SyncTest < matlab.unittest.TestCase
             source = makeFiles(["new.txt", "same.txt", "grown.txt"], [1, 2, 30]);
             target = makeFiles(["same.txt", "grown.txt", "extra.txt"], [2, 3, 4]);
 
-            plan = ebrains.bucket.internal.planSync(source, target);
+            plan = ebrains.bucket.sync.internal.planSync(source, target);
 
             testCase.verifyEqual(plan.Path, ["extra.txt"; "grown.txt"; "new.txt"; "same.txt"]);
             testCase.verifyEqual(plan.Action, ["none"; "copy"; "copy"; "none"]);
@@ -39,7 +39,7 @@ classdef SyncTest < matlab.unittest.TestCase
             source = makeFiles("a.txt", 1);
             target = makeFiles(["a.txt", "extra.txt"], [1, 4]);
 
-            plan = ebrains.bucket.internal.planSync(source, target, Delete=true);
+            plan = ebrains.bucket.sync.internal.planSync(source, target, Delete=true);
 
             testCase.verifyEqual(plan.Action, ["none"; "delete"]);
         end
@@ -51,7 +51,7 @@ classdef SyncTest < matlab.unittest.TestCase
             target = makeFiles(["changed.txt", "older.txt", "within.txt"], [1, 1, 1], ...
                 [t0, t0, t0]);
 
-            plan = ebrains.bucket.internal.planSync(source, target);
+            plan = ebrains.bucket.sync.internal.planSync(source, target);
 
             testCase.verifyEqual(plan.Reason, ["newer"; "unchanged"; "unchanged"]);
         end
@@ -61,7 +61,7 @@ classdef SyncTest < matlab.unittest.TestCase
             source = makeFiles("a.txt", 1, t0 + days(1));
             target = makeFiles("a.txt", 1, t0);
 
-            plan = ebrains.bucket.internal.planSync(source, target, Comparison="Size");
+            plan = ebrains.bucket.sync.internal.planSync(source, target, Comparison="Size");
 
             testCase.verifyEqual(plan.Action, "none");
         end
@@ -70,7 +70,7 @@ classdef SyncTest < matlab.unittest.TestCase
             source = makeFiles("a.txt", 1, datetime(2024, 1, 1, 'TimeZone', 'UTC'));
             target = makeFiles("a.txt", 1);
 
-            plan = ebrains.bucket.internal.planSync(source, target);
+            plan = ebrains.bucket.sync.internal.planSync(source, target);
 
             testCase.verifyEqual(plan.Reason, "unchanged");
         end
@@ -84,7 +84,7 @@ classdef SyncTest < matlab.unittest.TestCase
             target = makeFiles(["edited.txt", "same.txt", "unknown.txt"], [1, 1, 1], ...
                 [t0 + days(1), t0, t0], ["ccc", "BBB", "ddd"]);
 
-            plan = ebrains.bucket.internal.planSync(source, target, Comparison="Checksum");
+            plan = ebrains.bucket.sync.internal.planSync(source, target, Comparison="Checksum");
 
             testCase.verifyEqual(plan.Reason, ["checksum"; "unchanged"; "newer"]);
         end
@@ -92,7 +92,7 @@ classdef SyncTest < matlab.unittest.TestCase
         function testPlanOfEmptySides(testCase)
             empty = makeFiles(strings(0, 1), zeros(0, 1));
 
-            plan = ebrains.bucket.internal.planSync(empty, empty);
+            plan = ebrains.bucket.sync.internal.planSync(empty, empty);
 
             testCase.verifyEqual(height(plan), 0);
             testCase.verifyEqual(plan.Properties.VariableNames, {'Path', 'Action', 'Reason', 'Bytes'});
@@ -104,7 +104,7 @@ classdef SyncTest < matlab.unittest.TestCase
                 "src/.git/HEAD", "raw/scratch/x.dat", "other/raw/scratch/y.dat", "keep.txt"], ...
                 ones(1, 8));
 
-            kept = ebrains.bucket.internal.excludeFiles(files, ["*.tmp", ".git", "/raw/scratch"]);
+            kept = ebrains.bucket.sync.internal.excludeFiles(files, ["*.tmp", ".git", "/raw/scratch"]);
 
             testCase.verifyEqual(kept.Path, ["sub/b.tmpx"; "other/raw/scratch/y.dat"; "keep.txt"]);
         end
@@ -113,7 +113,7 @@ classdef SyncTest < matlab.unittest.TestCase
             files = makeFiles([".git/config", "src/.git/HEAD", "build/a.o", "raw/scratch/x.dat", ...
                 "other/raw/scratch/y.dat", "keep.txt"], ones(1, 6));
 
-            kept = ebrains.bucket.internal.excludeFiles(files, [".git/", "build/", "/raw/scratch/"]);
+            kept = ebrains.bucket.sync.internal.excludeFiles(files, [".git/", "build/", "/raw/scratch/"]);
 
             testCase.verifyEqual(kept.Path, ["other/raw/scratch/y.dat"; "keep.txt"]);
         end
@@ -121,7 +121,7 @@ classdef SyncTest < matlab.unittest.TestCase
         function testExcludeEscapesRegularExpressionCharacters(testCase)
             files = makeFiles(["a(1).txt", "a1.txt", "sub/x.y", "sub/xzy"], ones(1, 4));
 
-            kept = ebrains.bucket.internal.excludeFiles(files, ["a(?).txt", "sub/x.y"]);
+            kept = ebrains.bucket.sync.internal.excludeFiles(files, ["a(?).txt", "sub/x.y"]);
 
             testCase.verifyEqual(kept.Path, ["a1.txt"; "sub/xzy"]);
         end
@@ -132,7 +132,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "sub", "deeper", "inner.txt"), "abcdef");
             mkdir(fullfile(testCase.Folder, "empty"));
 
-            files = ebrains.bucket.internal.listLocalFiles(testCase.Folder);
+            files = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
 
             files = sortrows(files, "Path");
             testCase.verifyEqual(files.Path, ["sub/deeper/inner.txt"; "top.txt"]);
@@ -142,7 +142,7 @@ classdef SyncTest < matlab.unittest.TestCase
         end
 
         function testListLocalFilesOfMissingFolderIsEmpty(testCase)
-            files = ebrains.bucket.internal.listLocalFiles(fullfile(testCase.Folder, "missing"));
+            files = ebrains.bucket.sync.internal.listLocalFiles(fullfile(testCase.Folder, "missing"));
             testCase.verifyEqual(height(files), 0);
         end
 
@@ -153,7 +153,7 @@ classdef SyncTest < matlab.unittest.TestCase
                 ["2024-05-03T10:22:33.123456", "", "2024-05-03T10:22:33Z", ""], ...
                 ["ABCDEF", "", "1234-2", ""]));
 
-            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "set/", testCase.Client);
+            files = ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "set/", testCase.Client);
 
             testCase.Client.verifyRequestURL(2, 'prefix=set');
             testCase.verifyEqual(files.Path, ["a.txt"; "sub/b.txt"]);
@@ -170,7 +170,7 @@ classdef SyncTest < matlab.unittest.TestCase
                 [1, 1, 1, 1, 1, 1]));
 
             files = testCase.verifyWarning( ...
-                @() ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client), ...
+                @() ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "", testCase.Client), ...
                 'EBRAINS:Bucket:UnsafeObjectName');
 
             testCase.verifyEqual(files.Path, ["ok.txt"; "sub/ok.txt"]);
@@ -180,7 +180,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addListing(testCase.Client, makeObjects(["a.txt", "b.txt", "c.txt", "d.txt"], [1, 1, 1, 1], ...
                 ["2024-05-03T12:22:33+02:00", "2024-05-03T12:22:33.5+0200", "2024-05-03T10:22:33Z", "not a time"]));
 
-            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
+            files = ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "", testCase.Client);
 
             expected = datetime(2024, 5, 3, 10, 22, 33, 'TimeZone', 'UTC');
             testCase.verifyEqual(files.ModifiedTime(1:3), repmat(expected, 3, 1));
@@ -193,7 +193,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addListing(testCase.Client, makeObjects(["big.bin", "small.bin"], [6 * 1024^3, 1], ...
                 ["", ""], ["abcdef", "abcdef"]));
 
-            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
+            files = ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "", testCase.Client);
 
             testCase.verifyEqual(files.Hash, [""; "abcdef"]);
         end
@@ -201,7 +201,7 @@ classdef SyncTest < matlab.unittest.TestCase
         function testListRemoteFilesOfEmptyBucket(testCase)
             addListing(testCase.Client, makeObjects(string.empty));
 
-            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
+            files = ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "", testCase.Client);
 
             testCase.verifyEqual(height(files), 0);
         end
@@ -211,12 +211,12 @@ classdef SyncTest < matlab.unittest.TestCase
             filePath = fullfile(testCase.Folder, "abc.txt");
             writeFile(filePath, "abc");
 
-            hash = ebrains.bucket.internal.computeMD5(filePath);
+            hash = ebrains.bucket.sync.internal.computeMD5(filePath);
 
             testCase.verifyEqual(hash, "900150983cd24fb0d6963f7d28e17f72");
         end
 
-        %% syncToBucket
+        %% toBucket
         function testSyncToBucketUploadsNewAndChangedFiles(testCase)
             writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
             writeFile(fullfile(testCase.Folder, "sub", "grown.txt"), "abcdef");
@@ -228,7 +228,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addUploadUrls(testCase.Client, 2);
             [uploader, getUploads] = recordingUploader();
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Prefix="/results", Uploader=uploader, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Path, ["new.txt"; "same.txt"; "sub/grown.txt"]);
@@ -246,7 +246,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addListing(testCase.Client, makeObjects("a.txt", 3, "2000-01-01T00:00:00"));
             addUploadUrls(testCase.Client, 1);
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Uploader=recordingUploader(), Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Reason, "newer");
@@ -257,7 +257,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
             addListing(testCase.Client, makeObjects("extra.txt", 1));
 
-            output = evalc(['actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ' ...
+            output = evalc(['actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ' ...
                 'Delete=true, DryRun=true, Client=testCase.Client);']);
 
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2, ...
@@ -271,7 +271,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
             addListing(testCase.Client, makeObjects(["x.txt", "y.txt"], [1, 1]));
 
-            output = evalc(['actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ' ...
+            output = evalc(['actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ' ...
                 'Delete=true, MaxDelete=1, DryRun=true, Client=testCase.Client);']);
 
             testCase.verifyEqual(actions.Status, ["planned"; "skipped"; "skipped"]); %#ok<NODEF> assigned by evalc
@@ -286,7 +286,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             addListing(testCase.Client, makeObjects("a.txt", 3));
 
-            actions = testCase.verifyWarning(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Client=testCase.Client, Verbose=false), 'EBRAINS:Bucket:Sync:NoRemoteTimes');
 
             testCase.verifyEqual(actions.Reason, "unchanged");
@@ -298,7 +298,7 @@ classdef SyncTest < matlab.unittest.TestCase
                 ["data/keep.txt", "data/extra.txt"], [3, 1], ["2100-01-01T00:00:00", ""]));
             testCase.Client.addResponse('OK', struct());
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Prefix="data/", Delete=true, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Action, ["delete"; "none"]);
@@ -312,7 +312,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addListing(testCase.Client, makeObjects( ...
                 ["keep.txt", "extra.txt"], [3, 1], ["2100-01-01T00:00:00", ""]));
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Action, ["none"; "none"]);
@@ -325,7 +325,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addListing(testCase.Client, makeObjects( ...
                 ["a.txt", "remote.tmp"], [3, 1], ["2100-01-01T00:00:00", ""]));
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Exclude="*.tmp", Delete=true, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Path, "a.txt");
@@ -335,7 +335,7 @@ classdef SyncTest < matlab.unittest.TestCase
         function testSyncToBucketRefusesToEmptyBucketFromEmptyFolder(testCase)
             addListing(testCase.Client, makeObjects(["a.txt", "b.txt"], [1, 1]));
 
-            testCase.verifyError(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            testCase.verifyError(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Delete=true, Client=testCase.Client, Verbose=false), ...
                 'EBRAINS:Bucket:Sync:EmptySource');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
@@ -345,7 +345,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
             addListing(testCase.Client, makeObjects(["x.txt", "y.txt"], [1, 1]));
 
-            testCase.verifyError(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            testCase.verifyError(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Delete=true, MaxDelete=1, Client=testCase.Client, Verbose=false), ...
                 'EBRAINS:Bucket:Sync:TooManyDeletions');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2, ...
@@ -363,7 +363,7 @@ classdef SyncTest < matlab.unittest.TestCase
             uploader = @(source, varargin) deal(~endsWith(source, "bad.txt"), ...
                 ifThen(endsWith(source, "bad.txt"), refused, accepted));
 
-            testCase.verifyWarning(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Delete=true, Uploader=uploader, Client=testCase.Client, Verbose=false), ...
                 'EBRAINS:Bucket:Sync:Incomplete');
 
@@ -374,7 +374,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addUploadUrls(testCase.Client, 2);
             warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
             testCase.addTeardown(@() warning(warningState));
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Delete=true, Uploader=uploader, Client=testCase.Client, Verbose=false);
             testCase.verifyEqual(actions.Path, ["bad.txt"; "extra.txt"; "good.txt"]);
             testCase.verifyEqual(actions.Status, ["failed"; "skipped"; "done"]);
@@ -392,7 +392,7 @@ classdef SyncTest < matlab.unittest.TestCase
                 [past, past], [md5OfAbc, md5OfAbc]));
             addUploadUrls(testCase.Client, 1);
 
-            actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
                 Comparison="Checksum", Uploader=recordingUploader(), ...
                 Client=testCase.Client, Verbose=false);
 
@@ -406,7 +406,7 @@ classdef SyncTest < matlab.unittest.TestCase
             addUploadUrls(testCase.Client, 1);
             uploader = recordingUploader(); %#ok<NASGU> read by evalc below
 
-            output = evalc(['ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ' ...
+            output = evalc(['ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ' ...
                 'Uploader=uploader, Client=testCase.Client)']);
 
             testCase.verifySubstring(output, '1 file(s) to upload (3.00 bytes), 0 to delete, 0 unchanged.');
@@ -415,14 +415,14 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifySubstring(output, 'Done: 1 copied, 0 deleted, 0 failed.');
         end
 
-        %% syncFromBucket
+        %% fromBucket
         function testSyncFromBucketDownloadsIntoNewFolder(testCase)
             target = fullfile(testCase.Folder, "mirror");
             addListing(testCase.Client, makeObjects( ...
                 ["set/a.txt", "set/sub/b.txt"], [3, 3]));
             addDownloadUrls(testCase.Client, 2);
 
-            actions = ebrains.bucket.syncFromBucket("my-bucket", target, Prefix="set", ...
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", target, Prefix="set", ...
                 Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Action, ["download"; "download"]);
@@ -436,7 +436,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             addListing(testCase.Client, makeObjects("a.txt", 3, "2000-01-01T00:00:00"));
 
-            actions = ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
                 Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Action, "none");
@@ -448,7 +448,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "sub", "extra.txt"), "abc");
             addListing(testCase.Client, makeObjects("a.txt", 3, "2000-01-01T00:00:00"));
 
-            actions = ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
                 Delete=true, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Path, ["a.txt"; "sub/extra.txt"]);
@@ -467,7 +467,7 @@ classdef SyncTest < matlab.unittest.TestCase
             warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
             testCase.addTeardown(@() warning(warningState));
 
-            actions = ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
                 Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Status, "failed");
@@ -486,7 +486,7 @@ classdef SyncTest < matlab.unittest.TestCase
             warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
             testCase.addTeardown(@() warning(warningState));
 
-            actions = ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
                 Delete=true, Client=testCase.Client, Verbose=false);
 
             testCase.verifyEqual(actions.Path, ["notes*.md"; "notes-final.md"]);
@@ -499,7 +499,7 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             addListing(testCase.Client, makeObjects(string.empty));
 
-            testCase.verifyError(@() ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+            testCase.verifyError(@() ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
                 Prefix="typo", Delete=true, Client=testCase.Client, Verbose=false), ...
                 'EBRAINS:Bucket:Sync:EmptySource');
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
@@ -509,7 +509,7 @@ classdef SyncTest < matlab.unittest.TestCase
             filePath = fullfile(testCase.Folder, "a.txt");
             writeFile(filePath, "abc");
 
-            testCase.verifyError(@() ebrains.bucket.syncFromBucket("my-bucket", filePath, ...
+            testCase.verifyError(@() ebrains.bucket.sync.fromBucket("my-bucket", filePath, ...
                 Client=testCase.Client, Verbose=false), ...
                 'EBRAINS:Bucket:Sync:TargetIsFile');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
@@ -525,7 +525,7 @@ function files = makeFiles(paths, bytes, modifiedTimes, hashes)
         modifiedTimes datetime = NaT(numel(paths), 1)
         hashes string = strings(numel(paths), 1)
     end
-    files = ebrains.bucket.internal.makeFileTable(paths, bytes, modifiedTimes, hashes);
+    files = ebrains.bucket.sync.internal.makeFileTable(paths, bytes, modifiedTimes, hashes);
 end
 
 function page = makeObjects(names, bytes, lastModified, hashes)

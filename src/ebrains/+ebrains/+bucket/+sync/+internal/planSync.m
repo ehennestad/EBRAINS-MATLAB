@@ -1,8 +1,8 @@
 function plan = planSync(sourceFiles, targetFiles, options)
 % planSync - Decide what to copy and delete to make a target match a source
 %
-%   plan = ebrains.bucket.internal.planSync(sourceFiles, targetFiles)
-%   compares two file tables, as ebrains.bucket.internal.makeFileTable
+%   plan = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles)
+%   compares two file tables, as ebrains.bucket.sync.internal.makeFileTable
 %   describes them, and returns a table with one row per path found on
 %   either side, sorted by path, with the variables
 %       Path   : Path relative to the synced folder, with "/" separators
@@ -35,7 +35,7 @@ function plan = planSync(sourceFiles, targetFiles, options)
 %                       the time resolution of FAT file systems and the
 %                       fraction of a second the listing times lose.
 %
-%   See also ebrains.bucket.syncToBucket, ebrains.bucket.syncFromBucket
+%   See also ebrains.bucket.sync.toBucket, ebrains.bucket.sync.fromBucket
 
     arguments
         sourceFiles table

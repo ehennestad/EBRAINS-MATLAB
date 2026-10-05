@@ -1,12 +1,12 @@
 classdef SyncOptions
-% SyncOptions - Options of ebrains.bucket.syncToBucket and ebrains.bucket.syncFromBucket
+% SyncOptions - Options of ebrains.bucket.sync.toBucket and ebrains.bucket.sync.fromBucket
 %
 %   The two sync functions take these options as name-value arguments and
 %   hand them on to the sync engine as one object, so the defaults and the
 %   validation live here and nowhere else. An object can also be built
 %   directly, to see the defaults:
 %
-%       ebrains.bucket.SyncOptions()
+%       ebrains.bucket.sync.SyncOptions()
 %
 %   Properties
 %       Prefix      : Folder of the bucket to sync, such as "results/".
@@ -33,7 +33,7 @@ classdef SyncOptions
 %       Exclude     : Wildcard patterns of paths to leave out, such as
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither transferred nor deleted. See
-%                     ebrains.bucket.internal.excludeFiles for the rules.
+%                     ebrains.bucket.sync.internal.excludeFiles for the rules.
 %       DryRun      : Only plan: list what would be transferred and
 %                     deleted, and change nothing. A deletion that a real
 %                     run would refuse (see MaxDelete) is listed as skipped
@@ -49,7 +49,7 @@ classdef SyncOptions
 %       Downloader  : Function that downloads a signed URL to a file, as
 %                     for ebrains.bucket.downloadFile. Meant for tests.
 %
-%   See also ebrains.bucket.syncToBucket, ebrains.bucket.syncFromBucket
+%   See also ebrains.bucket.sync.toBucket, ebrains.bucket.sync.fromBucket
 
     properties
         Prefix (1,1) string = ""
@@ -70,11 +70,11 @@ classdef SyncOptions
         function obj = SyncOptions(options)
         % SyncOptions - Options object from name-value arguments
         %
-        %   options = ebrains.bucket.SyncOptions(Name, Value, ...) sets the
+        %   options = ebrains.bucket.sync.SyncOptions(Name, Value, ...) sets the
         %   named properties and leaves the others at their defaults.
 
             arguments
-                options.?ebrains.bucket.SyncOptions
+                options.?ebrains.bucket.sync.SyncOptions
             end
 
             for name = string(fieldnames(options))'
@@ -87,7 +87,7 @@ classdef SyncOptions
         function obj = fromStruct(options)
         % fromStruct - Options object from a struct of name-value arguments
         %
-        %   options = ebrains.bucket.SyncOptions.fromStruct(s) is for a
+        %   options = ebrains.bucket.sync.SyncOptions.fromStruct(s) is for a
         %   function that collects the options with options.?SyncOptions
         %   in its arguments block, which gives it a struct.
 
@@ -96,7 +96,7 @@ classdef SyncOptions
             end
 
             nameValues = namedargs2cell(options);
-            obj = ebrains.bucket.SyncOptions(nameValues{:});
+            obj = ebrains.bucket.sync.SyncOptions(nameValues{:});
         end
     end
 end

@@ -3,7 +3,7 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
 
     methods (Test)
         function testDefaults(testCase)
-            options = ebrains.bucket.SyncOptions();
+            options = ebrains.bucket.sync.SyncOptions();
 
             testCase.verifyEqual(options.Prefix, "");
             testCase.verifyFalse(options.Delete);
@@ -18,7 +18,7 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
         end
 
         function testNameValuesSetProperties(testCase)
-            options = ebrains.bucket.SyncOptions(Delete=true, Exclude=[".git", "*.tmp"], MaxDelete=10);
+            options = ebrains.bucket.sync.SyncOptions(Delete=true, Exclude=[".git", "*.tmp"], MaxDelete=10);
 
             testCase.verifyTrue(options.Delete);
             testCase.verifyEqual(options.Exclude, [".git", "*.tmp"]);
@@ -27,19 +27,19 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
         end
 
         function testFromStructMatchesNameValues(testCase)
-            options = ebrains.bucket.SyncOptions.fromStruct(struct('DryRun', true, 'Prefix', "sub/"));
+            options = ebrains.bucket.sync.SyncOptions.fromStruct(struct('DryRun', true, 'Prefix', "sub/"));
 
             testCase.verifyTrue(options.DryRun);
             testCase.verifyEqual(options.Prefix, "sub/");
         end
 
         function testInvalidComparisonIsRejected(testCase)
-            testCase.verifyError(@() ebrains.bucket.SyncOptions(Comparison="Hash"), ...
+            testCase.verifyError(@() ebrains.bucket.sync.SyncOptions(Comparison="Hash"), ...
                 ?MException);
         end
 
         function testUnknownOptionIsRejected(testCase)
-            testCase.verifyError(@() ebrains.bucket.SyncOptions(Colour="red"), ...
+            testCase.verifyError(@() ebrains.bucket.sync.SyncOptions(Colour="red"), ...
                 ?MException);
         end
 
@@ -49,7 +49,7 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             client = ebrains.mocks.MockBucketsClient();
 
-            testCase.verifyError(@() ebrains.bucket.syncToBucket(folderFixture.Folder, "my-bucket", ...
+            testCase.verifyError(@() ebrains.bucket.sync.toBucket(folderFixture.Folder, "my-bucket", ...
                 Colour="red", Client=client), ?MException);
             testCase.verifyEqual(client.getRequestCount(), 0);
         end

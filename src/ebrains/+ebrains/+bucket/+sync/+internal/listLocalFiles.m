@@ -1,10 +1,10 @@
 function files = listLocalFiles(rootFolder)
 % listLocalFiles - List the files below a local folder for a sync
 %
-%   files = ebrains.bucket.internal.listLocalFiles(rootFolder) returns a
+%   files = ebrains.bucket.sync.internal.listLocalFiles(rootFolder) returns a
 %   table with one row per file in rootFolder and its subfolders, with the
 %   variables Path, Bytes, ModifiedTime and Hash of
-%   ebrains.bucket.internal.makeFileTable. Paths are relative to
+%   ebrains.bucket.sync.internal.makeFileTable. Paths are relative to
 %   rootFolder and use "/" as separator on every platform, as object names
 %   do. Folders are not listed: an object store has no empty folders to
 %   sync them to. The checksums are left unknown, since computing them
@@ -12,14 +12,14 @@ function files = listLocalFiles(rootFolder)
 %
 %   A folder that does not exist has no files, so the table is empty.
 %
-%   See also ebrains.bucket.internal.listRemoteFiles, ebrains.bucket.internal.computeMD5
+%   See also ebrains.bucket.sync.internal.listRemoteFiles, ebrains.bucket.sync.internal.computeMD5
 
     arguments
         rootFolder (1,1) string
     end
 
     if ~isfolder(rootFolder)
-        files = ebrains.bucket.internal.makeFileTable(strings(0, 1), zeros(0, 1));
+        files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
         return
     end
 
@@ -47,7 +47,7 @@ function files = listLocalFiles(rootFolder)
 
     modifiedTimes = fileModifiedTimes(fullfile(folders, names), reshape([listing.datenum], [], 1));
 
-    files = ebrains.bucket.internal.makeFileTable(paths, [listing.bytes], modifiedTimes);
+    files = ebrains.bucket.sync.internal.makeFileTable(paths, [listing.bytes], modifiedTimes);
 end
 
 function modifiedTimes = fileModifiedTimes(absolutePaths, datenums)

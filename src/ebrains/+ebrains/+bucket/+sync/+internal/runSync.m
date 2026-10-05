@@ -1,15 +1,15 @@
 function actions = runSync(direction, localFolder, bucketName, syncOptions, client)
 % runSync - Make a bucket match a local folder, or a local folder match a bucket
 %
-%   actions = ebrains.bucket.internal.runSync(direction, localFolder,
+%   actions = ebrains.bucket.sync.internal.runSync(direction, localFolder,
 %   bucketName, syncOptions, client) does the work of
-%   ebrains.bucket.syncToBucket (direction "ToBucket") and
-%   ebrains.bucket.syncFromBucket (direction "FromBucket"), whose help
+%   ebrains.bucket.sync.toBucket (direction "ToBucket") and
+%   ebrains.bucket.sync.fromBucket (direction "FromBucket"), whose help
 %   describes the table it returns. syncOptions is an
-%   ebrains.bucket.SyncOptions and client the BucketsClient that sends the
+%   ebrains.bucket.sync.SyncOptions and client the BucketsClient that sends the
 %   requests. The sync works in four steps:
 %       1. List the files on both sides, without the excluded ones.
-%       2. Plan what to copy and delete (ebrains.bucket.internal.planSync).
+%       2. Plan what to copy and delete (ebrains.bucket.sync.internal.planSync).
 %       3. Copy the new and changed files.
 %       4. Delete the extraneous files, if asked to and no copy failed.
 %   A copy that fails does not stop the sync: the other files are copied,
@@ -20,7 +20,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         direction (1,1) string {mustBeMember(direction, ["ToBucket", "FromBucket"])}
         localFolder (1,1) string
         bucketName (1,1) string
-        syncOptions (1,1) ebrains.bucket.SyncOptions
+        syncOptions (1,1) ebrains.bucket.sync.SyncOptions
         client (1,1) ebrains.bucket.api.BucketsClient
     end
 
@@ -32,10 +32,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     % 1. List both sides
-    localFiles = ebrains.bucket.internal.listLocalFiles(localFolder);
-    remoteFiles = ebrains.bucket.internal.listRemoteFiles(bucketName, prefix, client);
-    localFiles = ebrains.bucket.internal.excludeFiles(localFiles, syncOptions.Exclude);
-    remoteFiles = ebrains.bucket.internal.excludeFiles(remoteFiles, syncOptions.Exclude);
+    localFiles = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
+    localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, syncOptions.Exclude);
+    remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, syncOptions.Exclude);
 
     warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel)
 
@@ -52,7 +52,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         copyAction = "download";
     end
 
-    actions = ebrains.bucket.internal.planSync(sourceFiles, targetFiles, ...
+    actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=syncOptions.Comparison, Delete=syncOptions.Delete);
     actions.Action(actions.Action == "copy") = copyAction;
 
@@ -227,7 +227,7 @@ function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
     for i = reshape(find(isInRemote), 1, [])
         j = remoteIndex(i);
         if remoteFiles.Hash(j) ~= "" && remoteFiles.Bytes(j) == localFiles.Bytes(i)
-            localFiles.Hash(i) = ebrains.bucket.internal.computeMD5( ...
+            localFiles.Hash(i) = ebrains.bucket.sync.internal.computeMD5( ...
                 fullfile(localFolder, localFiles.Path(i)));
         end
     end

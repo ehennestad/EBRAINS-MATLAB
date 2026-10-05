@@ -1,7 +1,7 @@
 function files = excludeFiles(files, patterns)
 % excludeFiles - Leave out the files that match exclude patterns
 %
-%   files = ebrains.bucket.internal.excludeFiles(files, patterns) removes
+%   files = ebrains.bucket.sync.internal.excludeFiles(files, patterns) removes
 %   the rows of a file table whose Path matches any of the patterns. The
 %   patterns are wildcard patterns:
 %       *   matches any characters except "/"
@@ -17,7 +17,7 @@ function files = excludeFiles(files, patterns)
 %   and "build/" leave out those folders wherever they are, as in a
 %   .gitignore file.
 %
-%   See also ebrains.bucket.internal.planSync
+%   See also ebrains.bucket.sync.internal.planSync
 
     arguments
         files table

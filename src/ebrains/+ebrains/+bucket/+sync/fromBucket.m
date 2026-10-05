@@ -1,23 +1,23 @@
-function actions = syncFromBucket(bucketName, localFolder, options)
-% syncFromBucket - Make a local folder match a Data Proxy bucket
+function actions = fromBucket(bucketName, localFolder, options)
+% fromBucket - Make a local folder match a Data Proxy bucket
 %
 %   Syntax:
-%       ebrains.bucket.syncFromBucket(bucketName, localFolder) downloads
+%       ebrains.bucket.sync.fromBucket(bucketName, localFolder) downloads
 %       the objects of the bucket that localFolder does not have or that
 %       have changed, the way rsync does. Files that are unchanged are not
 %       downloaded again, so running the sync again after an interruption
 %       picks up where it stopped. The folder is created if it does not
 %       exist, and the folders of the object names are created below it.
 %
-%       ebrains.bucket.syncFromBucket(..., Prefix=FOLDER) syncs a folder of
+%       ebrains.bucket.sync.fromBucket(..., Prefix=FOLDER) syncs a folder of
 %       the bucket instead of all of it. Paths below localFolder are then
 %       relative to that folder.
 %
-%       ebrains.bucket.syncFromBucket(..., Delete=true) also deletes the
+%       ebrains.bucket.sync.fromBucket(..., Delete=true) also deletes the
 %       local files that the bucket does not have, which makes localFolder
 %       an exact mirror of the bucket (or of the folder of it).
 %
-%       actions = ebrains.bucket.syncFromBucket(...) returns a table with
+%       actions = ebrains.bucket.sync.fromBucket(...) returns a table with
 %       one row per file, and what was done with it.
 %
 %   Input Arguments
@@ -51,7 +51,7 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %       Exclude     : Wildcard patterns of paths to leave out, such as
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither downloaded nor deleted. See
-%                     ebrains.bucket.internal.excludeFiles for the rules.
+%                     ebrains.bucket.sync.internal.excludeFiles for the rules.
 %       DryRun      : Only plan: list what would be downloaded and deleted,
 %                     and change nothing. A deletion that a real run would
 %                     refuse (see MaxDelete and below) is listed as skipped
@@ -94,21 +94,21 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %
 %   Example:
 %       % See what would happen, then mirror a folder of a bucket locally
-%       ebrains.bucket.syncFromBucket("my-bucket", "data", ...
+%       ebrains.bucket.sync.fromBucket("my-bucket", "data", ...
 %           Prefix="sub-01", Delete=true, DryRun=true);
-%       ebrains.bucket.syncFromBucket("my-bucket", "data", ...
+%       ebrains.bucket.sync.fromBucket("my-bucket", "data", ...
 %           Prefix="sub-01", Delete=true);
 %
-%   The options other than Client are those of ebrains.bucket.SyncOptions,
+%   The options other than Client are those of ebrains.bucket.sync.SyncOptions,
 %   which holds their defaults and validation.
 %
-%   See also ebrains.bucket.syncToBucket, ebrains.bucket.SyncOptions,
+%   See also ebrains.bucket.sync.toBucket, ebrains.bucket.sync.SyncOptions,
 %   ebrains.bucket.downloadFile, ebrains.bucket.createVirtualBucket
 
     arguments
         bucketName (1,1) string {mustBeNonzeroLengthText}
         localFolder (1,1) string {mustBeNonzeroLengthText}
-        options.?ebrains.bucket.SyncOptions
+        options.?ebrains.bucket.sync.SyncOptions
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
@@ -118,9 +118,9 @@ function actions = syncFromBucket(bucketName, localFolder, options)
     end
 
     client = options.Client;
-    syncOptions = ebrains.bucket.SyncOptions.fromStruct(rmfield(options, "Client"));
+    syncOptions = ebrains.bucket.sync.SyncOptions.fromStruct(rmfield(options, "Client"));
 
-    actions = ebrains.bucket.internal.runSync("FromBucket", localFolder, bucketName, syncOptions, client);
+    actions = ebrains.bucket.sync.internal.runSync("FromBucket", localFolder, bucketName, syncOptions, client);
 
     if nargout == 0
         clear actions

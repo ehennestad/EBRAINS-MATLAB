@@ -1,7 +1,7 @@
 function files = makeFileTable(paths, bytes, modifiedTimes, hashes)
 % makeFileTable - Table of files, as the sync functions compare them
 %
-%   files = ebrains.bucket.internal.makeFileTable(paths, bytes,
+%   files = ebrains.bucket.sync.internal.makeFileTable(paths, bytes,
 %   modifiedTimes, hashes) returns a table with one row per file and the
 %   variables
 %       Path         : Path relative to the synced folder, with "/" separators
@@ -14,8 +14,8 @@ function files = makeFileTable(paths, bytes, modifiedTimes, hashes)
 %   a table with no rows. modifiedTimes and hashes may be left out, which
 %   leaves them unknown.
 %
-%   See also ebrains.bucket.internal.listLocalFiles,
-%   ebrains.bucket.internal.listRemoteFiles, ebrains.bucket.internal.planSync
+%   See also ebrains.bucket.sync.internal.listLocalFiles,
+%   ebrains.bucket.sync.internal.listRemoteFiles, ebrains.bucket.sync.internal.planSync
 
     arguments
         paths string
