@@ -100,9 +100,9 @@ function modifiedTimes = parseListingTimes(timeTexts)
 
     timeTexts = regexprep(timeTexts, "\.\d+", "");
     timeTexts = regexprep(timeTexts, "Z$", "+00:00");
-    timeTexts = regexprep(timeTexts, "([+-]\d{2})(\d{2})$", "$1:$2");
+    timeTexts = regexprep(timeTexts, "([-+]\d{2})(\d{2})$", "$1:$2");
 
-    hasOffset = endsWith(timeTexts, regexpPattern("[+-]\d{2}:\d{2}"));
+    hasOffset = endsWith(timeTexts, regexpPattern("[-+]\d{2}:\d{2}"));
     isGiven = timeTexts ~= "";
 
     modifiedTimes(isGiven & hasOffset) = readTimes( ...
