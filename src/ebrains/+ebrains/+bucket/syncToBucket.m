@@ -96,27 +96,23 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %       ebrains.bucket.syncToBucket("results", "my-bucket", ...
 %           Prefix="results", Delete=true);
 %
-%   See also ebrains.bucket.syncFromBucket, ebrains.bucket.uploadFile,
-%   ebrains.bucket.listBucketObjects
+%   The options other than Client are those of ebrains.bucket.SyncOptions,
+%   which holds their defaults and validation.
+%
+%   See also ebrains.bucket.syncFromBucket, ebrains.bucket.SyncOptions,
+%   ebrains.bucket.uploadFile, ebrains.bucket.listBucketObjects
 
     arguments
         localFolder (1,1) string {mustBeFolder}
         bucketName (1,1) string {mustBeNonzeroLengthText}
-        options.Prefix (1,1) string = ""
-        options.Delete (1,1) logical = false
-        options.Comparison (1,1) string ...
-            {mustBeMember(options.Comparison, ["SizeAndTime", "Size", "Checksum"])} = "SizeAndTime"
-        options.Exclude string = string.empty
-        options.DryRun (1,1) logical = false
-        options.MaxDelete (1,1) double {mustBeNonnegative} = Inf
-        options.Verbose (1,1) logical = true
-        options.DisplayMode (1,1) string ...
-            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Command Window"
+        options.?ebrains.bucket.SyncOptions
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
-        options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
     end
 
-    actions = ebrains.bucket.internal.runSync("ToBucket", localFolder, bucketName, options);
+    client = options.Client;
+    syncOptions = ebrains.bucket.SyncOptions.fromStruct(rmfield(options, "Client"));
+
+    actions = ebrains.bucket.internal.runSync("ToBucket", localFolder, bucketName, syncOptions, client);
 
     if nargout == 0
         clear actions

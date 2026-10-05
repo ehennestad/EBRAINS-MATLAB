@@ -99,24 +99,17 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %       ebrains.bucket.syncFromBucket("my-bucket", "data", ...
 %           Prefix="sub-01", Delete=true);
 %
-%   See also ebrains.bucket.syncToBucket, ebrains.bucket.downloadFile,
-%   ebrains.bucket.createVirtualBucket
+%   The options other than Client are those of ebrains.bucket.SyncOptions,
+%   which holds their defaults and validation.
+%
+%   See also ebrains.bucket.syncToBucket, ebrains.bucket.SyncOptions,
+%   ebrains.bucket.downloadFile, ebrains.bucket.createVirtualBucket
 
     arguments
         bucketName (1,1) string {mustBeNonzeroLengthText}
         localFolder (1,1) string {mustBeNonzeroLengthText}
-        options.Prefix (1,1) string = ""
-        options.Delete (1,1) logical = false
-        options.Comparison (1,1) string ...
-            {mustBeMember(options.Comparison, ["SizeAndTime", "Size", "Checksum"])} = "SizeAndTime"
-        options.Exclude string = string.empty
-        options.DryRun (1,1) logical = false
-        options.MaxDelete (1,1) double {mustBeNonnegative} = Inf
-        options.Verbose (1,1) logical = true
-        options.DisplayMode (1,1) string ...
-            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Command Window"
+        options.?ebrains.bucket.SyncOptions
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
-        options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
     end
 
     if isfile(localFolder)
@@ -124,7 +117,10 @@ function actions = syncFromBucket(bucketName, localFolder, options)
             'The target "%s" is a file. Give the path of a folder.', localFolder)
     end
 
-    actions = ebrains.bucket.internal.runSync("FromBucket", localFolder, bucketName, options);
+    client = options.Client;
+    syncOptions = ebrains.bucket.SyncOptions.fromStruct(rmfield(options, "Client"));
+
+    actions = ebrains.bucket.internal.runSync("FromBucket", localFolder, bucketName, syncOptions, client);
 
     if nargout == 0
         clear actions

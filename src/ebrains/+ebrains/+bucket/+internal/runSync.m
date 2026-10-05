@@ -1,11 +1,13 @@
-function actions = runSync(direction, localFolder, bucketName, options)
+function actions = runSync(direction, localFolder, bucketName, syncOptions, client)
 % runSync - Make a bucket match a local folder, or a local folder match a bucket
 %
 %   actions = ebrains.bucket.internal.runSync(direction, localFolder,
-%   bucketName, options) does the work of ebrains.bucket.syncToBucket
-%   (direction "ToBucket") and ebrains.bucket.syncFromBucket (direction
-%   "FromBucket"), whose help describes the options and the table it
-%   returns. It works in four steps:
+%   bucketName, syncOptions, client) does the work of
+%   ebrains.bucket.syncToBucket (direction "ToBucket") and
+%   ebrains.bucket.syncFromBucket (direction "FromBucket"), whose help
+%   describes the table it returns. syncOptions is an
+%   ebrains.bucket.SyncOptions and client the BucketsClient that sends the
+%   requests. The sync works in four steps:
 %       1. List the files on both sides, without the excluded ones.
 %       2. Plan what to copy and delete (ebrains.bucket.internal.planSync).
 %       3. Copy the new and changed files.
@@ -18,11 +20,12 @@ function actions = runSync(direction, localFolder, bucketName, options)
         direction (1,1) string {mustBeMember(direction, ["ToBucket", "FromBucket"])}
         localFolder (1,1) string
         bucketName (1,1) string
-        options (1,1) struct
+        syncOptions (1,1) ebrains.bucket.SyncOptions
+        client (1,1) ebrains.bucket.api.BucketsClient
     end
 
     isToBucket = direction == "ToBucket";
-    prefix = normalizePrefix(options.Prefix);
+    prefix = normalizePrefix(syncOptions.Prefix);
     remoteLabel = "bucket """ + bucketName + """";
     if prefix ~= ""
         remoteLabel = remoteLabel + ", folder """ + prefix + """";
@@ -30,13 +33,13 @@ function actions = runSync(direction, localFolder, bucketName, options)
 
     % 1. List both sides
     localFiles = ebrains.bucket.internal.listLocalFiles(localFolder);
-    remoteFiles = ebrains.bucket.internal.listRemoteFiles(bucketName, prefix, options.Client);
-    localFiles = ebrains.bucket.internal.excludeFiles(localFiles, options.Exclude);
-    remoteFiles = ebrains.bucket.internal.excludeFiles(remoteFiles, options.Exclude);
+    remoteFiles = ebrains.bucket.internal.listRemoteFiles(bucketName, prefix, client);
+    localFiles = ebrains.bucket.internal.excludeFiles(localFiles, syncOptions.Exclude);
+    remoteFiles = ebrains.bucket.internal.excludeFiles(remoteFiles, syncOptions.Exclude);
 
-    warnIfRemoteTimesUnknown(localFiles, remoteFiles, options.Comparison, remoteLabel)
+    warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel)
 
-    if options.Comparison == "Checksum"
+    if syncOptions.Comparison == "Checksum"
         localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder);
     end
 
@@ -50,7 +53,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
     end
 
     actions = ebrains.bucket.internal.planSync(sourceFiles, targetFiles, ...
-        Comparison=options.Comparison, Delete=options.Delete);
+        Comparison=syncOptions.Comparison, Delete=syncOptions.Delete);
     actions.Action(actions.Action == "copy") = copyAction;
 
     % The status of each file is kept in plain arrays while the sync runs,
@@ -62,9 +65,9 @@ function actions = runSync(direction, localFolder, bucketName, options)
 
     isCopy = actions.Action == copyAction;
     isDelete = actions.Action == "delete";
-    [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), options.MaxDelete);
+    [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), syncOptions.MaxDelete);
 
-    if options.Verbose
+    if syncOptions.Verbose
         if isToBucket
             fprintf('Syncing "%s" to %s.\n', localFolder, remoteLabel);
         else
@@ -73,7 +76,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
         printPlanSummary(actions, isCopy, isDelete, copyAction)
     end
 
-    if options.DryRun
+    if syncOptions.DryRun
         % A dry run shows the plan, a refusal included, rather than stop
         status(isCopy) = "planned";
         if refusal == ""
@@ -82,7 +85,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
             status(isDelete) = "skipped";
             message(isDelete) = refusal;
         end
-        if options.Verbose
+        if syncOptions.Verbose
             printPlannedActions(actions, isCopy | isDelete)
             if refusal ~= ""
                 fprintf('[DryRun] A real run would stop before changing anything: %s\n', refusal);
@@ -105,7 +108,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
     for k = 1:numel(copyIndices)
         i = copyIndices(k);
         relativePath = actions.Path(i);
-        if options.Verbose
+        if syncOptions.Verbose
             fprintf('[%d/%d] %s %s (%s)\n', k, numel(copyIndices), ...
                 capitalize(copyAction), relativePath, ...
                 ebrains.util.getDataSizeLabel(actions.Bytes(i)));
@@ -115,16 +118,17 @@ function actions = runSync(direction, localFolder, bucketName, options)
             objectName = prefix + relativePath;
             if isToBucket
                 ebrains.bucket.uploadFile(bucketName, objectName, localFile, ...
-                    DisplayMode=options.DisplayMode, Client=options.Client, ...
-                    Uploader=options.Uploader);
+                    DisplayMode=syncOptions.DisplayMode, Client=client, ...
+                    Uploader=syncOptions.Uploader);
             else
-                downloadAndReplace(bucketName, objectName, localFile, actions.Bytes(i), options)
+                downloadAndReplace(bucketName, objectName, localFile, actions.Bytes(i), ...
+                    syncOptions, client)
             end
             status(i) = "done";
         catch ME
             status(i) = "failed";
             message(i) = string(ME.message);
-            if options.Verbose
+            if syncOptions.Verbose
                 fprintf('  Failed: %s\n', ME.message);
             end
         end
@@ -143,13 +147,13 @@ function actions = runSync(direction, localFolder, bucketName, options)
     for k = 1:numel(deleteIndices)
         i = deleteIndices(k);
         relativePath = actions.Path(i);
-        if options.Verbose
+        if syncOptions.Verbose
             fprintf('[%d/%d] Delete %s\n', k, numel(deleteIndices), relativePath);
         end
         try
             if isToBucket
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
-                    Client=options.Client);
+                    Client=client);
             else
                 deleteLocalFile(fullfile(localFolder, relativePath))
             end
@@ -157,7 +161,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
         catch ME
             status(i) = "failed";
             message(i) = string(ME.message);
-            if options.Verbose
+            if syncOptions.Verbose
                 fprintf('  Failed: %s\n', ME.message);
             end
         end
@@ -166,7 +170,7 @@ function actions = runSync(direction, localFolder, bucketName, options)
     actions.Status = status;
     actions.Message = message;
 
-    if options.Verbose
+    if syncOptions.Verbose
         fprintf('Done: %d copied, %d deleted, %d failed.\n', ...
             sum(isCopy & status == "done"), ...
             sum(isDelete & status == "done"), ...
@@ -261,7 +265,7 @@ function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles,
     end
 end
 
-function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, options)
+function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, syncOptions, client)
 % downloadAndReplace - Download to a temporary file, check it, and put it in place
 %
 %   The file at localFile is replaced only once the download is complete
@@ -277,8 +281,8 @@ function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, op
     temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
 
     ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
-        DisplayMode=options.DisplayMode, Client=options.Client, ...
-        Downloader=options.Downloader);
+        DisplayMode=syncOptions.DisplayMode, Client=client, ...
+        Downloader=syncOptions.Downloader);
 
     fileInfo = dir(temporaryFile);
     if isempty(fileInfo)
