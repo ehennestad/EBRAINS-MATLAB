@@ -13,7 +13,9 @@ function files = excludeFiles(files, patterns)
 %   folder of that name with everything in it. A pattern with "/" is
 %   matched against the path from the root of the synced folder, and also
 %   leaves out what is below a folder it matches: "raw/scratch" leaves out
-%   "raw/scratch/a.dat". A leading "/" is ignored.
+%   "raw/scratch/a.dat". A leading or trailing "/" is ignored, so ".git/"
+%   and "build/" leave out those folders wherever they are, as in a
+%   .gitignore file.
 %
 %   See also ebrains.bucket.internal.planSync
 
@@ -24,6 +26,7 @@ function files = excludeFiles(files, patterns)
 
     isExcluded = false(height(files), 1);
     for pattern = reshape(patterns, 1, [])
+        pattern = regexprep(pattern, "^/+|/+$", "");
         if strlength(pattern) == 0
             continue
         end
@@ -35,7 +38,6 @@ end
 function expression = patternToRegexp(pattern)
 
     isAnchored = contains(pattern, "/");
-    pattern = regexprep(pattern, "^/+", "");
 
     expression = regexprep(pattern, "([.+^$(){}\[\]|\\])", "\\$1");
     expression = replace(expression, "**", char(0));

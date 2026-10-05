@@ -39,12 +39,20 @@ function actions = syncToBucket(localFolder, bucketName, options)
 %                                     the same size as its object. Where
 %                                     the bucket reports no checksum, the
 %                                     file is judged as for "SizeAndTime".
+%                                     The checksum of an object uploaded
+%                                     in segments is not one of its
+%                                     content, so such an object is
+%                                     transferred on every sync; objects
+%                                     above 5 GB are always segmented and
+%                                     are judged by time instead.
 %       Exclude     : Wildcard patterns of paths to leave out, such as
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither uploaded nor deleted. See
 %                     ebrains.bucket.internal.excludeFiles for the rules.
 %       DryRun      : Only plan: list what would be uploaded and deleted,
-%                     and change nothing. Default is false.
+%                     and change nothing. A deletion that a real run would
+%                     refuse (see MaxDelete and below) is listed as skipped
+%                     with the reason. Default is false.
 %       MaxDelete   : Most objects the sync may delete. If the plan deletes
 %                     more, the sync stops before it changes anything.
 %                     Default is Inf.
@@ -108,7 +116,6 @@ function actions = syncToBucket(localFolder, bucketName, options)
         options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
     end
 
-    options.Downloader = @ebrains.external.webprogress.download;
     actions = ebrains.bucket.internal.runSync("ToBucket", localFolder, bucketName, options);
 
     if nargout == 0

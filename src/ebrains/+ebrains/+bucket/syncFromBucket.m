@@ -39,6 +39,12 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %                                     the same size as its object. Where
 %                                     the bucket reports no checksum, the
 %                                     file is judged as for "SizeAndTime".
+%                                     The checksum of an object uploaded
+%                                     in segments is not one of its
+%                                     content, so such an object is
+%                                     transferred on every sync; objects
+%                                     above 5 GB are always segmented and
+%                                     are judged by time instead.
 %                     A local file that was edited after it was downloaded
 %                     keeps its edits under "SizeAndTime" if its size is
 %                     unchanged. Use "Checksum" to replace it too.
@@ -47,7 +53,9 @@ function actions = syncFromBucket(bucketName, localFolder, options)
 %                     neither downloaded nor deleted. See
 %                     ebrains.bucket.internal.excludeFiles for the rules.
 %       DryRun      : Only plan: list what would be downloaded and deleted,
-%                     and change nothing. Default is false.
+%                     and change nothing. A deletion that a real run would
+%                     refuse (see MaxDelete and below) is listed as skipped
+%                     with the reason. Default is false.
 %       MaxDelete   : Most local files the sync may delete. If the plan
 %                     deletes more, the sync stops before it changes
 %                     anything. Default is Inf.
@@ -116,7 +124,6 @@ function actions = syncFromBucket(bucketName, localFolder, options)
             'The target "%s" is a file. Give the path of a folder.', localFolder)
     end
 
-    options.Uploader = @ebrains.external.webprogress.upload;
     actions = ebrains.bucket.internal.runSync("FromBucket", localFolder, bucketName, options);
 
     if nargout == 0

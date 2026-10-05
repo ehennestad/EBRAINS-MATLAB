@@ -45,9 +45,31 @@ function files = listLocalFiles(rootFolder)
     isInSubfolder = relativeFolders ~= "";
     paths(isInSubfolder) = relativeFolders(isInSubfolder) + "/" + names(isInSubfolder);
 
-    % dir reports the modification time as a datenum in local time
-    modifiedTimes = datetime(reshape([listing.datenum], [], 1), ...
-        'ConvertFrom', 'datenum', 'TimeZone', 'local');
+    modifiedTimes = fileModifiedTimes(fullfile(folders, names), reshape([listing.datenum], [], 1));
 
     files = ebrains.bucket.internal.makeFileTable(paths, [listing.bytes], modifiedTimes);
+end
+
+function modifiedTimes = fileModifiedTimes(absolutePaths, datenums)
+% fileModifiedTimes - Modification time of each file, in UTC
+%
+%   dir reports the time as a datenum in local wall-clock time, which is
+%   ambiguous for the hour that repeats when daylight saving time ends.
+%   The file system holds the time as an instant, which Java reads as
+%   milliseconds since the epoch, so that is used where Java is available.
+%   The paths are absolute: Java resolves a relative path against its own
+%   working directory, which need not be MATLAB's.
+
+    if usejava('jvm')
+        epochMilliseconds = zeros(numel(absolutePaths), 1);
+        for i = 1:numel(absolutePaths)
+            epochMilliseconds(i) = java.io.File(char(absolutePaths(i))).lastModified();
+        end
+        modifiedTimes = datetime(epochMilliseconds / 1000, ...
+            'ConvertFrom', 'posixtime', 'TimeZone', 'UTC');
+        % lastModified gives 0 for a file that vanished since the listing
+        modifiedTimes(epochMilliseconds == 0) = NaT;
+    else
+        modifiedTimes = datetime(datenums, 'ConvertFrom', 'datenum', 'TimeZone', 'local');
+    end
 end

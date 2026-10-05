@@ -34,6 +34,8 @@ function actions = runSync(direction, localFolder, bucketName, options)
     localFiles = ebrains.bucket.internal.excludeFiles(localFiles, options.Exclude);
     remoteFiles = ebrains.bucket.internal.excludeFiles(remoteFiles, options.Exclude);
 
+    warnIfRemoteTimesUnknown(localFiles, remoteFiles, options.Comparison, remoteLabel)
+
     if options.Comparison == "Checksum"
         localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder);
     end
@@ -50,12 +52,17 @@ function actions = runSync(direction, localFolder, bucketName, options)
     actions = ebrains.bucket.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=options.Comparison, Delete=options.Delete);
     actions.Action(actions.Action == "copy") = copyAction;
-    actions.Status = repmat("", height(actions), 1);
-    actions.Message = repmat("", height(actions), 1);
+
+    % The status of each file is kept in plain arrays while the sync runs,
+    % since assigning a table one element at a time is slow for buckets
+    % with many objects, and put in the table at the end.
+    nActions = height(actions);
+    status = repmat("", nActions, 1);
+    message = repmat("", nActions, 1);
 
     isCopy = actions.Action == copyAction;
     isDelete = actions.Action == "delete";
-    checkDeletions(actions, isDelete, height(sourceFiles), options.MaxDelete)
+    [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), options.MaxDelete);
 
     if options.Verbose
         if isToBucket
@@ -67,11 +74,27 @@ function actions = runSync(direction, localFolder, bucketName, options)
     end
 
     if options.DryRun
-        actions.Status(isCopy | isDelete) = "planned";
+        % A dry run shows the plan, a refusal included, rather than stop
+        status(isCopy) = "planned";
+        if refusal == ""
+            status(isDelete) = "planned";
+        else
+            status(isDelete) = "skipped";
+            message(isDelete) = refusal;
+        end
         if options.Verbose
             printPlannedActions(actions, isCopy | isDelete)
+            if refusal ~= ""
+                fprintf('[DryRun] A real run would stop before changing anything: %s\n', refusal);
+            end
         end
+        actions.Status = status;
+        actions.Message = message;
         return
+    end
+
+    if refusal ~= ""
+        error(char(refusalId), '%s', refusal)
     end
 
     % 3. Copy
@@ -84,7 +107,8 @@ function actions = runSync(direction, localFolder, bucketName, options)
         relativePath = actions.Path(i);
         if options.Verbose
             fprintf('[%d/%d] %s %s (%s)\n', k, numel(copyIndices), ...
-                capitalize(copyAction), relativePath, formatBytes(actions.Bytes(i)));
+                capitalize(copyAction), relativePath, ...
+                ebrains.util.getDataSizeLabel(actions.Bytes(i)));
         end
         try
             localFile = fullfile(localFolder, relativePath);
@@ -94,15 +118,12 @@ function actions = runSync(direction, localFolder, bucketName, options)
                     DisplayMode=options.DisplayMode, Client=options.Client, ...
                     Uploader=options.Uploader);
             else
-                ebrains.bucket.downloadFile(bucketName, objectName, localFile, ...
-                    DisplayMode=options.DisplayMode, Client=options.Client, ...
-                    Downloader=options.Downloader);
-                verifyDownloadedSize(localFile, actions.Bytes(i))
+                downloadAndReplace(bucketName, objectName, localFile, actions.Bytes(i), options)
             end
-            actions.Status(i) = "done";
+            status(i) = "done";
         catch ME
-            actions.Status(i) = "failed";
-            actions.Message(i) = string(ME.message);
+            status(i) = "failed";
+            message(i) = string(ME.message);
             if options.Verbose
                 fprintf('  Failed: %s\n', ME.message);
             end
@@ -112,11 +133,11 @@ function actions = runSync(direction, localFolder, bucketName, options)
     % 4. Delete. A failed copy may mean the source was listed wrongly or
     % the connection is lost, so nothing is deleted after one, the way
     % rsync and rclone hold back deletions after an error.
-    hasFailedCopy = any(actions.Status == "failed");
+    hasFailedCopy = any(status == "failed");
     deleteIndices = find(isDelete);
     if hasFailedCopy && ~isempty(deleteIndices)
-        actions.Status(deleteIndices) = "skipped";
-        actions.Message(deleteIndices) = "Not deleted, since a file failed to copy.";
+        status(deleteIndices) = "skipped";
+        message(deleteIndices) = "Not deleted, since a file failed to copy.";
         deleteIndices = [];
     end
     for k = 1:numel(deleteIndices)
@@ -130,26 +151,29 @@ function actions = runSync(direction, localFolder, bucketName, options)
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
                     Client=options.Client);
             else
-                delete(fullfile(localFolder, relativePath))
+                deleteLocalFile(fullfile(localFolder, relativePath))
             end
-            actions.Status(i) = "done";
+            status(i) = "done";
         catch ME
-            actions.Status(i) = "failed";
-            actions.Message(i) = string(ME.message);
+            status(i) = "failed";
+            message(i) = string(ME.message);
             if options.Verbose
                 fprintf('  Failed: %s\n', ME.message);
             end
         end
     end
 
+    actions.Status = status;
+    actions.Message = message;
+
     if options.Verbose
         fprintf('Done: %d copied, %d deleted, %d failed.\n', ...
-            sum(isCopy & actions.Status == "done"), ...
-            sum(isDelete & actions.Status == "done"), ...
-            sum(actions.Status == "failed"));
+            sum(isCopy & status == "done"), ...
+            sum(isDelete & status == "done"), ...
+            sum(status == "failed"));
     end
 
-    isFailed = actions.Status == "failed";
+    isFailed = status == "failed";
     if any(isFailed)
         failedPaths = actions.Path(isFailed);
         warning('EBRAINS:Bucket:Sync:Incomplete', ...
@@ -162,9 +186,29 @@ end
 
 function prefix = normalizePrefix(prefix)
 % normalizePrefix - Folder name in the bucket, without a leading "/" and with a trailing one
-    prefix = regexprep(prefix, "^/+", "");
+    prefix = ebrains.bucket.internal.removeLeadingSlash(prefix);
     if prefix ~= "" && ~endsWith(prefix, "/")
         prefix = prefix + "/";
+    end
+end
+
+function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel)
+% warnIfRemoteTimesUnknown - Say so when the time comparison cannot work
+%
+%   Without modification times, the default comparison judges every file
+%   of the same size on both sides unchanged, which should not pass in
+%   silence. Only files on both sides are compared by time, so the warning
+%   is for those.
+
+    if comparison ~= "SizeAndTime"
+        return
+    end
+    isCommon = ismember(remoteFiles.Path, localFiles.Path);
+    if any(isCommon) && all(isnat(remoteFiles.ModifiedTime(isCommon)))
+        warning('EBRAINS:Bucket:Sync:NoRemoteTimes', ...
+            ['The listing of %s reports no modification times, so files of ' ...
+             'the same size on both sides are judged unchanged. Use ' ...
+             'Comparison="Checksum" to compare their content instead.'], remoteLabel);
     end
 end
 
@@ -185,8 +229,14 @@ function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
     end
 end
 
-function checkDeletions(actions, isDelete, nSourceFiles, maxDelete)
-% checkDeletions - Refuse deletions that look like a mistake, before anything is changed
+function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles, maxDelete)
+% deletionRefusal - Why the planned deletions look like a mistake, or ""
+%
+%   Checked before anything is changed. The identifier is the error
+%   identifier a real run stops with.
+
+    identifier = "";
+    reason = "";
 
     nDelete = sum(isDelete);
     if nDelete == 0
@@ -197,38 +247,86 @@ function checkDeletions(actions, isDelete, nSourceFiles, maxDelete)
     % often a mistyped folder or prefix than what is wanted, and the
     % target can be emptied with deleteObject or delete instead.
     if nSourceFiles == 0
-        error('EBRAINS:Bucket:Sync:EmptySource', ...
-            ['The source has no files, so the sync would delete all %d ' ...
-             'file(s) of the target. Check the folder and the prefix; ' ...
-             'nothing was changed.'], nDelete)
+        identifier = "EBRAINS:Bucket:Sync:EmptySource";
+        reason = sprintf(['The source has no files, so the sync would delete ' ...
+            'all %d file(s) of the target. Check the folder and the prefix.'], nDelete);
+        return
     end
 
     if nDelete > maxDelete
-        error('EBRAINS:Bucket:Sync:TooManyDeletions', ...
-            ['The sync would delete %d file(s), more than MaxDelete (%d), ' ...
-             'for example "%s". Nothing was changed. Run with DryRun=true ' ...
-             'to see the plan.'], ...
-            nDelete, maxDelete, actions.Path(find(isDelete, 1)))
+        identifier = "EBRAINS:Bucket:Sync:TooManyDeletions";
+        reason = sprintf(['The sync would delete %d file(s), more than ' ...
+            'MaxDelete (%d), for example "%s".'], ...
+            nDelete, maxDelete, actions.Path(find(isDelete, 1)));
     end
 end
 
-function verifyDownloadedSize(localFile, expectedBytes)
-    fileInfo = dir(localFile);
-    if isempty(fileInfo) || fileInfo(1).bytes ~= expectedBytes
-        actualBytes = NaN;
-        if ~isempty(fileInfo)
-            actualBytes = fileInfo(1).bytes;
-        end
+function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, options)
+% downloadAndReplace - Download to a temporary file, check it, and put it in place
+%
+%   The file at localFile is replaced only once the download is complete
+%   and has the size the listing reports, so a failed download leaves it
+%   as it was. The temporary file sits next to it, so that the move is a
+%   rename on the same file system.
+
+    targetFolder = fileparts(localFile);
+    if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
+        mkdir(targetFolder)
+    end
+    temporaryFile = string(tempname(char(targetFolder))) + ".sync-part";
+    temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); %#ok<NASGU> runs on return or error
+
+    ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
+        DisplayMode=options.DisplayMode, Client=options.Client, ...
+        Downloader=options.Downloader);
+
+    fileInfo = dir(temporaryFile);
+    if isempty(fileInfo)
+        error('EBRAINS:Bucket:Sync:DownloadMissing', ...
+            'The download of "%s" produced no file.', objectName)
+    end
+    if fileInfo(1).bytes ~= expectedBytes
         error('EBRAINS:Bucket:Sync:SizeMismatch', ...
             'The downloaded file "%s" has %d bytes, where the object has %d.', ...
-            localFile, actualBytes, expectedBytes)
+            objectName, fileInfo(1).bytes, expectedBytes)
+    end
+
+    movefile(temporaryFile, localFile, "f")
+end
+
+function deleteIfFile(filePath)
+    if isfile(filePath)
+        delete(filePath)
+    end
+end
+
+function deleteLocalFile(filePath)
+% deleteLocalFile - Delete one file, and fail with an error when it stays
+%
+%   delete reports a file it cannot remove with a warning rather than an
+%   error, and expands "*" and "?" in the name to other files, so a name
+%   with either is refused and the file is checked afterwards. The warning
+%   is left to show, since it says why the file stayed.
+
+    [~, name, extension] = fileparts(filePath);
+    if contains(name + extension, ["*", "?"])
+        error('EBRAINS:Bucket:Sync:WildcardInName', ...
+            ['The file "%s" was not deleted: its name holds a wildcard ' ...
+             'character, which delete would expand to other files.'], filePath)
+    end
+
+    delete(filePath)
+
+    if isfile(filePath)
+        error('EBRAINS:Bucket:Sync:NotDeleted', ...
+            'The file "%s" could not be deleted.', filePath)
     end
 end
 
 function printPlanSummary(actions, isCopy, isDelete, copyAction)
     isExtraneousKept = actions.Reason == "extraneous" & ~isDelete;
     fprintf('%d file(s) to %s (%s), %d to delete, %d unchanged.\n', ...
-        sum(isCopy), copyAction, formatBytes(sum(actions.Bytes(isCopy))), ...
+        sum(isCopy), copyAction, ebrains.util.getDataSizeLabel(sum(actions.Bytes(isCopy))), ...
         sum(isDelete), sum(actions.Reason == "unchanged"));
     if any(isExtraneousKept)
         fprintf(['%d file(s) of the target are not in the source and are ' ...
@@ -245,14 +343,4 @@ end
 
 function text = capitalize(text)
     text = upper(extractBefore(text, 2)) + extractAfter(text, 1);
-end
-
-function text = formatBytes(bytes)
-    units = ["B", "KB", "MB", "GB", "TB"];
-    exponent = min(floor(log(max(bytes, 1)) / log(1024)), numel(units) - 1);
-    if exponent == 0
-        text = sprintf('%d B', bytes);
-    else
-        text = sprintf('%.1f %s', bytes / 1024^exponent, units(exponent + 1));
-    end
 end

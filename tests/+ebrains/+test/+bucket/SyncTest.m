@@ -109,6 +109,15 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(kept.Path, ["sub/b.tmpx"; "other/raw/scratch/y.dat"; "keep.txt"]);
         end
 
+        function testExcludeIgnoresTrailingSlashLikeGitignore(testCase)
+            files = makeFiles([".git/config", "src/.git/HEAD", "build/a.o", "raw/scratch/x.dat", ...
+                "other/raw/scratch/y.dat", "keep.txt"], ones(1, 6));
+
+            kept = ebrains.bucket.internal.excludeFiles(files, [".git/", "build/", "/raw/scratch/"]);
+
+            testCase.verifyEqual(kept.Path, ["other/raw/scratch/y.dat"; "keep.txt"]);
+        end
+
         function testExcludeEscapesRegularExpressionCharacters(testCase)
             files = makeFiles(["a(1).txt", "a1.txt", "sub/x.y", "sub/xzy"], ones(1, 4));
 
@@ -153,6 +162,40 @@ classdef SyncTest < matlab.unittest.TestCase
                 repmat(datetime(2024, 5, 3, 10, 22, 33, 'TimeZone', 'UTC'), 2, 1));
             testCase.verifyEqual(files.Hash, ["abcdef"; ""], ...
                 'The checksum of a multipart upload is not one of the content.');
+        end
+
+        function testListRemoteFilesLeavesOutNamesThatEscapeTheFolder(testCase)
+            addListing(testCase.Client, makeObjects( ...
+                ["../evil.txt", "sub/../../evil.sh", "back\slash.txt", "a//b.txt", "ok.txt", "sub/ok.txt"], ...
+                [1, 1, 1, 1, 1, 1]));
+
+            files = testCase.verifyWarning( ...
+                @() ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client), ...
+                'EBRAINS:Bucket:UnsafeObjectName');
+
+            testCase.verifyEqual(files.Path, ["ok.txt"; "sub/ok.txt"]);
+        end
+
+        function testListRemoteFilesReadsTimesWithOffsets(testCase)
+            addListing(testCase.Client, makeObjects(["a.txt", "b.txt", "c.txt", "d.txt"], [1, 1, 1, 1], ...
+                ["2024-05-03T12:22:33+02:00", "2024-05-03T12:22:33.5+0200", "2024-05-03T10:22:33Z", "yesterday"]));
+
+            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
+
+            expected = datetime(2024, 5, 3, 10, 22, 33, 'TimeZone', 'UTC');
+            testCase.verifyEqual(files.ModifiedTime(1:3), repmat(expected, 3, 1));
+            testCase.verifyTrue(isnat(files.ModifiedTime(4)));
+        end
+
+        function testListRemoteFilesDropsChecksumOfLargeObject(testCase)
+            % An object above 5 GiB is held as segments behind a manifest,
+            % whose checksum is not one of the content.
+            addListing(testCase.Client, makeObjects(["big.bin", "small.bin"], [6 * 1024^3, 1], ...
+                ["", ""], ["abcdef", "abcdef"]));
+
+            files = ebrains.bucket.internal.listRemoteFiles("my-bucket", "", testCase.Client);
+
+            testCase.verifyEqual(files.Hash, [""; "abcdef"]);
         end
 
         function testListRemoteFilesOfEmptyBucket(testCase)
@@ -222,6 +265,31 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(actions.Status, ["planned"; "planned"]); %#ok<NODEF> assigned by evalc
             testCase.verifySubstring(output, '[DryRun] Delete extra.txt');
             testCase.verifySubstring(output, '[DryRun] Upload new.txt');
+        end
+
+        function testSyncToBucketDryRunShowsARefusalInsteadOfStopping(testCase)
+            writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
+            addListing(testCase.Client, makeObjects(["x.txt", "y.txt"], [1, 1]));
+
+            output = evalc(['actions = ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ' ...
+                'Delete=true, MaxDelete=1, DryRun=true, Client=testCase.Client);']);
+
+            testCase.verifyEqual(actions.Status, ["planned"; "skipped"; "skipped"]); %#ok<NODEF> assigned by evalc
+            testCase.verifySubstring(char(actions.Message(2)), 'more than MaxDelete (1)');
+            testCase.verifySubstring(output, 'A real run would stop before changing anything');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testSyncToBucketWarnsWhenTheListingHasNoTimes(testCase)
+            % Without times, the default comparison cannot see a changed
+            % file of the same size, which must not pass in silence.
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            addListing(testCase.Client, makeObjects("a.txt", 3));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ...
+                Client=testCase.Client, Verbose=false), 'EBRAINS:Bucket:Sync:NoRemoteTimes');
+
+            testCase.verifyEqual(actions.Reason, "unchanged");
         end
 
         function testSyncToBucketDeletesExtraneousObjectsWhenAsked(testCase)
@@ -341,9 +409,9 @@ classdef SyncTest < matlab.unittest.TestCase
             output = evalc(['ebrains.bucket.syncToBucket(testCase.Folder, "my-bucket", ' ...
                 'Uploader=uploader, Client=testCase.Client)']);
 
-            testCase.verifySubstring(output, '1 file(s) to upload (3 B), 0 to delete, 0 unchanged.');
+            testCase.verifySubstring(output, '1 file(s) to upload (3.00 bytes), 0 to delete, 0 unchanged.');
             testCase.verifySubstring(output, 'Use Delete=true');
-            testCase.verifySubstring(output, '[1/1] Upload new.txt (3 B)');
+            testCase.verifySubstring(output, '[1/1] Upload new.txt (3.00 bytes)');
             testCase.verifySubstring(output, 'Done: 1 copied, 0 deleted, 0 failed.');
         end
 
@@ -389,8 +457,12 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
         end
 
-        function testSyncFromBucketReportsDownloadOfWrongSize(testCase)
-            addListing(testCase.Client, makeObjects("a.txt", 10));
+        function testSyncFromBucketReportsDownloadOfWrongSizeAndKeepsTheFile(testCase)
+            % The object was replaced between the listing and the download.
+            % The local file must be as it was, and the temporary file of
+            % the download must not remain next to it.
+            writeFile(fullfile(testCase.Folder, "a.txt"), "previous");
+            addListing(testCase.Client, makeObjects("a.txt", 10, "2100-01-01T00:00:00"));
             addDownloadUrls(testCase.Client, 1);
             warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
             testCase.addTeardown(@() warning(warningState));
@@ -400,6 +472,27 @@ classdef SyncTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(actions.Status, "failed");
             testCase.verifySubstring(char(actions.Message), 'has 3 bytes, where the object has 10');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'previous');
+            testCase.verifyEqual(listFileNames(testCase.Folder), "a.txt");
+        end
+
+        function testSyncFromBucketRefusesToDeleteANameWithWildcards(testCase)
+            % delete expands "*" and "?" to other files, so such a file is
+            % left and reported rather than risk the others.
+            testCase.assumeFalse(ispc, 'Windows does not allow "*" in a file name.');
+            writeFile(fullfile(testCase.Folder, "notes*.md"), "abc");
+            writeFile(fullfile(testCase.Folder, "notes-final.md"), "abc");
+            addListing(testCase.Client, makeObjects("notes-final.md", 3, "2000-01-01T00:00:00"));
+            warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
+            testCase.addTeardown(@() warning(warningState));
+
+            actions = ebrains.bucket.syncFromBucket("my-bucket", testCase.Folder, ...
+                Delete=true, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, ["notes*.md"; "notes-final.md"]);
+            testCase.verifyEqual(actions.Status(1), "failed");
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "notes-final.md")));
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "notes*.md")));
         end
 
         function testSyncFromBucketRefusesToEmptyFolderFromEmptyPrefix(testCase)
@@ -508,6 +601,12 @@ function writeFile(filePath, content)
     fileID = fopen(filePath, "w");
     fwrite(fileID, char(content));
     fclose(fileID);
+end
+
+function fileNames = listFileNames(folder)
+% listFileNames - Names of the files directly in a folder, as a string row
+    listing = dir(folder);
+    fileNames = string({listing(~[listing.isdir]).name});
 end
 
 function value = ifThen(condition, valueIfTrue, valueIfFalse)

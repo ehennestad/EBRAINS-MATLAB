@@ -9,11 +9,18 @@ function files = listRemoteFiles(bucketName, prefix, client)
 %   Objects that mark folders are left out (see
 %   ebrains.bucket.internal.isFolderObject).
 %
+%   Objects whose names could not be used as paths below a folder (a ".."
+%   segment, say) are left out with a warning; see
+%   ebrains.bucket.internal.isSafeRelativePath.
+%
 %   ModifiedTime is the time the object was uploaded, which the listing
 %   reports, and NaT where it cannot be read. Hash is the MD5 checksum the
-%   listing reports, and "" where there is none, or where the value is the
-%   checksum of a multipart upload ("<md5>-<parts>"), which does not
-%   match the checksum of the file's content.
+%   listing reports, and "" where there is none or where it cannot be the
+%   checksum of the content: the value of a multipart upload
+%   ("<md5>-<parts>"), or that of an object above 5 GiB, which the object
+%   store holds as segments behind a manifest whose checksum is one of the
+%   segment checksums. A smaller object uploaded in segments reports such
+%   a checksum too, and cannot be told apart in the listing.
 %
 %   See also ebrains.bucket.internal.listLocalFiles, ebrains.bucket.listBucketObjects
 
@@ -40,6 +47,17 @@ function files = listRemoteFiles(bucketName, prefix, client)
     names = names(isBelowPrefix);
 
     paths = extractAfter(names, strlength(prefix));
+
+    isSafe = ebrains.bucket.internal.isSafeRelativePath(paths);
+    if ~all(isSafe)
+        warning('EBRAINS:Bucket:UnsafeObjectName', ...
+            ['%d object(s) of bucket "%s" have names that do not stay below ' ...
+             'the synced folder, for example "%s", and are left out of the sync.'], ...
+            sum(~isSafe), bucketName, names(find(~isSafe, 1)));
+        objects = objects(isSafe);
+        paths = paths(isSafe);
+    end
+
     bytes = zeros(numel(objects), 1);
     for i = 1:numel(objects)
         bytes(i) = double(objects(i).bytes);
@@ -48,7 +66,8 @@ function files = listRemoteFiles(bucketName, prefix, client)
     modifiedTimes = parseListingTimes(getTextField(objects, 'last_modified'));
 
     hashes = getTextField(objects, 'hash');
-    hashes(contains(hashes, "-")) = "";
+    maxSingleObjectBytes = 5 * 1024^3;
+    hashes(contains(hashes, "-") | bytes > maxSingleObjectBytes) = "";
 
     files = ebrains.bucket.internal.makeFileTable(paths, bytes, modifiedTimes, hashes);
 end
@@ -70,27 +89,40 @@ end
 function modifiedTimes = parseListingTimes(timeTexts)
 % parseListingTimes - Read times such as "2024-05-03T10:22:33.123456" as UTC
 %
-%   The object store reports times in UTC, with or without a fraction of
-%   a second and a "Z" or zero offset. The fraction is dropped, which the
+%   The object store reports times in UTC without a zone, with or without
+%   a fraction of a second. A "Z" or an offset such as "+02:00" is read
+%   too, in case a listing carries one. The fraction is dropped, which the
 %   tolerance of the time comparison covers. Text in any other form gives
 %   NaT, which leaves the time out of the comparison.
 
     modifiedTimes = NaT(numel(timeTexts), 1);
     modifiedTimes.TimeZone = "UTC";
 
-    timeTexts = regexprep(timeTexts, "(\.\d+)?(Z|[+-]00:?00)?$", "");
+    timeTexts = regexprep(timeTexts, "\.\d+", "");
+    timeTexts = regexprep(timeTexts, "Z$", "+00:00");
+    timeTexts = regexprep(timeTexts, "([+-]\d{2})(\d{2})$", "$1:$2");
+
+    hasOffset = endsWith(timeTexts, regexpPattern("[+-]\d{2}:\d{2}"));
     isGiven = timeTexts ~= "";
-    inputFormat = "yyyy-MM-dd'T'HH:mm:ss";
+
+    modifiedTimes(isGiven & hasOffset) = readTimes( ...
+        timeTexts(isGiven & hasOffset), "yyyy-MM-dd'T'HH:mm:ssXXX");
+    modifiedTimes(isGiven & ~hasOffset) = readTimes( ...
+        timeTexts(isGiven & ~hasOffset), "yyyy-MM-dd'T'HH:mm:ss");
+end
+
+function times = readTimes(texts, inputFormat)
+% readTimes - datetime of each text in UTC, NaT where it is not in the format
     try
-        modifiedTimes(isGiven) = datetime(timeTexts(isGiven), ...
-            'InputFormat', inputFormat, 'TimeZone', 'UTC');
+        times = datetime(texts, 'InputFormat', inputFormat, 'TimeZone', 'UTC');
     catch
         % One text in another form fails the whole conversion, so the
         % times are read one by one to keep the others.
-        for i = reshape(find(isGiven), 1, [])
+        times = NaT(numel(texts), 1);
+        times.TimeZone = "UTC";
+        for i = 1:numel(texts)
             try
-                modifiedTimes(i) = datetime(timeTexts(i), ...
-                    'InputFormat', inputFormat, 'TimeZone', 'UTC');
+                times(i) = datetime(texts(i), 'InputFormat', inputFormat, 'TimeZone', 'UTC');
             catch
                 % Left as NaT
             end
