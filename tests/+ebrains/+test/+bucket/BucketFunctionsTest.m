@@ -479,7 +479,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyTrue(isfile(fullfile(rootPath, "ok.txt")));
             testCase.verifyTrue(isfile(fullfile(rootPath, "sub", "ok.txt")));
-            testCase.verifyEqual(listFileNames(folderFixture.Folder), strings(1, 0), ...
+            testCase.verifyEmpty(listFileNames(folderFixture.Folder), ...
                 'Nothing may be created next to the root.');
             testCase.verifyFalse(isfile(fullfile(rootPath, "a", "b.txt")));
         end
