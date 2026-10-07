@@ -33,16 +33,18 @@ savepath  % optional
 
 ## Quick start
 
-### 1) Authenticate
+### 1) Log in
 ```matlab
-ebrains.authenticate()
+ebrains.login()
 ```
 This opens a browser window that redirects to the EBRAINS login page. Scripts and CI jobs can use the client credentials flow instead. Read the secret from an environment variable of your choice rather than typing it in: MATLAB keeps what is typed in the Command Window in its command history.
 
 ```matlab
-ebrains.authenticate(OAuthFlow="ClientCredentialsFlow", ...
+ebrains.login(OAuthFlow="ClientCredentialsFlow", ...
     OIDCClientID="my-client", OIDCClientSecret=getenv("EBRAINS_CLIENT_SECRET"))
 ```
+`ebrains.logout()` removes the tokens held in the MATLAB session.
+
 > [!TIP]
 > You can also provide an access token via the environment variable `EBRAINS_TOKEN`. See [Running without a display](#running-without-a-display) for how it is used.
 

@@ -21,7 +21,7 @@ testToolbox()
 
 `testToolbox` leaves out two groups of tests by tag:
 
-- **`LiveIntegration`** tests call the real EBRAINS APIs with the account of the session. Run them with `runLiveIntegrationTests()` after logging in with `ebrains.authenticate`.
+- **`LiveIntegration`** tests call the real EBRAINS APIs with the account of the session. Run them with `runLiveIntegrationTests()` after logging in with `ebrains.login`.
 - **`Graphical`** tests open figure windows, and are meant to be run locally.
 
 ## Checks on a pull request
