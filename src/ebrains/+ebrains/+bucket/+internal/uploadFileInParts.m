@@ -14,8 +14,9 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %       one file for each source file, bucket and object. A later call
 %       for the same source file and object continues from the first
 %       part that is missing, and the manifest is removed once the object
-%       has been assembled. The upload starts over when the size of the
-%       file, or the part size, differs from the one recorded. When the manifest cannot be written, the upload
+%       has been assembled. The upload starts over when the size or the
+%       modification time of the file, or the part size, differs from
+%       the one recorded. When the manifest cannot be written, the upload
 %       goes on without it and cannot be resumed, and a warning says so.
 %
 %       A part that the store refuses is sent again through a new
@@ -187,9 +188,23 @@ function manifest = newManifest(bucketName, objectName, sourceFile, fileSizeByte
         "ObjectName", objectName, ...
         "SourceFile", sourceFile, ...
         "FileSizeBytes", fileSizeBytes, ...
+        "FileModificationTime", getModificationTime(sourceFile), ...
         "PartSize", partSize, ...
         "UploadId", "", ...
         "PartETags", strings(1, 0));
+end
+
+function modificationTime = getModificationTime(filePath)
+% getModificationTime - Modification time of a file in microseconds since 1970
+%
+%   The time comes from java.nio, which keeps the fraction of a second
+%   that dir rounds away, so that a file written again within the same
+%   second is still seen as changed. filePath has to be absolute.
+
+    path = java.io.File(filePath).toPath();
+    noLinkOptions = javaArray("java.nio.file.LinkOption", 0);
+    fileTime = java.nio.file.Files.getLastModifiedTime(path, noLinkOptions);
+    modificationTime = double(fileTime.to(java.util.concurrent.TimeUnit.MICROSECONDS));
 end
 
 function manifestFile = getManifestFile(resumeFolder, manifest)
@@ -209,8 +224,11 @@ function manifest = readMatchingManifest(manifestFile, manifest)
 % readMatchingManifest - The stored manifest if it is for this upload, else the one given
 %
 %   The upload id and the ETags are taken over only when the bucket, the
-%   object, the source file, its size and the part size are the same,
-%   since the parts of another upload cannot complete this one.
+%   object, the source file, its size and modification time, and the part
+%   size are the same, since the parts of another upload, or of another
+%   version of the file, cannot complete this one. The times are compared
+%   for equality: a file replaced by a copy that keeps an older time has
+%   changed as well.
 
     try
         stored = jsondecode(fileread(manifestFile));
@@ -221,7 +239,7 @@ function manifest = readMatchingManifest(manifestFile, manifest)
     end
 
     requiredFields = ["BucketName", "ObjectName", "SourceFile", "FileSizeBytes", ...
-        "PartSize", "UploadId", "PartETags"];
+        "FileModificationTime", "PartSize", "UploadId", "PartETags"];
     if ~isstruct(stored) || ~all(isfield(stored, requiredFields))
         return
     end
@@ -230,6 +248,7 @@ function manifest = readMatchingManifest(manifestFile, manifest)
         && string(stored.ObjectName) == manifest.ObjectName ...
         && string(stored.SourceFile) == manifest.SourceFile ...
         && isequal(stored.FileSizeBytes, manifest.FileSizeBytes) ...
+        && isequal(stored.FileModificationTime, manifest.FileModificationTime) ...
         && isequal(stored.PartSize, manifest.PartSize) ...
         && strlength(string(stored.UploadId)) > 0;
     if ~isSameUpload

@@ -39,6 +39,13 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         end
     end
 
+    properties (TestParameter)
+        % Shifts of the modification time of a changed file: a newer time,
+        % as an edit gives, and an older one, as a copy that keeps the
+        % time of its original gives
+        timeShiftSeconds = struct("Newer", 3600, "Older", -3600)
+    end
+
     methods (Test)
         %% getBucketSize / getObjectCount
         function testGetBucketSizeReturnsBytesOfStat(testCase)
@@ -534,6 +541,31 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [10, 20]);
         end
 
+        function testUploadFileStartsOverWhenTheFileChangedButNotItsSize(testCase, timeShiftSeconds)
+            % The parts sent before would join the rest of another
+            % version of the file. A copy that keeps an older time, as
+            % cp -p or a restored backup does, has changed as well.
+            sourceFile = makeSourceFile(testCase, 25);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            fileId = fopen(sourceFile, "w");
+            fwrite(fileId, uint8(26:50));
+            fclose(fileId);
+            shiftModificationTime(sourceFile, timeShiftSeconds);
+            testCase.Client.reset();
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/data/big.bin/multipart');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 10, 20]);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
         function testUploadFileDoesNotResumeTheUploadOfAnotherObject(testCase)
             sourceFile = makeSourceFile(testCase, 25);
             interruptUploadAfterFirstPart(testCase, sourceFile, "other.bin");
@@ -975,6 +1007,12 @@ function interruptUploadAfterFirstPart(testCase, sourceFile, objectName)
         MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
         DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
         'EBRAINS:Bucket:UploadFailed');
+end
+
+function shiftModificationTime(filePath, offsetSeconds)
+% shiftModificationTime - Move the modification time of a file by a number of seconds
+    file = java.io.File(filePath);
+    file.setLastModified(file.lastModified() + 1000*offsetSeconds);
 end
 
 function makeReadOnly(testCase, folder)
