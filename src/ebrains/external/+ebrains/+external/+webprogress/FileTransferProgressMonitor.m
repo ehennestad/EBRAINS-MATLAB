@@ -10,12 +10,31 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
 %       progressMonitorFcn = @(varargin) ebrains.external.webprogress.FileTransferProgressMonitor(monitorOptions{:})
 %
 %   Supported options:
-%       DisplayMode     : Where to display progress. Options: 'Dialog Box' (default) or 'Command Window'
+%       DisplayMode     : Where to display progress. Options: 'Dialog Box' (default), 'Command Window'
+%                         or 'None', which displays nothing and leaves the progress to ProgressFcn.
 %       UpdateInterval  : Interval (in seconds) for updating progress. Default = 1 second.
 %       Filename        : Name of transferred file. If provided, filename is displayed during download/upload.
 %       IndentSize      : Size of indentation if displaying progress in command window. Default = 0.
 %       Figure          : Parent figure for uiprogressdlg. Default = [].
 %       FileSizeBytes   : Known file size when ProgressMonitor.Max is unavailable. Default = NaN.
+%       StartBytes      : Bytes of the file transferred before this transfer, such as the part of
+%                         a resumed download already on disk. Default = 0. It can be changed until
+%                         the body starts to arrive.
+%       ProgressFcn     : Function called with the progress, as ProgressFcn(PROGRESS), at most
+%                         once per UpdateInterval and once more when the transfer is done.
+%                         PROGRESS is a struct with the fields
+%                           ActionName       - "Upload" or "Download"
+%                           TransferredBytes - Bytes of the file transferred so far, including
+%                                              StartBytes
+%                           TotalBytes       - Size of the file in bytes, or NaN when unknown
+%                         It is called whatever the DisplayMode. Default = [].
+%       CancelRequestedFcn : Function that returns true when the transfer should stop, called as
+%                         CancelRequestedFcn() at most once per UpdateInterval. Default = [].
+%
+%   A cancelled transfer, by CancelRequestedFcn or by the Cancel button of
+%   the progress dialog, stops at the next progress report with the error
+%   webprogress:progressMonitor:Cancelled. The HTTP stack passes it on as
+%   the cause of the error MATLAB:http:UncaughtException.
 
 %   Inspired by example in matlab.net.http.ProgressMonitor
 %
@@ -28,6 +47,12 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         IndentSize = 0              % Size of indentation (number of spaces) if displaying progress in command window.
         Figure = []                 % Parent figure for uiprogressdlg.
         FileSizeBytes = nan         % Known file size when ProgressMonitor.Max is not available.
+        ProgressFcn = []            % Function called with the progress of the transfer.
+        CancelRequestedFcn = []     % Function that returns true when the transfer should stop.
+    end
+
+    properties % User setting that can change until the body arrives
+        StartBytes (1,1) double {mustBeNonnegative} = 0 % Bytes of the file transferred before this transfer.
     end
 
     properties % Implement superclass properties (matlab.net.http.ProgressMonitor)
@@ -46,7 +71,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
     end
 
     properties (Access = protected)
-        StartTime                   % Time when transfer started
+        StartTime                   % Time when this monitor saw the first byte
         LastUpdateTime              % Time when progress was last updated
         HasTransferStarted = false  % Whether download or upload has started
         WaitbarHandle               % Handle to waitbar dialog
@@ -54,8 +79,10 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         PreviousMessage = ''        % Previous message displayed in command window
         BodyDirection               % Direction of the message that carries the file
         BodySizeBytes               % Size in bytes of the message that carries the file
+        BodyBytes = 0               % Bytes transferred of the message that carries the file
         HasDisplayedProgress = false % Whether progress has been displayed at least once
         WasCancelled = false        % Whether the user cancelled the transfer
+        BaselineBytes = []          % Bytes of the file transferred when this monitor saw the first byte
     end
 
     properties (Constant, Access = private)
@@ -75,6 +102,9 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
                 options.IndentSize     (1,1) uint8                        = 0
                 options.Figure                      {mustBeFigureOrEmpty} = []
                 options.FileSizeBytes  (1,1) double                       = nan
+                options.StartBytes     (1,1) double {mustBeNonnegative}   = 0
+                options.ProgressFcn             {mustBeFunctionHandleOrEmpty} = []
+                options.CancelRequestedFcn      {mustBeFunctionHandleOrEmpty} = []
             end
 
             for optionName = string(fieldnames(options))'
@@ -94,11 +124,19 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         end
         
         function done(obj)
+            % Updates are throttled, so the last bytes of a transfer may
+            % not have been reported yet.
+            if obj.HasDisplayedProgress && ~obj.WasCancelled
+                obj.reportProgress()
+            end
+
+            % A cancelled transfer is not complete, so the last progress
+            % line stays as it is.
             if ~isempty(obj.ProgressDialogHandle)
                 obj.closeProgressDialog();
             elseif ~isempty(obj.WaitbarHandle)
                 obj.closeWaitbar();
-            elseif ~isempty(obj.PreviousMessage) && obj.UseCommandWindow
+            elseif ~isempty(obj.PreviousMessage) && obj.UseCommandWindow && ~obj.WasCancelled
                 msgStr = obj.getTransferCompletedMessage();
                 obj.updateCommandWindowMessage(msgStr)
             end
@@ -172,23 +210,47 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         function update(obj, ~)
         %update - Refresh the progress display after Value changes
 
-            % The HTTP stack keeps reporting byte counts for a while
-            % after a cancellation, because it aborts the transfer at
-            % its next opportunity rather than at once. Without this the
-            % next report would open a fresh dialog for a transfer the
-            % user has already given up on.
+            % The Cancel button of the waitbar runs in a UI callback,
+            % which cannot stop the transfer, so the next report does.
             if obj.WasCancelled
+                obj.stopTransfer()
+            end
+
+            % The reply to an upload carries no file bytes, so it is not
+            % progress, and its byte count must not replace the uploaded
+            % one. A cancel that arrives while it is received still has
+            % to be noticed, because the progress dialog only reports it
+            % when the monitor asks.
+            isReplyToUpload = isequal(obj.BodyDirection, matlab.net.http.MessageType.Request) ...
+                && isequal(obj.Direction, matlab.net.http.MessageType.Response);
+            if isReplyToUpload
+                if obj.cancelWasRequested()
+                    obj.stopTransfer()
+                end
                 return
             end
 
-            % A message without a body reports Max as 0. After an upload,
-            % the server's empty response switches Direction to Response
-            % while Value keeps the uploaded byte count. Remember the
-            % message that carries the file so that progress and the
-            % completion message keep describing that transfer.
+            % The remaining time and the completion message are measured
+            % from the first byte this monitor sees, so the time before
+            % it, such as between creating a monitor and the first
+            % request, counts for neither. A body byte arrives only after
+            % a resumed download has set StartBytes, so StartBytes at
+            % that moment is where the byte count starts.
+            if isempty(obj.BaselineBytes) && ~isempty(obj.Value) && obj.Value > 0
+                obj.BaselineBytes = obj.StartBytes;
+                obj.StartTime = tic;
+            end
+
+            % A message without a body reports Max as 0. Remember the
+            % message that carries the file, so that the reply to an
+            % upload is told apart from the upload itself, and keep the
+            % bytes of that message where the reply cannot overwrite them.
             if ~isempty(obj.Max) && obj.Max > 0
                 obj.BodyDirection = obj.Direction;
                 obj.BodySizeBytes = obj.Max;
+            end
+            if ~isempty(obj.Value)
+                obj.BodyBytes = double(obj.Value);
             end
 
             % Display the first progress as soon as it arrives.
@@ -234,9 +296,10 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
                 end
 
                 if obj.cancelWasRequested()
-                    obj.cancelTransfer();
-                    return
+                    obj.stopTransfer()
                 end
+
+                obj.reportProgress()
 
                 if isempty(obj.ProgressDialogHandle) && obj.UseUIProgressDialog
                     obj.ProgressDialogHandle = uiprogressdlg(obj.Figure, ...
@@ -259,8 +322,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
                 % fire before its handle reaches WaitbarHandle and the
                 % close in cancelTransfer finds nothing to close.
                 if obj.WasCancelled
-                    obj.closeWaitbar();
-                    return
+                    obj.stopTransfer()
                 end
 
                 if obj.HasTransferStarted
@@ -268,7 +330,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
                         obj.updateProgressDialog(progressValue, msg);
                     elseif obj.UseWaitbarDialog
                         obj.updateWaitbar(progressValue, msg);
-                    else
+                    elseif obj.UseCommandWindow
                         obj.updateCommandWindowMessage(msg)
                     end
                 end
@@ -307,8 +369,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         function updateProgressDialog(obj, progressValue, msg)
         %updateProgressDialog - Update the value and message of uiprogressdlg
             if obj.cancelWasRequested()
-                obj.cancelTransfer();
-                return
+                obj.stopTransfer()
             end
 
             if ~obj.progressDialogIsValid()
@@ -335,27 +396,47 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         end
 
         function cancelTransfer(obj)
-        %cancelTransfer - Abort the transfer and close the progress display
-        %   Called when the user presses Cancel or closes the progress
-        %   window. WasCancelled keeps update from opening a new display
-        %   for the byte counts that still arrive before the HTTP stack
-        %   acts on the abort.
+        %cancelTransfer - Mark the transfer as cancelled and close the progress display
+        %   Called when the user presses Cancel or closes the waitbar,
+        %   and by stopTransfer. The transfer itself stops at the next
+        %   progress report.
             obj.WasCancelled = true;
-
-            % CancelFcn is empty until the HTTP stack assigns it, which
-            % it does only for a transfer that the stack itself drives.
-            if ~isempty(obj.CancelFcn)
-                obj.CancelFcn();
-            end
-
             obj.closeProgressDialog();
             obj.closeWaitbar();
         end
 
+        function stopTransfer(obj)
+        %stopTransfer - Cancel the transfer by raising an error
+        %   The HTTP stack aborts a transfer whose progress monitor raises
+        %   an error, and passes the error on as the cause of
+        %   MATLAB:http:UncaughtException, so a caller can catch it.
+        %   CancelFcn is not used, because it interrupts the whole call
+        %   as Ctrl+C does, which no caller can catch.
+            obj.cancelTransfer();
+            error("webprogress:progressMonitor:Cancelled", ...
+                "The transfer was cancelled.")
+        end
+
         function tf = cancelWasRequested(obj)
         %cancelWasRequested - Return whether the user pressed Cancel
+        %   or CancelRequestedFcn asks for the transfer to stop
             tf = obj.progressDialogIsValid() ...
                 && obj.ProgressDialogHandle.CancelRequested;
+            if ~tf
+                tf = isCancelRequested(obj.CancelRequestedFcn);
+            end
+        end
+
+        function reportProgress(obj)
+        %reportProgress - Pass the progress of the transfer to ProgressFcn
+            if isempty(obj.ProgressFcn)
+                return
+            end
+            progress = struct( ...
+                'ActionName', obj.ActionName, ...
+                'TransferredBytes', obj.getTransferredBytes(), ...
+                'TotalBytes', double(obj.getFileSizeBytes()));
+            obj.ProgressFcn(progress)
         end
 
         function tf = progressDialogIsValid(obj)
@@ -461,8 +542,18 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
     
         function str = getRemainingTimeEstimate(obj)
         %getRemainingTimeEstimate - Return the estimated remaining time
+            % The rate is measured over the bytes this monitor has seen,
+            % so the estimate leaves out bytes that were transferred
+            % before it started, such as those of a resumed download.
+            baselineBytes = obj.BaselineBytes;
+            if isempty(baselineBytes)
+                baselineBytes = obj.StartBytes;
+            end
             tElapsed = seconds( toc(obj.StartTime) );
-            str = obj.formatRemainingTimeEstimate(tElapsed, obj.PercentTransferred);
+            bytesSinceBaseline = obj.getTransferredBytes() - baselineBytes;
+            bytesAfterBaseline = double(obj.getFileSizeBytes()) - baselineBytes;
+            percentSinceBaseline = bytesSinceBaseline / bytesAfterBaseline * 100;
+            str = obj.formatRemainingTimeEstimate(tElapsed, percentSinceBaseline);
         end
 
         function strMessage = getTransferCompletedMessage(obj)
@@ -479,7 +570,7 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
         function percentTransferred = computePercentTransferred(obj)
         %computePercentTransferred - Return the percentage of bytes transferred
             fileSizeBytes = obj.getFileSizeBytes();
-            percentTransferred = double(obj.Value) / double(fileSizeBytes) * 100;
+            percentTransferred = obj.getTransferredBytes() / double(fileSizeBytes) * 100;
         end
 
         function fileSizeMb = getFileSizeMb(obj)
@@ -490,15 +581,22 @@ classdef FileTransferProgressMonitor < matlab.net.http.ProgressMonitor
 
         function transferredMb = getTransferredMb(obj)
         %getTransferredMb - Return the transferred size rounded to megabytes
-            transferredMb = round( double(obj.Value) / 1024 / 1024 );
+            transferredMb = round( obj.getTransferredBytes() / 1024 / 1024 );
+        end
+
+        function transferredBytes = getTransferredBytes(obj)
+        %getTransferredBytes - Return the bytes of the file transferred so far
+            transferredBytes = obj.StartBytes + obj.BodyBytes;
         end
 
         function fileSizeBytes = getFileSizeBytes(obj)
         %getFileSizeBytes - Return the file size in bytes
+        %   The size of a message covers only this transfer, so it is
+        %   added to StartBytes. FileSizeBytes is the whole file.
             if ~isempty(obj.BodySizeBytes)
-                fileSizeBytes = obj.BodySizeBytes;
+                fileSizeBytes = obj.StartBytes + double(obj.BodySizeBytes);
             elseif ~isempty(obj.Max) && obj.Max > 0
-                fileSizeBytes = obj.Max;
+                fileSizeBytes = obj.StartBytes + double(obj.Max);
             else
                 fileSizeBytes = obj.FileSizeBytes;
             end
