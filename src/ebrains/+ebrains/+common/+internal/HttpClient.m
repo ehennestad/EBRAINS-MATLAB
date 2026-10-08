@@ -13,7 +13,7 @@ classdef (Abstract) HttpClient < handle
 %   buckets, and the Collaboratory for public collabs. A request without a
 %   token that the service refuses with 401 (Unauthorized) or 403
 %   (Forbidden) is reported with a message that asks the user to run
-%   ebrains.authenticate. With AutoLogin true, a request without an
+%   ebrains.login. With AutoLogin true, a request without an
 %   available token opens the login first.
 %
 %   Subclasses set ErrorIdPrefix, which starts the identifier of every error
@@ -42,6 +42,9 @@ classdef (Abstract) HttpClient < handle
         function response = sendRequest(obj, request, apiUri, httpOptions)
         % sendRequest - Send a request and return the response
         %
+        %   A request sent without httpOptions gets the options of
+        %   getDefaultHttpOptions.
+        %
         %   Sealed, so that a test double replaces only the transport
         %   (transmitRequest) and every request records whether it carried
         %   a token.
@@ -50,6 +53,10 @@ classdef (Abstract) HttpClient < handle
                 request (1,1) matlab.net.http.RequestMessage
                 apiUri (1,1) matlab.net.URI
                 httpOptions matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
+            end
+
+            if isempty(httpOptions)
+                httpOptions = obj.getDefaultHttpOptions();
             end
 
             obj.LastSentRequestHasToken = ~isempty(request.getFields("Authorization"));
@@ -105,6 +112,15 @@ classdef (Abstract) HttpClient < handle
             end
         end
 
+        function httpOptions = getDefaultHttpOptions(~)
+        % getDefaultHttpOptions - Options for a request sent without its own
+        %
+        %   Empty, which sends the request with the defaults of
+        %   matlab.net.http.HTTPOptions. A subclass overrides this method to
+        %   give its requests other options, such as a timeout.
+            httpOptions = matlab.net.http.HTTPOptions.empty;
+        end
+
         function response = transmitRequest(obj, request, apiUri, httpOptions)
         % transmitRequest - Send a request over the network and return the response
         %
@@ -132,7 +148,7 @@ classdef (Abstract) HttpClient < handle
         %   whose message holds the status name and the text of the
         %   response body. When the request was sent without a token and
         %   the status is 401 (Unauthorized) or 403 (Forbidden), the
-        %   message asks the user to run ebrains.authenticate instead.
+        %   message asks the user to run ebrains.login instead.
         %
         %   obj.throwError(..., Description=text) puts the given text in
         %   the message instead of the response body.
@@ -185,7 +201,7 @@ classdef (Abstract) HttpClient < handle
                 description = options.Description;
             elseif isRefusedWithoutToken
                 description = "This request requires authentication. " + ...
-                    "Run ebrains.authenticate() to log in to EBRAINS, then try again. " + ...
+                    "Run ebrains.login() to log in to EBRAINS, then try again. " + ...
                     "To log in automatically when a request needs it, run " + ...
                     "ebrains.setpref(AutoLogin=true).";
                 serverText = ebrains.common.internal.getResponseBodyText(response);

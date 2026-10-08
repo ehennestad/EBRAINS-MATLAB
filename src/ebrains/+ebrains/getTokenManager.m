@@ -22,7 +22,7 @@ function tokenManager = getTokenManager(options)
 %   A token given through the EBRAINS_TOKEN environment variable is held
 %   by the client credentials client, which cannot renew it. Once such a
 %   token has expired the device flow client is used instead, so that
-%   logging in with ebrains.authenticate takes effect.
+%   logging in with ebrains.login takes effect.
 %
 %   Set the environment variable
 %   EBRAINS_MATLAB_FORCE_CLIENT_CREDENTIALS_OAUTH_FLOW to "true" to never
@@ -32,7 +32,7 @@ function tokenManager = getTokenManager(options)
 %   authenticate with its credentials, and a request sent without a token
 %   would fail with advice to log in through the device flow instead.
 %
-%   See also authenticate, ebrains.getpref, ebrains.iam.OidcTokenClient,
+%   See also login, logout, ebrains.getpref, ebrains.iam.OidcTokenClient,
 %   ebrains.iam.DeviceFlowTokenClient,
 %   ebrains.iam.ClientCredentialsFlowTokenClient
 
@@ -52,7 +52,7 @@ function tokenManager = getTokenManager(options)
         error(...
             'EBRAINS:GetTokenManager:Unauthenticated', ...
             ['Client Credentials token manager does not have an active access token. ', ...
-            'Please run ebrains.authenticate using "Client Credentials" flow type and try again.'])
+            'Please run ebrains.login using "Client Credentials" flow type and try again.'])
     end
 
     % Fall back to use DeviceFlowTokenClient
@@ -86,6 +86,6 @@ function tokenManager = getTokenManager(options)
         error(...
             'EBRAINS:GetTokenManager:TokenManagerNotFound', ...
             ['Did not find a token manager with an active access token. ', ...
-            'Please run ebrains.authenticate and try again'])
+            'Please run ebrains.login and try again'])
     end
 end

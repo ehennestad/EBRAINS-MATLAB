@@ -4,7 +4,7 @@ SERVER = "PREPROD";
 
 % Every request to the KG needs a login; this opens it in the browser
 % unless a valid token is already held.
-ebrains.authenticate()
+ebrains.login()
 
 kgClient = ebrains.kg.api.InstancesClient();
 
