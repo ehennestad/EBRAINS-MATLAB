@@ -66,8 +66,12 @@ function downloadFile(bucketName, objectName, targetFile, options)
     % bucket, or an older copy) untouched. It also saves the target under
     % the exact name given, without deriving an extension for a target that
     % has none.
-    options.Downloader(targetFile, downloadUrl, ...
-        Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
+    try
+        options.Downloader(targetFile, downloadUrl, ...
+            Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
+    catch exception
+        throw(ebrains.bucket.internal.redactSignedUrl(exception, downloadUrl))
+    end
 end
 
 function mustNotBeFolder(path)

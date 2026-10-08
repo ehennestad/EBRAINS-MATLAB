@@ -46,9 +46,13 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 
     uploadUrl = options.Client.getUploadUrl(bucketName, objectName);
 
-    [wasSuccess, response] = options.Uploader(...
-        sourceFile, uploadUrl, Filename=objectName, ...
-        DisplayMode=options.DisplayMode, Figure=options.Figure);
+    try
+        [wasSuccess, response] = options.Uploader(...
+            sourceFile, uploadUrl, Filename=objectName, ...
+            DisplayMode=options.DisplayMode, Figure=options.Figure);
+    catch exception
+        throw(ebrains.bucket.internal.redactSignedUrl(exception, uploadUrl))
+    end
 
     if ~wasSuccess
         % The uploader's own error has no identifier and drops the response
