@@ -82,6 +82,10 @@ function actions = toBucket(localFolder, bucketName, options)
 %   are uploaded, nothing is deleted, and a warning names the failure.
 %   Run the sync again to retry.
 %
+%   A subfolder of localFolder that cannot be read is skipped by dir
+%   without an error, so its files are missing from the listing. The sync
+%   then warns and deletes nothing.
+%
 %   The sync refuses to delete everything: with Delete=true and an empty
 %   localFolder it stops with an error before it changes anything, since
 %   that is more often a wrong folder or prefix than what is wanted.

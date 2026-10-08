@@ -79,13 +79,27 @@ function actions = fromBucket(bucketName, localFolder, options)
 %                 Bytes   - Size of the file
 %                 Status  - "done", "failed", "skipped", "planned" (with
 %                           DryRun), or "" for no action
-%                 Message - Why an action failed or was skipped
+%                 Message - Why an action failed or was skipped, or a
+%                           note on a download that was done
 %
 %   A file that fails to download does not stop the sync. The other files
 %   are downloaded, nothing is deleted, and a warning names the failure.
 %   Run the sync again to retry. Each download is written to a temporary
 %   file first, so a failed download leaves the local file as it was, and
-%   the size of each download is checked against the object.
+%   the size of each download is checked against the object. Each
+%   download is given the modification time of its object, so that a
+%   later sync in either direction finds it unchanged.
+%
+%   A subfolder of localFolder that cannot be read is skipped by dir
+%   without an error, so its files are missing from the listing. The sync
+%   then warns and deletes nothing.
+%
+%   On a file system that ignores case, such as the default ones of macOS
+%   and Windows, an object and a local file whose names differ only in
+%   case are the same file: a download writes into the local file, which
+%   keeps its name. Of objects whose names differ from each other only in
+%   case, only the first in the listing can be stored there; the others
+%   are left out with a warning.
 %
 %   The sync refuses to delete everything: with Delete=true and an empty
 %   bucket or folder of it, it stops with an error before it changes

@@ -89,6 +89,20 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(plan.Reason, ["checksum"; "unchanged"; "newer"]);
         end
 
+        function testPlanIgnoringCaseMatchesNamesThatDifferInCase(testCase)
+            source = makeFiles(["Data.txt", "new.txt"], [3, 1]);
+            target = makeFiles(["data.txt", "extra.txt"], [2, 1]);
+
+            plan = ebrains.bucket.sync.internal.planSync(source, target, Delete=true, IgnoreCase=true);
+
+            testCase.verifyEqual(plan.Path, ["Data.txt"; "extra.txt"; "new.txt"]);
+            testCase.verifyEqual(plan.Action, ["copy"; "delete"; "copy"]);
+            testCase.verifyEqual(plan.Reason, ["size"; "extraneous"; "new"]);
+
+            exactPlan = ebrains.bucket.sync.internal.planSync(source, target, Delete=true);
+            testCase.verifyEqual(exactPlan.Action(exactPlan.Path == "data.txt"), "delete");
+        end
+
         function testPlanOfEmptySides(testCase)
             empty = makeFiles(strings(0, 1), zeros(0, 1));
 
@@ -132,10 +146,11 @@ classdef SyncTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "sub", "deeper", "inner.txt"), "abcdef");
             mkdir(fullfile(testCase.Folder, "empty"));
 
-            files = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+            [files, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
 
             files = sortrows(files, "Path");
             testCase.verifyEqual(files.Path, ["sub/deeper/inner.txt"; "top.txt"]);
+            testCase.verifyEmpty(unreadableFolders);
             testCase.verifyEqual(files.Bytes, [6; 3]);
             testCase.verifyEqual(string(files.ModifiedTime.TimeZone), "UTC");
             testCase.verifyLessThan(abs(files.ModifiedTime(2) - datetime('now', 'TimeZone', 'UTC')), minutes(5));
@@ -144,6 +159,17 @@ classdef SyncTest < matlab.unittest.TestCase
         function testListLocalFilesOfMissingFolderIsEmpty(testCase)
             files = ebrains.bucket.sync.internal.listLocalFiles(fullfile(testCase.Folder, "missing"));
             testCase.verifyEqual(height(files), 0);
+        end
+
+        function testListLocalFilesReportsUnreadableFolders(testCase)
+            writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "sub", "locked", "inner.txt"), "abc");
+            makeUnreadable(testCase, fullfile(testCase.Folder, "sub", "locked"));
+
+            [files, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+
+            testCase.verifyEqual(files.Path, "top.txt");
+            testCase.verifyEqual(unreadableFolders, "sub/locked");
         end
 
         %% listRemoteFiles
@@ -381,6 +407,39 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifySubstring(char(actions.Message(1)), '403 Forbidden');
         end
 
+        function testSyncToBucketUnreadableFolderHoldsBackDeletions(testCase)
+            % The files of a folder that cannot be read are missing from
+            % the listing, so their objects look extraneous
+            writeFile(fullfile(testCase.Folder, "keep.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "locked", "inner.txt"), "abc");
+            makeUnreadable(testCase, fullfile(testCase.Folder, "locked"));
+            future = "2100-01-01T00:00:00";
+            addListing(testCase.Client, makeObjects( ...
+                ["extra.txt", "keep.txt", "locked/inner.txt"], [1, 3, 3], ["", future, future]));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, ...
+                "my-bucket", Delete=true, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:UnreadableFolder');
+
+            testCase.verifyEqual(actions.Path, ["extra.txt"; "keep.txt"; "locked/inner.txt"]);
+            testCase.verifyEqual(actions.Status, ["skipped"; ""; "skipped"]);
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2, 'No DELETE may be sent.');
+        end
+
+        function testSyncToBucketDeletesDespiteExcludedUnreadableFolder(testCase)
+            writeFile(fullfile(testCase.Folder, "keep.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "locked", "inner.txt"), "abc");
+            makeUnreadable(testCase, fullfile(testCase.Folder, "locked"));
+            addListing(testCase.Client, makeObjects( ...
+                ["extra.txt", "keep.txt"], [1, 3], ["", "2100-01-01T00:00:00"]));
+            testCase.Client.addResponse('OK', struct());
+
+            actions = testCase.verifyWarningFree(@() ebrains.bucket.sync.toBucket(testCase.Folder, ...
+                "my-bucket", Delete=true, Exclude="locked", Client=testCase.Client, Verbose=false));
+
+            testCase.verifyEqual(actions.Status, ["done"; ""]);
+        end
+
         function testSyncToBucketByChecksumUploadsChangedContentOnly(testCase)
             writeFile(fullfile(testCase.Folder, "same.txt"), "abc");
             writeFile(fullfile(testCase.Folder, "edited.txt"), "xyz");
@@ -455,6 +514,61 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(actions.Status, [""; "done"]);
             testCase.verifyFalse(isfile(fullfile(testCase.Folder, "sub", "extra.txt")));
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
+        end
+
+        function testSyncFromBucketGivesDownloadsTheTimeOfTheirObject(testCase)
+            % With the time of its object, the file is unchanged to a sync
+            % back to the bucket
+            testCase.assumeTrue(usejava('jvm'), 'The time of a file is set through Java.');
+            uploadTime = "2001-02-03T04:05:06";
+            addListing(testCase.Client, makeObjects("a.txt", 3, uploadTime));
+            addDownloadUrls(testCase.Client, 1);
+
+            ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
+
+            files = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+            testCase.verifyEqual(files.ModifiedTime, datetime(2001, 2, 3, 4, 5, 6, 'TimeZone', 'UTC'));
+
+            testCase.Client.reset();
+            addListing(testCase.Client, makeObjects("a.txt", 3, uploadTime));
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Client=testCase.Client, Verbose=false);
+            testCase.verifyEqual(actions.Action, "none");
+        end
+
+        function testSyncFromBucketKeepsLocalFileWhoseNameDiffersInCase(testCase)
+            % On a file system that ignores case, the download of Data.txt
+            % writes into data.txt, which must then not be deleted as a
+            % file the bucket does not have
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "data.txt"), "ab");
+            addListing(testCase.Client, makeObjects("Data.txt", 3, "2000-01-01T00:00:00"));
+            addDownloadUrls(testCase.Client, 1);
+
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Delete=true, Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, "Data.txt");
+            testCase.verifyEqual(actions.Action, "download");
+            testCase.verifyEqual(actions.Status, "done");
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "data.txt")), 'abc');
+        end
+
+        function testSyncFromBucketLeavesOutObjectsThatDifferOnlyInCase(testCase)
+            % Both would be downloaded into the same file. The local file
+            % gives the sync a name to probe the file system with.
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "local.txt"), "abc");
+            addListing(testCase.Client, makeObjects(["A.txt", "a.txt"], [3, 3]));
+            addDownloadUrls(testCase.Client, 1);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Downloader=@writeAbc, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:CaseCollision');
+
+            testCase.verifyEqual(actions.Path, ["A.txt"; "local.txt"]);
+            testCase.verifyEqual(actions.Action, ["download"; "none"]);
         end
 
         function testSyncFromBucketReportsDownloadOfWrongSizeAndKeepsTheFile(testCase)
@@ -601,6 +715,27 @@ function writeFile(filePath, content)
     fileID = fopen(filePath, "w");
     fwrite(fileID, char(content));
     fclose(fileID);
+end
+
+function makeUnreadable(testCase, folder)
+% makeUnreadable - Take away the permission to read a folder until the test ends
+%
+%   The test is filtered where that has no effect: on Windows, which has
+%   no chmod, and for a user who can read any folder, such as root.
+    testCase.assumeFalse(ispc, 'Folder permissions are set with chmod, which Windows does not have.');
+    [status, output] = system("chmod 000 '" + folder + "'");
+    testCase.assertEqual(status, 0, output);
+    testCase.addTeardown(@() system("chmod 755 '" + folder + "'"));
+    testCase.assumeEmpty(dir(folder), 'This user can read a folder without read permission.');
+end
+
+function assumeCaseInsensitive(testCase)
+% assumeCaseInsensitive - Filter the test unless the test folder ignores the case of names
+    probeFile = fullfile(testCase.Folder, "case-probe");
+    writeFile(probeFile, "");
+    isInsensitive = isfile(fullfile(testCase.Folder, "CASE-PROBE"));
+    delete(probeFile)
+    testCase.assumeTrue(isInsensitive, 'The file system of the test folder tells names apart by case.');
 end
 
 function fileNames = listFileNames(folder)

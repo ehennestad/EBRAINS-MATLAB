@@ -32,15 +32,43 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     % 1. List both sides
-    localFiles = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    [localFiles, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
     localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, syncOptions.Exclude);
     remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, syncOptions.Exclude);
 
-    warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel)
+    % The files of a local folder that could not be read are missing from
+    % the listing, so the plan would take them for deleted or extraneous.
+    % Nothing is deleted then, the way rsync holds back deletions after an
+    % error while listing. A folder that is excluded does not count.
+    unreadableFolderTable = ebrains.bucket.sync.internal.excludeFiles( ...
+        ebrains.bucket.sync.internal.makeFileTable(unreadableFolders, zeros(size(unreadableFolders))), ...
+        syncOptions.Exclude);
+    unreadableFolders = unreadableFolderTable.Path;
+    deletionHoldBack = "";
+    if ~isempty(unreadableFolders)
+        warning('EBRAINS:Bucket:Sync:UnreadableFolder', ...
+            ['%d folder(s) below "%s" could not be read, for example "%s". ' ...
+             'Their files could not be listed, so nothing is deleted.'], ...
+            numel(unreadableFolders), localFolder, unreadableFolders(1));
+        deletionHoldBack = "Not deleted, since a local folder could not be read.";
+    end
+
+    % On a file system that ignores case, such as the default ones of
+    % macOS and Windows, a local file and an object whose names differ
+    % only in case are one file: a download writes into the local file
+    % and keeps its name. Matching them exactly would plan that file for
+    % deletion as well. An upload compares names exactly, since the bucket
+    % tells them apart.
+    ignoreCase = ~isToBucket && isCaseInsensitive(localFolder, localFiles.Path);
+    if ignoreCase
+        remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel);
+    end
+
+    warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel, ignoreCase)
 
     if syncOptions.Comparison == "Checksum"
-        localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder);
+        localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, ignoreCase);
     end
 
     % 2. Plan
@@ -53,7 +81,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
-        Comparison=syncOptions.Comparison, Delete=syncOptions.Delete);
+        Comparison=syncOptions.Comparison, Delete=syncOptions.Delete, IgnoreCase=ignoreCase);
     actions.Action(actions.Action == "copy") = copyAction;
 
     % The status of each file is kept in plain arrays while the sync runs,
@@ -79,11 +107,15 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     if syncOptions.DryRun
         % A dry run shows the plan, a refusal included, rather than stop
         status(isCopy) = "planned";
-        if refusal == ""
+        skipReason = refusal;
+        if skipReason == ""
+            skipReason = deletionHoldBack;
+        end
+        if skipReason == ""
             status(isDelete) = "planned";
         else
             status(isDelete) = "skipped";
-            message(isDelete) = refusal;
+            message(isDelete) = skipReason;
         end
         if syncOptions.Verbose
             printPlannedActions(actions, isCopy | isDelete)
@@ -105,6 +137,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         mkdir(localFolder)
     end
     copyIndices = find(isCopy);
+    [~, sourceIndices] = ismember(actions.Path, sourceFiles.Path);
     for k = 1:numel(copyIndices)
         i = copyIndices(k);
         relativePath = actions.Path(i);
@@ -121,8 +154,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
                     DisplayMode=syncOptions.DisplayMode, Client=client, ...
                     Uploader=syncOptions.Uploader);
             else
-                downloadAndReplace(bucketName, objectName, localFile, actions.Bytes(i), ...
-                    syncOptions, client)
+                message(i) = downloadAndReplace(bucketName, objectName, localFile, ...
+                    sourceFiles(sourceIndices(i), :), syncOptions, client);
             end
             status(i) = "done";
         catch ME
@@ -137,11 +170,13 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % 4. Delete. A failed copy may mean the source was listed wrongly or
     % the connection is lost, so nothing is deleted after one, the way
     % rsync and rclone hold back deletions after an error.
-    hasFailedCopy = any(status == "failed");
+    if deletionHoldBack == "" && any(status == "failed")
+        deletionHoldBack = "Not deleted, since a file failed to copy.";
+    end
     deleteIndices = find(isDelete);
-    if hasFailedCopy && ~isempty(deleteIndices)
+    if deletionHoldBack ~= "" && ~isempty(deleteIndices)
         status(deleteIndices) = "skipped";
-        message(deleteIndices) = "Not deleted, since a file failed to copy.";
+        message(deleteIndices) = deletionHoldBack;
         deleteIndices = [];
     end
     for k = 1:numel(deleteIndices)
@@ -196,7 +231,7 @@ function prefix = normalizePrefix(prefix)
     end
 end
 
-function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel)
+function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel, ignoreCase)
 % warnIfRemoteTimesUnknown - Say so when the time comparison cannot work
 %
 %   Without modification times, the default comparison judges every file
@@ -207,7 +242,7 @@ function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLab
     if comparison ~= "SizeAndTime"
         return
     end
-    isCommon = ismember(remoteFiles.Path, localFiles.Path);
+    isCommon = ismember(matchKeys(remoteFiles.Path, ignoreCase), matchKeys(localFiles.Path, ignoreCase));
     if any(isCommon) && all(isnat(remoteFiles.ModifiedTime(isCommon)))
         warning('EBRAINS:Bucket:Sync:NoRemoteTimes', ...
             ['The listing of %s reports no modification times, so files of ' ...
@@ -216,14 +251,15 @@ function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLab
     end
 end
 
-function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
+function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, ignoreCase)
 % addLocalChecksums - Compute the checksums the comparison needs
 %
 %   Only a local file whose remote counterpart has the same size and a
 %   known checksum is read: for any other file the size or the time
 %   decides, and reading every file of a large folder would take long.
 
-    [isInRemote, remoteIndex] = ismember(localFiles.Path, remoteFiles.Path);
+    [isInRemote, remoteIndex] = ismember(matchKeys(localFiles.Path, ignoreCase), ...
+        matchKeys(remoteFiles.Path, ignoreCase));
     for i = reshape(find(isInRemote), 1, [])
         j = remoteIndex(i);
         if remoteFiles.Hash(j) ~= "" && remoteFiles.Bytes(j) == localFiles.Bytes(i)
@@ -231,6 +267,59 @@ function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder)
                 fullfile(localFolder, localFiles.Path(i)));
         end
     end
+end
+
+function keys = matchKeys(paths, ignoreCase)
+% matchKeys - What the paths of the two sides are matched by
+    keys = paths;
+    if ignoreCase
+        keys = lower(paths);
+    end
+end
+
+function tf = isCaseInsensitive(localFolder, localPaths)
+% isCaseInsensitive - Whether the file system of a local folder ignores the case of names
+%
+%   A listed file whose path has letters is looked up with their case
+%   changed. A file system that ignores case finds it under that path,
+%   and the listing has no file of that path. Without such a file there is
+%   nothing to look up, and the default file systems of macOS and Windows
+%   are taken to ignore case and those of other platforms not to.
+
+    hasLetters = upper(localPaths) ~= lower(localPaths);
+    index = find(hasLetters, 1);
+    if isempty(index)
+        tf = ismac || ispc;
+        return
+    end
+
+    probePath = upper(localPaths(index));
+    if probePath == localPaths(index)
+        probePath = lower(localPaths(index));
+    end
+    tf = ~ismember(probePath, localPaths) && isfile(fullfile(localFolder, probePath));
+end
+
+function remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel)
+% dropCaseCollisions - Leave out objects a folder that ignores case cannot hold apart
+%
+%   Of the objects whose paths differ only in case, the first in the
+%   listing is kept and the others are left out with a warning: all of
+%   them would be downloaded into the same local file.
+
+    [~, firstIndices] = unique(lower(remoteFiles.Path), "stable");
+    if numel(firstIndices) == height(remoteFiles)
+        return
+    end
+    isKept = false(height(remoteFiles), 1);
+    isKept(firstIndices) = true;
+    droppedPaths = remoteFiles.Path(~isKept);
+    warning('EBRAINS:Bucket:Sync:CaseCollision', ...
+        ['%d object(s) of %s have a name that differs from another only in ' ...
+         'case, which the local folder cannot hold apart, for example "%s". ' ...
+         'They are left out of the sync.'], ...
+        numel(droppedPaths), remoteLabel, droppedPaths(1));
+    remoteFiles = remoteFiles(isKept, :);
 end
 
 function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles, maxDelete)
@@ -265,13 +354,15 @@ function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles,
     end
 end
 
-function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, syncOptions, client)
+function note = downloadAndReplace(bucketName, objectName, localFile, sourceFile, syncOptions, client)
 % downloadAndReplace - Download to a temporary file, check it, and put it in place
 %
 %   The file at localFile is replaced only once the download is complete
-%   and has the size the listing reports, so a failed download leaves it
-%   as it was. The temporary file sits next to it, so that the move is a
-%   rename on the same file system.
+%   and has the size the listing reports (sourceFile is the row of the
+%   object in the remote file table), so a failed download leaves it as
+%   it was. The temporary file sits next to it, so that the move is a
+%   rename on the same file system. The file is then given the time of
+%   its object; note is "" or says why that failed.
 
     targetFolder = fileparts(localFile);
     if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
@@ -289,13 +380,42 @@ function downloadAndReplace(bucketName, objectName, localFile, expectedBytes, sy
         error('EBRAINS:Bucket:Sync:DownloadMissing', ...
             'The download of "%s" produced no file.', objectName)
     end
-    if fileInfo(1).bytes ~= expectedBytes
+    if fileInfo(1).bytes ~= sourceFile.Bytes
         error('EBRAINS:Bucket:Sync:SizeMismatch', ...
             'The downloaded file "%s" has %d bytes, where the object has %d.', ...
-            objectName, fileInfo(1).bytes, expectedBytes)
+            objectName, fileInfo(1).bytes, sourceFile.Bytes)
     end
 
     movefile(temporaryFile, localFile, "f")
+
+    note = setModifiedTime(localFile, sourceFile.ModifiedTime);
+end
+
+function note = setModifiedTime(filePath, modifiedTime)
+% setModifiedTime - Give a downloaded file the modification time of its object
+%
+%   A file with the time of its object is unchanged to the time
+%   comparison of a later sync in either direction. With the time of its
+%   download it would be newer than its object, and
+%   ebrains.bucket.sync.toBucket would upload it again. MATLAB has no
+%   function that sets the time of a file, so Java does it. Without Java,
+%   or without a known time, the file keeps the time of its download.
+%   note is "" or says why the time could not be set.
+
+    note = "";
+    if isnat(modifiedTime) || ~usejava('jvm')
+        return
+    end
+
+    % Java resolves a relative path against its own working directory,
+    % which need not be MATLAB's, so the path is made absolute.
+    fileInfo = dir(filePath);
+    absolutePath = fullfile(fileInfo(1).folder, fileInfo(1).name);
+    epochMilliseconds = round(posixtime(modifiedTime) * 1000);
+    if ~java.io.File(char(absolutePath)).setLastModified(epochMilliseconds)
+        note = "Downloaded, but the file kept the time of the download, " + ...
+            "so a sync to the bucket would upload it again.";
+    end
 end
 
 function deleteIfFile(filePath)

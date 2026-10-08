@@ -34,6 +34,10 @@ function plan = planSync(sourceFiles, targetFiles, options)
 %                       as the same time. Default is 2 seconds, which covers
 %                       the time resolution of FAT file systems and the
 %                       fraction of a second the listing times lose.
+%       IgnoreCase    : Whether paths that differ only in case name the same
+%                       file, as on a file system that ignores case. A file
+%                       matched this way is planned under its source path.
+%                       Default is false.
 %
 %   See also ebrains.bucket.sync.toBucket, ebrains.bucket.sync.fromBucket
 
@@ -44,9 +48,16 @@ function plan = planSync(sourceFiles, targetFiles, options)
             {mustBeMember(options.Comparison, ["SizeAndTime", "Size", "Checksum"])} = "SizeAndTime"
         options.Delete (1,1) logical = false
         options.TimeTolerance (1,1) duration = seconds(2)
+        options.IgnoreCase (1,1) logical = false
     end
 
-    [isInTarget, targetIndex] = ismember(sourceFiles.Path, targetFiles.Path);
+    sourceKeys = sourceFiles.Path;
+    targetKeys = targetFiles.Path;
+    if options.IgnoreCase
+        sourceKeys = lower(sourceKeys);
+        targetKeys = lower(targetKeys);
+    end
+    [isInTarget, targetIndex] = ismember(sourceKeys, targetKeys);
 
     % The variables are taken out of the tables once, since indexing a
     % table row by row is slow for buckets with many objects.
@@ -61,7 +72,7 @@ function plan = planSync(sourceFiles, targetFiles, options)
     sourceAction = repmat("copy", nSource, 1);
     sourceAction(sourceReason == "unchanged") = "none";
 
-    extraneousFiles = targetFiles(~ismember(targetFiles.Path, sourceFiles.Path), :);
+    extraneousFiles = targetFiles(~ismember(targetKeys, sourceKeys), :);
     nExtraneous = height(extraneousFiles);
     extraneousReason = repmat("extraneous", nExtraneous, 1);
     if options.Delete
