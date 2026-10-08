@@ -42,6 +42,9 @@ classdef (Abstract) HttpClient < handle
         function response = sendRequest(obj, request, apiUri, httpOptions)
         % sendRequest - Send a request and return the response
         %
+        %   A request sent without httpOptions gets the options of
+        %   getDefaultHttpOptions.
+        %
         %   Sealed, so that a test double replaces only the transport
         %   (transmitRequest) and every request records whether it carried
         %   a token.
@@ -50,6 +53,10 @@ classdef (Abstract) HttpClient < handle
                 request (1,1) matlab.net.http.RequestMessage
                 apiUri (1,1) matlab.net.URI
                 httpOptions matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
+            end
+
+            if isempty(httpOptions)
+                httpOptions = obj.getDefaultHttpOptions();
             end
 
             obj.LastSentRequestHasToken = ~isempty(request.getFields("Authorization"));
@@ -103,6 +110,15 @@ classdef (Abstract) HttpClient < handle
                 % manager, so the bare token is never handled here.
                 headers = [headers, tokenManager.getAuthHeaderField()];
             end
+        end
+
+        function httpOptions = getDefaultHttpOptions(~)
+        % getDefaultHttpOptions - Options for a request sent without its own
+        %
+        %   Empty, which sends the request with the defaults of
+        %   matlab.net.http.HTTPOptions. A subclass overrides this method to
+        %   give its requests other options, such as a timeout.
+            httpOptions = matlab.net.http.HTTPOptions.empty;
         end
 
         function response = transmitRequest(obj, request, apiUri, httpOptions)
