@@ -19,7 +19,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %       reset    - Delete the shared client
 %
 %   See also OidcTokenClient, ClientCredentialsFlowTokenClient,
-%   ebrains.authenticate, ebrains.getTokenManager
+%   ebrains.login, ebrains.getTokenManager
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/
