@@ -7,9 +7,9 @@ function tf = isSafeRelativePath(paths)
 %   with a "." or ".." segment, an empty segment (a leading, trailing or
 %   doubled "/"), or a backslash, which Windows reads as a separator.
 %   Object names come from the bucket, which other members of a collab
-%   can write to, so a sync must not trust them to be plain paths.
+%   can write to, so they must not be trusted to be plain paths.
 %
-%   See also ebrains.bucket.sync.internal.listRemoteFiles, ebrains.bucket.createVirtualBucket
+%   See also ebrains.bucket.createVirtualBucket
 
     arguments
         paths string

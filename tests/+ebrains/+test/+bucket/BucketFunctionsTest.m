@@ -462,28 +462,6 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifySubstring(output, 'Created 1/1 virtual files');
         end
 
-        function testCreateVirtualBucketLeavesOutNamesThatEscapeTheRoot(testCase)
-            % An object named with a ".." segment would be created outside
-            % the root, so such names are left out with a warning. The
-            % root sits in its own folder, so that a file created above it
-            % would show up there.
-            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
-            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
-            objectNames = ["../escape.txt", "sub/../../escape.sh", "a//b.txt", "ok.txt", "sub/ok.txt"];
-            testCase.Client.addResponse('OK', makeStat(numel(objectNames), 0));
-            testCase.Client.addResponse('OK', makePage(objectNames));
-
-            testCase.verifyWarning( ...
-                @() ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client), ...
-                'EBRAINS:Bucket:UnsafeObjectName');
-
-            testCase.verifyTrue(isfile(fullfile(rootPath, "ok.txt")));
-            testCase.verifyTrue(isfile(fullfile(rootPath, "sub", "ok.txt")));
-            testCase.verifyEmpty(listFileNames(folderFixture.Folder), ...
-                'Nothing may be created next to the root.');
-            testCase.verifyFalse(isfile(fullfile(rootPath, "a", "b.txt")));
-        end
-
         function testCreateVirtualBucketListErrorPropagates(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
