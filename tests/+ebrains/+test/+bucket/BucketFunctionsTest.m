@@ -7,6 +7,9 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
     properties
         Client ebrains.mocks.MockBucketsClient
+        % Folder of the manifests of multipart uploads, so that no test
+        % writes into the preferences folder of the user
+        ResumeFolder (1,1) string
     end
 
     properties (TestParameter)
@@ -28,6 +31,11 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
     methods (TestMethodSetup)
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
+        end
+
+        function createResumeFolder(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            testCase.ResumeFolder = fullfile(folderFixture.Folder, "multipart-uploads");
         end
     end
 
@@ -364,7 +372,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             spy = ebrains.mocks.SpyUploader();
 
             ebrains.bucket.uploadFile("my-bucket", "/data/big.bin", sourceFile, ...
-                MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
                 Client=testCase.Client, Uploader=spy.asFunction());
 
             testCase.Client.verifyRequestMethod(1, 'PUT');
@@ -381,7 +389,9 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(cellfun(@(c) c.Options.NumBytes, spy.Calls), [10, 10, 5]);
             testCase.verifyEqual(string(cellfun(@(c) c.Url, spy.Calls, UniformOutput=false)), ...
                 "https://store.example.org/part/" + (1:3));
-            testCase.verifyFalse(isfile(sourceFile + ".multipart-upload.json"));
+            % The manifest is removed once the object is assembled
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
         end
 
         function testUploadFileSharesOneProgressMonitorBetweenParts(testCase)
@@ -390,7 +400,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             spy = ebrains.mocks.SpyUploader();
 
             ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
                 Client=testCase.Client, Uploader=spy.asFunction());
 
             monitors = cellfun(@(c) c.Options.ProgressMonitor, spy.Calls, UniformOutput=false);
@@ -425,7 +435,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 {true, ebrains.mocks.SpyUploader.accepted("etag3")}};
 
             ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
                 Client=testCase.Client, Uploader=spy.asFunction());
 
             testCase.assertNumElements(spy.Calls, 4);
@@ -439,7 +449,6 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
         function testUploadFileGivesUpAPartAfterThreeRefusals(testCase)
             sourceFile = makeSourceFile(testCase, 25);
-            manifestFile = sourceFile + ".multipart-upload.json";
             queueMultipartResponses(testCase.Client, 3);
             spy = ebrains.mocks.SpyUploader();
             refusal = {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')};
@@ -447,7 +456,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             try
                 ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                    MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
                     Client=testCase.Client, Uploader=spy.asFunction());
                 testCase.verifyFail('Expected uploadFile to throw');
             catch ME
@@ -459,16 +468,22 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyNumElements(spy.Calls, 3);
             % One request started the upload and one fetched a URL per attempt; none completed it
             testCase.verifyEqual(testCase.Client.getRequestCount(), 4);
-            % The manifest keeps the upload id, so the next call resumes from part 1
-            manifest = jsondecode(fileread(manifestFile));
+            % The manifest keeps the upload id, so the next call resumes
+            % from part 1. It is the only file in the resume folder: the
+            % temporary file it was written through has been moved over it.
+            manifestNames = listFileNames(testCase.ResumeFolder);
+            testCase.assertNumElements(manifestNames, 1);
+            testCase.verifyTrue(endsWith(manifestNames, ".json"));
+            manifest = jsondecode(fileread(fullfile(testCase.ResumeFolder, manifestNames)));
             testCase.verifyEqual(manifest.UploadId, 'upload-1');
             testCase.verifyEmpty(manifest.PartETags);
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
         end
 
-        function testUploadFileResumesFromManifest(testCase)
+        function testUploadFileResumesAnUnchangedFile(testCase)
             sourceFile = makeSourceFile(testCase, 25);
-            manifestFile = sourceFile + ".multipart-upload.json";
-            writeManifest(manifestFile, "my-bucket", "data/big.bin", 25, 10, "upload-9", "stored-etag");
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/2'));
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/3'));
             testCase.Client.addResponse('OK', struct());
@@ -484,31 +499,51 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             end
 
             ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
-                Client=testCase.Client, Uploader=uploader);
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=uploader);
 
             % No request starts a new upload; the first one fetches the URL of part 2
             testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
-            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-9/2');
-            testCase.Client.verifyRequestURL(2, '/data/big.bin/multipart/upload-9/3');
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            testCase.Client.verifyRequestURL(2, '/data/big.bin/multipart/upload-1/3');
             testCase.verifyEqual(testCase.Client.getRequestPayload(3), ...
-                '{"1":"stored-etag","2":"etag1","3":"etag2"}');
+                '{"1":"first-etag","2":"etag1","3":"etag2"}');
             testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [10, 20]);
             % The part of the manifest counts as done before the first request
             testCase.verifyEqual(completedBytesAtFirstCall, 10);
-            testCase.verifyFalse(isfile(manifestFile));
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
         end
 
-        function testUploadFileIgnoresManifestOfAnotherObject(testCase)
+        function testUploadFileResumesAfterTheCurrentFolderChanged(testCase)
+            % The manifest is found by the absolute path of the source
+            % file, so a relative path from another folder still resumes.
             sourceFile = makeSourceFile(testCase, 25);
-            writeManifest(sourceFile + ".multipart-upload.json", ...
-                "my-bucket", "other.bin", 25, 10, "upload-9", "stored-etag");
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.applyFixture(matlab.unittest.fixtures.CurrentFolderFixture(fileparts(sourceFile)));
+            testCase.Client.reset();
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/2'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/3'));
+            testCase.Client.addResponse('OK', struct());
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", "big.bin", ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [10, 20]);
+        end
+
+        function testUploadFileDoesNotResumeTheUploadOfAnotherObject(testCase)
+            sourceFile = makeSourceFile(testCase, 25);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "other.bin");
+            testCase.Client.reset();
             queueMultipartResponses(testCase.Client, 3);
             spy = ebrains.mocks.SpyUploader();
 
             ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
-                Client=testCase.Client, Uploader=spy.asFunction());
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
 
             % A new upload is started and every part is sent
             request = testCase.Client.getRequest(1);
@@ -516,6 +551,41 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyNumElements(spy.Calls, 3);
             testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
                 '{"1":"etag1","2":"etag2","3":"etag3"}');
+            % The manifest of the other object stays for its own upload
+            testCase.verifyNumElements(listFileNames(testCase.ResumeFolder), 1);
+        end
+
+        function testUploadFileFromAReadOnlyFolder(testCase)
+            sourceFile = makeSourceFile(testCase, 25);
+            makeReadOnly(testCase, fileparts(sourceFile));
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
+        end
+
+        function testUploadFileGoesOnWithoutResumeWhenTheManifestCannotBeWritten(testCase)
+            sourceFile = makeSourceFile(testCase, 25);
+            mkdir(testCase.ResumeFolder)
+            makeReadOnly(testCase, testCase.ResumeFolder);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            testCase.verifyWarning(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                    DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+                'EBRAINS:Bucket:CannotRecordUploadProgress');
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
         end
 
         function testUploadFileWritesNoManifestWithResumeFalse(testCase)
@@ -527,11 +597,12 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyError(...
                 @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                    MultipartThreshold=20, PartSize=10, Resume=false, DisplayMode="Command Window", ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, Resume=false, DisplayMode="Command Window", ...
                     Client=testCase.Client, Uploader=spy.asFunction()), ...
                 'EBRAINS:Bucket:UploadFailed');
 
-            testCase.verifyFalse(isfile(sourceFile + ".multipart-upload.json"));
+            testCase.verifyFalse(isfolder(testCase.ResumeFolder));
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
         end
 
         function testUploadFileMissingETagIsAnError(testCase)
@@ -542,7 +613,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyError(...
                 @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
-                    MultipartThreshold=20, PartSize=10, DisplayMode="Command Window", ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
                     Client=testCase.Client, Uploader=spy.asFunction()), ...
                 'EBRAINS:Bucket:PartETagMissing');
         end
@@ -890,16 +961,34 @@ function queueMultipartResponses(client, numPartUrls)
     client.addResponse('OK', struct());
 end
 
-function writeManifest(manifestFile, bucketName, objectName, fileSizeBytes, partSize, uploadId, partETags)
-% writeManifest - Manifest of an interrupted upload, as uploadFile writes it
-    manifest = struct( ...
-        "BucketName", bucketName, ...
-        "ObjectName", objectName, ...
-        "FileSizeBytes", fileSizeBytes, ...
-        "PartSize", partSize, ...
-        "UploadId", uploadId, ...
-        "PartETags", {cellstr(partETags)});
-    writelines(jsonencode(manifest), manifestFile);
+function interruptUploadAfterFirstPart(testCase, sourceFile, objectName)
+% interruptUploadAfterFirstPart - Leave a manifest with one accepted part, as an interrupted upload does
+%
+%   The store accepts part 1 with the ETag "first-etag" and refuses part
+%   2 three times, so the upload with id "upload-1" fails after part 1.
+    queueMultipartResponses(testCase.Client, 4);
+    spy = ebrains.mocks.SpyUploader();
+    refusal = {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')};
+    spy.Responses = {{true, ebrains.mocks.SpyUploader.accepted("first-etag")}, refusal, refusal, refusal};
+
+    testCase.assertError(@() ebrains.bucket.uploadFile("my-bucket", objectName, sourceFile, ...
+        MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+        DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+        'EBRAINS:Bucket:UploadFailed');
+end
+
+function makeReadOnly(testCase, folder)
+% makeReadOnly - Remove write access to a folder for the test, or skip the test where that has no effect
+    fileattrib(folder, "-w");
+    testCase.addTeardown(@() fileattrib(folder, "+w"));
+
+    probeFile = fullfile(folder, "probe.txt");
+    fileId = fopen(probeFile, "w");
+    if fileId >= 0
+        fclose(fileId);
+        delete(probeFile)
+        testCase.assumeFail("Files can still be created in a folder without write access on this system.")
+    end
 end
 
 function fileNames = listFileNames(folder)

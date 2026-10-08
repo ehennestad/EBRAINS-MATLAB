@@ -10,12 +10,13 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %       its MultipartThreshold.
 %
 %       While Resume is true, the id of the upload and the ETag of every
-%       accepted part are recorded in a manifest file beside the source
-%       file, <sourceFile>.multipart-upload.json. A later call with the
-%       same source file and object continues from the first part that
-%       is missing, and the manifest is removed once the object has been
-%       assembled. A manifest for another object, or for a file whose
-%       size or part size differs, is not resumed.
+%       accepted part are recorded in a manifest file in ResumeFolder,
+%       one file for each source file, bucket and object. A later call
+%       for the same source file and object continues from the first
+%       part that is missing, and the manifest is removed once the object
+%       has been assembled. The upload starts over when the size of the
+%       file, or the part size, differs from the one recorded. When the manifest cannot be written, the upload
+%       goes on without it and cannot be resumed, and a warning says so.
 %
 %       A part that the store refuses is sent again through a new
 %       temporary URL, three attempts in all, before the upload is given
@@ -34,6 +35,8 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %                     10 MiB.
 %       Resume      : Record progress in the manifest file and resume
 %                     from it. Default is true.
+%       ResumeFolder: Folder of the manifest files. Default is
+%                     fullfile(prefdir, "EBRAINS", "multipart-uploads").
 %       DisplayMode : Where progress is shown, "Dialog Box" (default) or
 %                     "Command Window".
 %       Figure      : Parent figure of the progress dialog. By default the
@@ -57,6 +60,7 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
         sourceFile (1,1) string {mustBeFile}
         options.PartSize (1,1) double {mustBeInteger, mustBePositive} = 10*2^20
         options.Resume (1,1) logical = true
+        options.ResumeFolder (1,1) string = fullfile(prefdir, "EBRAINS", "multipart-uploads")
         options.DisplayMode (1,1) string ...
             {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
@@ -66,21 +70,30 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 
     maxAttemptsPerPart = 3;
 
+    % A relative path would be resolved by Java against a folder other
+    % than the current folder of MATLAB.
+    [~, sourceAttributes] = fileattrib(sourceFile);
+    sourceFile = string(sourceAttributes.Name);
+
     fileInfo = dir(sourceFile);
     fileSizeBytes = fileInfo.bytes;
     numParts = ceil(fileSizeBytes / options.PartSize);
-    manifestFile = sourceFile + ".multipart-upload.json";
 
-    manifest = newManifest(bucketName, objectName, fileSizeBytes, options.PartSize);
-    if options.Resume && isfile(manifestFile)
-        manifest = readMatchingManifest(manifestFile, manifest);
+    manifest = newManifest(bucketName, objectName, sourceFile, fileSizeBytes, options.PartSize);
+    manifestFile = "";
+    if options.Resume
+        manifestFile = getManifestFile(options.ResumeFolder, manifest);
+        if isfile(manifestFile)
+            manifest = readMatchingManifest(manifestFile, manifest);
+        end
     end
 
     if manifest.UploadId == ""
+        % Written before the upload is started, so that an upload that
+        % cannot be resumed is known before the Data Proxy holds parts of it.
+        manifestFile = tryWriteManifest(manifestFile, manifest);
         manifest.UploadId = options.Client.initiateMultipartUpload(bucketName, objectName);
-        if options.Resume
-            writeManifest(manifestFile, manifest)
-        end
+        manifestFile = tryWriteManifest(manifestFile, manifest);
     end
 
     % One display covers every part. The monitor is deleted on the way
@@ -113,15 +126,13 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
             "NumBytes", min(options.PartSize, fileSizeBytes - offset));
 
         partETags(partNumber) = sendPart(part, transfer, maxAttemptsPerPart);
-        if options.Resume
-            manifest.PartETags = partETags(1:partNumber);
-            writeManifest(manifestFile, manifest)
-        end
+        manifest.PartETags = partETags(1:partNumber);
+        manifestFile = tryWriteManifest(manifestFile, manifest);
     end
 
     options.Client.completeMultipartUpload(bucketName, objectName, manifest.UploadId, partETags);
 
-    if options.Resume && isfile(manifestFile)
+    if manifestFile ~= "" && isfile(manifestFile)
         delete(manifestFile)
     end
     close(monitor)
@@ -168,24 +179,38 @@ function etag = sendPart(part, transfer, maxAttempts)
     etag = string(etagFields(1).Value);
 end
 
-function manifest = newManifest(bucketName, objectName, fileSizeBytes, partSize)
+function manifest = newManifest(bucketName, objectName, sourceFile, fileSizeBytes, partSize)
 % newManifest - Manifest of an upload that has not started
 
     manifest = struct( ...
         "BucketName", bucketName, ...
         "ObjectName", objectName, ...
+        "SourceFile", sourceFile, ...
         "FileSizeBytes", fileSizeBytes, ...
         "PartSize", partSize, ...
         "UploadId", "", ...
         "PartETags", strings(1, 0));
 end
 
+function manifestFile = getManifestFile(resumeFolder, manifest)
+% getManifestFile - Path of the manifest of an upload, named after its source file, bucket and object
+%
+%   The name is the SHA-256 hash of the three, since a path and an object
+%   name together can be longer than a file name may be.
+
+    key = jsonencode([manifest.SourceFile, manifest.BucketName, manifest.ObjectName]);
+    digest = java.security.MessageDigest.getInstance("SHA-256");
+    hashBytes = typecast(digest.digest(unicode2native(key, "UTF-8")), "uint8");
+    hashText = lower(string(reshape(dec2hex(hashBytes, 2)', 1, [])));
+    manifestFile = fullfile(resumeFolder, hashText + ".json");
+end
+
 function manifest = readMatchingManifest(manifestFile, manifest)
 % readMatchingManifest - The stored manifest if it is for this upload, else the one given
 %
 %   The upload id and the ETags are taken over only when the bucket, the
-%   object, the file size and the part size are the same, since the
-%   parts of another upload cannot complete this one.
+%   object, the source file, its size and the part size are the same,
+%   since the parts of another upload cannot complete this one.
 
     try
         stored = jsondecode(fileread(manifestFile));
@@ -195,13 +220,15 @@ function manifest = readMatchingManifest(manifestFile, manifest)
         return
     end
 
-    requiredFields = ["BucketName", "ObjectName", "FileSizeBytes", "PartSize", "UploadId", "PartETags"];
+    requiredFields = ["BucketName", "ObjectName", "SourceFile", "FileSizeBytes", ...
+        "PartSize", "UploadId", "PartETags"];
     if ~isstruct(stored) || ~all(isfield(stored, requiredFields))
         return
     end
 
     isSameUpload = string(stored.BucketName) == manifest.BucketName ...
         && string(stored.ObjectName) == manifest.ObjectName ...
+        && string(stored.SourceFile) == manifest.SourceFile ...
         && isequal(stored.FileSizeBytes, manifest.FileSizeBytes) ...
         && isequal(stored.PartSize, manifest.PartSize) ...
         && strlength(string(stored.UploadId)) > 0;
@@ -213,20 +240,60 @@ function manifest = readMatchingManifest(manifestFile, manifest)
     manifest.PartETags = reshape(string(stored.PartETags), 1, []);
 end
 
+function manifestFile = tryWriteManifest(manifestFile, manifest)
+% tryWriteManifest - Record the progress of the upload, or stop recording it if that fails
+%
+%   Returns "" when the manifest cannot be written, after a warning, so
+%   that the upload goes on without one. An empty manifestFile is left
+%   as it is.
+
+    if manifestFile == ""
+        return
+    end
+
+    try
+        writeManifest(manifestFile, manifest)
+    catch exception
+        warning('EBRAINS:Bucket:CannotRecordUploadProgress', ...
+            ['Cannot record the progress of the upload of "%s" in "%s": %s. ' ...
+            'The upload goes on, but cannot be resumed if it is interrupted.'], ...
+            manifest.SourceFile, manifestFile, exception.message)
+        manifestFile = "";
+    end
+end
+
 function writeManifest(manifestFile, manifest)
-% writeManifest - Record the progress of the upload beside the source file
+% writeManifest - Write the manifest file, replacing the one before at once
+%
+%   The manifest is written to a temporary file in the same folder and
+%   then moved over the manifest file, so that an interrupted write
+%   leaves the manifest before it in place.
+
+    resumeFolder = fileparts(manifestFile);
+    if ~isfolder(resumeFolder)
+        [wasCreated, errorMessage] = mkdir(resumeFolder);
+        if ~wasCreated
+            error('EBRAINS:Bucket:CannotWriteManifest', '%s', errorMessage)
+        end
+    end
 
     % The ETags go in as a cell array, so that a single part is written
     % as a JSON array rather than as a string.
     stored = manifest;
     stored.PartETags = cellstr(manifest.PartETags);
 
-    [fileId, errorMessage] = fopen(manifestFile, "w");
+    [~, temporaryName] = fileparts(tempname);
+    temporaryFile = fullfile(resumeFolder, temporaryName + ".tmp");
+    [fileId, errorMessage] = fopen(temporaryFile, "w");
     if fileId < 0
-        error('EBRAINS:Bucket:CannotWriteManifest', ...
-            'Cannot write the upload manifest "%s": %s. Pass Resume=false to upload without a manifest.', ...
-            manifestFile, errorMessage)
+        error('EBRAINS:Bucket:CannotWriteManifest', '%s', errorMessage)
     end
-    fileCleanup = onCleanup(@() fclose(fileId));
     fprintf(fileId, '%s', jsonencode(stored, PrettyPrint=true));
+    fclose(fileId);
+
+    [wasMoved, errorMessage] = movefile(temporaryFile, manifestFile, "f");
+    if ~wasMoved
+        delete(temporaryFile)
+        error('EBRAINS:Bucket:CannotWriteManifest', '%s', errorMessage)
+    end
 end

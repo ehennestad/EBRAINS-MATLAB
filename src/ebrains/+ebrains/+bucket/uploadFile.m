@@ -11,10 +11,10 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       of its own, which the Data Proxy assembles into the object once
 %       the last part has arrived. The Data Proxy accepts at most 5 GiB
 %       in a single request. While Resume is true, the progress of a
-%       multipart upload is recorded in a manifest file beside the source
-%       file, <sourceFile>.multipart-upload.json, and a later call with
-%       the same source file and object sends only the parts that are
-%       still missing. The manifest is removed once the object has been
+%       multipart upload is recorded in a manifest file in ResumeFolder,
+%       and a later call with the same source file and object sends only
+%       the parts that are still missing, provided the size of the file
+%       is unchanged. The manifest is removed once the object has been
 %       assembled.
 %
 %       ebrains.bucket.uploadFile(..., Name=Value) sets the options below.
@@ -35,6 +35,9 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       Resume             : Record the progress of a multipart upload in
 %                            the manifest file and resume from it.
 %                            Default is true.
+%       ResumeFolder       : Folder of the manifest files. Default is
+%                            fullfile(prefdir, "EBRAINS",
+%                            "multipart-uploads").
 %       DisplayMode        : Where progress is shown, "Dialog Box"
 %                            (default) or "Command Window".
 %       Figure             : Parent figure of the progress dialog. By
@@ -60,6 +63,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
         options.MultipartThreshold (1,1) double {mustBePositive} = 2^30
         options.PartSize (1,1) double {mustBeInteger, mustBePositive} = 10*2^20
         options.Resume (1,1) logical = true
+        options.ResumeFolder (1,1) string = fullfile(prefdir, "EBRAINS", "multipart-uploads")
         options.DisplayMode (1,1) string ...
             {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
@@ -72,7 +76,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
     fileInfo = dir(sourceFile);
     if fileInfo.bytes > options.MultipartThreshold
         ebrains.bucket.internal.uploadFileInParts(bucketName, objectName, sourceFile, ...
-            PartSize=options.PartSize, Resume=options.Resume, ...
+            PartSize=options.PartSize, Resume=options.Resume, ResumeFolder=options.ResumeFolder, ...
             DisplayMode=options.DisplayMode, Figure=options.Figure, ...
             Client=options.Client, Uploader=options.Uploader);
     else
