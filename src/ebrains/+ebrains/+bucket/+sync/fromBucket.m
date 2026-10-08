@@ -88,7 +88,13 @@ function actions = fromBucket(bucketName, localFolder, options)
 %   file first, so a failed download leaves the local file as it was, and
 %   the size of each download is checked against the object. Each
 %   download is given the modification time of its object, so that a
-%   later sync in either direction finds it unchanged.
+%   later sync in either direction finds it unchanged. An upload cannot do
+%   the same: the object takes the time of the upload, which is later
+%   than that of the local file. A sync from the bucket into the folder
+%   that ebrains.bucket.sync.toBucket uploaded from therefore downloads
+%   each file of the same size once more, after which the times agree.
+%   Comparison="Checksum" avoids that for objects the bucket reports a
+%   checksum for.
 %
 %   A subfolder of localFolder that cannot be read is skipped by dir
 %   without an error, so its files are missing from the listing. The sync
