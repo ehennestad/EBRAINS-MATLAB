@@ -9,8 +9,7 @@ function exception = redactSignedUrl(exception, signedUrl)
 %   A temporary URL of the Data Proxy carries its signature in the query
 %   string, so anyone who reads the whole URL can use it until it expires.
 %   The HTTP client puts the whole URL in the message of an error such as
-%   a refused connection or a timeout, and that message is shown on screen
-%   and kept in the results of a sync.
+%   a refused connection or a timeout, and that message is shown on screen.
 
     arguments
         exception (1,1) MException
