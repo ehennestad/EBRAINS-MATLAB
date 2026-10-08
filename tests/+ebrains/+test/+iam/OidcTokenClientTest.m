@@ -184,6 +184,67 @@ classdef OidcTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(client.PollCount, 0);
         end
 
+        function testRefreshReplyWithoutRefreshTokenKeepsTheOldOne(testCase)
+            % The identity provider may leave refresh_token out of the
+            % reply to a refresh, and the one that was sent stays in use.
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", 7200);
+            client.addTokenResponse(rmfield(testCase.makeTokenResponse("access-1"), ...
+                ["refresh_token", "refresh_expires_in"]));
+            client.addTokenResponse(testCase.makeTokenResponse("access-2"));
+
+            client.authenticate();
+            testCase.verifyEqual(client.AccessToken, "access-1");
+            client.authenticate();
+
+            testCase.verifyEqual(client.TokenRequests{2}{6}, "refresh-0");
+            testCase.verifyEmpty(client.ErrorDialogs);
+            testCase.verifyEqual(client.PollCount, 0);
+        end
+
+        function testRefreshReplyWithRefreshTokenReplacesTheOldOne(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", 7200);
+            firstReply = testCase.makeTokenResponse("access-1");
+            firstReply.refresh_token = 'refresh-1';
+            client.addTokenResponse(firstReply);
+            client.addTokenResponse(testCase.makeTokenResponse("access-2"));
+
+            client.authenticate();
+            client.authenticate();
+
+            testCase.verifyEqual(client.TokenRequests{2}{6}, "refresh-1");
+        end
+
+        function testRefreshReplyWithoutRefreshExpiryIsAccepted(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", 7200);
+            firstReply = rmfield(testCase.makeTokenResponse("access-1"), "refresh_expires_in");
+            firstReply.refresh_token = 'refresh-1';
+            client.addTokenResponse(firstReply);
+            client.addTokenResponse(testCase.makeTokenResponse("access-2"));
+
+            client.authenticate();
+            client.authenticate();
+
+            testCase.verifyEqual(client.TokenRequests{2}{6}, "refresh-1");
+            testCase.verifyEmpty(client.ErrorDialogs);
+        end
+
+        function testRenewalReplyWithoutRefreshTokenKeepsTheOldOne(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addTokenResponse(rmfield(testCase.makeTokenResponse("access-1"), ...
+                ["refresh_token", "refresh_expires_in"]));
+            client.addTokenResponse(testCase.makeTokenResponse("access-2"));
+
+            isActive = client.tryRenewToken();
+            client.authenticate();
+
+            testCase.verifyTrue(isActive);
+            testCase.verifyEqual(client.TokenRequests{2}{6}, "refresh-0");
+        end
+
         %% tryRenewToken
         function testTryRenewTokenRenewsExpiredToken(testCase)
             client = ebrains.mocks.MockDeviceFlowTokenClient();

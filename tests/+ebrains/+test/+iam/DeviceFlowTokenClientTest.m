@@ -45,6 +45,35 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyTrue(client.hasActiveToken());
         end
 
+        function testLoginWithoutRefreshTokenSucceeds(testCase)
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.addPollResponse('OK', rmfield(testCase.makeTokenResponse("access-1"), ...
+                ["refresh_token", "refresh_expires_in"]));
+
+            client.authenticate();
+
+            testCase.verifyTrue(client.hasActiveToken());
+            testCase.verifyEqual(client.AccessToken, "access-1");
+            testCase.verifyEmpty(client.ErrorDialogs);
+        end
+
+        function testLoginWithoutRefreshTokenDropsTheOneOfAnEarlierLogin(testCase)
+            % A refresh without a refresh token logs in again, so a second
+            % login, not a refresh request, shows the old one was dropped.
+            client = ebrains.mocks.MockDeviceFlowTokenClient();
+            client.seedTokens("access-0", "refresh-0", -60);
+            client.addPollResponse('OK', rmfield(testCase.makeTokenResponse("access-1"), ...
+                ["refresh_token", "refresh_expires_in"]));
+            client.addPollResponse('OK', testCase.makeTokenResponse("access-2"));
+
+            testCase.verifyWarning(@() client.authenticate(), 'EBRAINS:IAM:TokenExpired');
+            client.authenticate();
+
+            testCase.verifyEmpty(client.TokenRequests);
+            testCase.verifyEqual(client.PollCount, 2);
+            testCase.verifyEqual(client.AccessToken, "access-2");
+        end
+
         %% Failures
         function testExpiredDeviceCodeFails(testCase)
             client = ebrains.mocks.MockDeviceFlowTokenClient();

@@ -213,15 +213,43 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
         function storeRefreshToken(obj, refreshToken, expiresInSeconds)
         %storeRefreshToken - Record a refresh token and when it expires
+        %   storeRefreshToken(OBJ,refreshToken,expiresInSeconds) stores the
+        %   refresh token with the moment it expires. Leave out
+        %   expiresInSeconds, or pass [], when the lifetime is not known.
 
             arguments
                 obj (1,1) ebrains.iam.OidcTokenClient
                 refreshToken (1,1) string
-                expiresInSeconds (1,1) double
+                expiresInSeconds double {mustBeScalarOrEmpty} = []
             end
 
             obj.RefreshToken = refreshToken;
-            obj.RefreshTokenExpiresAt = datetime("now") + seconds(expiresInSeconds);
+            if isempty(expiresInSeconds)
+                obj.RefreshTokenExpiresAt = [];
+            else
+                obj.RefreshTokenExpiresAt = datetime("now") + seconds(expiresInSeconds);
+            end
+        end
+
+        function storeRefreshTokenFromResponse(obj, tokenResponse)
+        %storeRefreshTokenFromResponse - Record the refresh token of a token endpoint reply
+        %   storeRefreshTokenFromResponse(OBJ,tokenResponse) stores the
+        %   refresh_token field of the reply. Its lifetime comes from
+        %   refresh_expires_in, a field of the EBRAINS identity provider
+        %   that OAuth 2.0 does not define. Without that field the expiry
+        %   is left unknown, and the identity provider decides whether the
+        %   token is still valid when it is sent.
+
+            arguments
+                obj (1,1) ebrains.iam.OidcTokenClient
+                tokenResponse (1,1) struct
+            end
+
+            if isfield(tokenResponse, "refresh_expires_in")
+                obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
+            else
+                obj.storeRefreshToken(tokenResponse.refresh_token)
+            end
         end
 
         function clearRefreshToken(obj)
@@ -297,7 +325,13 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
                 });
 
             obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
-            obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
+
+            % The identity provider may leave refresh_token out of the reply,
+            % and the refresh token that was sent then stays in use
+            % (RFC 6749, section 6).
+            if isfield(tokenResponse, "refresh_token")
+                obj.storeRefreshTokenFromResponse(tokenResponse)
+            end
         end
 
         function tf = hasRefreshToken(obj)
