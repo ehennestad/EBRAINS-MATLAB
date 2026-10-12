@@ -1,0 +1,59 @@
+{
+  "description": "An uploaded file replaces or adds its entry with the local size and checksum and an unknown time, and a deleted object loses its entry. Other entries are those of the listing.",
+  "listing": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "aaa"
+    },
+    {
+      "path": "b.dat",
+      "bytes": 4,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "bbb"
+    },
+    {
+      "path": "c.dat",
+      "bytes": 5,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "ccc"
+    }
+  ],
+  "uploaded": [
+    {
+      "path": "a.dat",
+      "bytes": 7,
+      "modified_time": "2024-01-03T00:00:00Z",
+      "hash": "ddd"
+    },
+    {
+      "path": "new.dat",
+      "bytes": 2,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "deleted": [
+    "c.dat"
+  ],
+  "expected": [
+    {
+      "path": "a.dat",
+      "bytes": 7,
+      "modified_time": null,
+      "hash": "ddd"
+    },
+    {
+      "path": "b.dat",
+      "bytes": 4,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "bbb"
+    },
+    {
+      "path": "new.dat",
+      "bytes": 2,
+      "modified_time": null,
+      "hash": ""
+    }
+  ]
+}

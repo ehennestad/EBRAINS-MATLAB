@@ -1,0 +1,13 @@
+{
+  "description": "With delete, a file only the target has is deleted.",
+  "policy": { "comparison": "SizeAndTime", "delete": true },
+  "source": [{ "path": "a.txt", "bytes": 1 }],
+  "target": [
+    { "path": "a.txt", "bytes": 1 },
+    { "path": "extra.txt", "bytes": 4 }
+  ],
+  "expected": [
+    { "path": "a.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "extra.txt", "action": "delete", "reason": "extraneous", "bytes": 4 }
+  ]
+}

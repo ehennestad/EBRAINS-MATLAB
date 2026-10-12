@@ -1,0 +1,10 @@
+{
+  "description": "An empty source with deletions is refused.",
+  "plan": [
+    { "path": "a.txt", "action": "delete", "reason": "extraneous", "bytes": 1 },
+    { "path": "b.txt", "action": "delete", "reason": "extraneous", "bytes": 1 }
+  ],
+  "n_source_files": 0,
+  "max_delete": null,
+  "expected_code": "EmptySource"
+}

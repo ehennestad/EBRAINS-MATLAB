@@ -1,0 +1,7 @@
+{
+  "description": "Two empty sides give an empty plan.",
+  "policy": { "comparison": "SizeAndTime", "delete": true },
+  "source": [],
+  "target": [],
+  "expected": []
+}

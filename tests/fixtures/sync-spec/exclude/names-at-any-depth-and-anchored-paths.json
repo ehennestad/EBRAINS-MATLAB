@@ -1,0 +1,6 @@
+{
+  "description": "A pattern without a slash matches a name at any depth and all below it; a pattern with a slash is matched from the root.",
+  "patterns": ["*.tmp", ".git", "/raw/scratch"],
+  "paths": ["a.tmp", "sub/b.tmp", "sub/b.tmpx", ".git/config", "src/.git/HEAD", "raw/scratch/x.dat", "other/raw/scratch/y.dat", "keep.txt"],
+  "expected_kept": ["sub/b.tmpx", "other/raw/scratch/y.dat", "keep.txt"]
+}

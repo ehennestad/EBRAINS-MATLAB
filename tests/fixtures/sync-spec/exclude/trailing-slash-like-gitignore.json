@@ -1,0 +1,6 @@
+{
+  "description": "A trailing slash is ignored, so \".git/\" and \"build/\" leave out those folders wherever they are.",
+  "patterns": [".git/", "build/", "/raw/scratch/"],
+  "paths": [".git/config", "src/.git/HEAD", "build/a.o", "raw/scratch/x.dat", "other/raw/scratch/y.dat", "keep.txt"],
+  "expected_kept": ["other/raw/scratch/y.dat", "keep.txt"]
+}

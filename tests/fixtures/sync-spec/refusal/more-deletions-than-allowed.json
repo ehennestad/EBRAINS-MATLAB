@@ -1,0 +1,11 @@
+{
+  "description": "More deletions than max_delete are refused; as many are allowed.",
+  "plan": [
+    { "path": "keep.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "a.txt", "action": "delete", "reason": "extraneous", "bytes": 1 },
+    { "path": "b.txt", "action": "delete", "reason": "extraneous", "bytes": 1 }
+  ],
+  "n_source_files": 1,
+  "max_delete": 1,
+  "expected_code": "TooManyDeletions"
+}
