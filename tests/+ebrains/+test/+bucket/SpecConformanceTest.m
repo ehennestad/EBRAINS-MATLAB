@@ -20,6 +20,7 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
     properties (TestParameter)
         PlanFixture = fixtureFiles("plan")
         ExcludeFixture = fixtureFiles("exclude")
+        RefusalFixture = fixtureFiles("refusal")
         ManifestFixture = fixtureFiles("manifest")
         FileStateFixture = fixtureFiles("file-state")
         PlaceholderFixture = fixtureFiles("placeholder")
@@ -45,6 +46,24 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
             kept = ebrains.bucket.sync.internal.excludeFiles(files, toStringColumn(fixture.patterns));
 
             testCase.verifyEqual(kept.Path, toStringColumn(fixture.expected_kept), fixture.description);
+        end
+
+        function testRefusalFixture(testCase, RefusalFixture)
+            fixture = readFixture(RefusalFixture);
+            % A null max_delete is no limit, and a null expected_code no refusal
+            maxDelete = Inf;
+            if ~isempty(fixture.max_delete)
+                maxDelete = fixture.max_delete;
+            end
+            expectedIdentifier = "";
+            if ~isempty(fixture.expected_code)
+                expectedIdentifier = "EBRAINS:Bucket:Sync:" + fixture.expected_code;
+            end
+
+            identifier = ebrains.bucket.sync.internal.deletionRefusal( ...
+                toPlanTable(fixture.plan), fixture.n_source_files, maxDelete);
+
+            testCase.verifyEqual(identifier, expectedIdentifier, fixture.description);
         end
 
         function testManifestFixture(testCase, ManifestFixture)
