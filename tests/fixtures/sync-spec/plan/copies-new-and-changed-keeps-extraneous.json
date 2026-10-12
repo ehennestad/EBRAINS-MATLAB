@@ -1,0 +1,20 @@
+{
+  "description": "A new file and a file of another size are copied; a file of the same size is unchanged; a file only the target has is kept.",
+  "policy": { "comparison": "SizeAndTime", "delete": false },
+  "source": [
+    { "path": "new.txt", "bytes": 1 },
+    { "path": "same.txt", "bytes": 2 },
+    { "path": "grown.txt", "bytes": 30 }
+  ],
+  "target": [
+    { "path": "same.txt", "bytes": 2 },
+    { "path": "grown.txt", "bytes": 3 },
+    { "path": "extra.txt", "bytes": 4 }
+  ],
+  "expected": [
+    { "path": "extra.txt", "action": "none", "reason": "extraneous", "bytes": 4 },
+    { "path": "grown.txt", "action": "copy", "reason": "size", "bytes": 30 },
+    { "path": "new.txt", "action": "copy", "reason": "new", "bytes": 1 },
+    { "path": "same.txt", "action": "none", "reason": "unchanged", "bytes": 2 }
+  ]
+}

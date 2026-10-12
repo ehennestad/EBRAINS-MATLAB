@@ -1,0 +1,6 @@
+{
+  "description": "Characters that mean something in a regular expression match themselves.",
+  "patterns": ["a(?).txt", "sub/x.y"],
+  "paths": ["a(1).txt", "a1.txt", "sub/x.y", "sub/xzy"],
+  "expected_kept": ["a1.txt", "sub/xzy"]
+}

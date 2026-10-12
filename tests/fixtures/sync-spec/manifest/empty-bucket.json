@@ -1,0 +1,5 @@
+{
+  "description": "The manifest of an empty bucket is the header alone.",
+  "text": "path,bytes,modified_time,hash\n",
+  "entries": []
+}

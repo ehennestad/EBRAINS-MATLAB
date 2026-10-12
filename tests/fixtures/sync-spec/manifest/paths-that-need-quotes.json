@@ -1,0 +1,24 @@
+{
+  "description": "A path with a comma or a double quote is quoted, with the double quote doubled. Other paths, including those with spaces and letters outside ASCII, are not quoted.",
+  "text": "path,bytes,modified_time,hash\n\"a,b.txt\",1,,\nmåling/data file.txt,3,,\n\"say \"\"hi\"\".txt\",2,,\n",
+  "entries": [
+    {
+      "path": "a,b.txt",
+      "bytes": 1,
+      "modified_time": null,
+      "hash": ""
+    },
+    {
+      "path": "måling/data file.txt",
+      "bytes": 3,
+      "modified_time": null,
+      "hash": ""
+    },
+    {
+      "path": "say \"hi\".txt",
+      "bytes": 2,
+      "modified_time": null,
+      "hash": ""
+    }
+  ]
+}
