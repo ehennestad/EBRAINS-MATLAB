@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Virtual bucket</title>
+<!--
+  Page of ebrains.bucket.app.VirtualBucketBrowser.
+
+  MATLAB sends two events, each with JSON text as data:
+    state - the bucket, the folder and every file with its state
+    busy  - {"busy": true|false} while MATLAB carries out a request
+  The page sends requests to MATLAB as JSON text: ready, refresh, update,
+  and download, onlineOnly, open and reveal with {"paths": [...]}.
+-->
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-subtle: #f6f7f9;
+    --bg-hover: #f0f2f5;
+    --bg-selected: #e6effd;
+    --border: #e3e6ea;
+    --text: #1d2228;
+    --text-muted: #67707b;
+    --accent: #2563eb;
+    --accent-hover: #1d4fd8;
+    --accent-text: #ffffff;
+    --online: #2563eb;
+    --online-bg: #e8f0fe;
+    --downloaded: #16803c;
+    --downloaded-bg: #e6f4ea;
+    --differs: #b45309;
+    --differs-bg: #fdf1e2;
+    --local: #67707b;
+    --local-bg: #eef0f2;
+    --shadow: 0 6px 24px rgba(16, 24, 40, 0.14), 0 1px 3px rgba(16, 24, 40, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1f24;
+      --bg-subtle: #23272d;
+      --bg-hover: #2a2f36;
+      --bg-selected: #233656;
+      --border: #333941;
+      --text: #e6e8eb;
+      --text-muted: #9aa3ad;
+      --accent: #4f8cff;
+      --accent-hover: #6b9dff;
+      --online: #7aa7ff;
+      --online-bg: #1f2d47;
+      --downloaded: #5cc27f;
+      --downloaded-bg: #1d3427;
+      --differs: #f0a54a;
+      --differs-bg: #3a2a17;
+      --local: #9aa3ad;
+      --local-bg: #2a2f36;
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  svg.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
+             stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .title { min-width: 0; flex: 1; }
+  .title h1 { font-size: 15px; font-weight: 600; margin: 0; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .title .path { color: var(--text-muted); font-size: 12px; white-space: nowrap;
+                 overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+  .search {
+    display: flex; align-items: center; gap: 6px; width: 280px;
+    padding: 0 10px; height: 32px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-subtle); color: var(--text-muted);
+  }
+  .search:focus-within { border-color: var(--accent); background: var(--bg); }
+  .search input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; }
+  button {
+    font: inherit; display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  button:hover:not(:disabled) { background: var(--bg-hover); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.icon-only { padding: 0 8px; }
+
+  /* Body */
+  .content { flex: 1; display: flex; min-height: 0; }
+  aside {
+    width: 260px; flex: none; overflow: auto; padding: 8px 6px;
+    border-right: 1px solid var(--border); background: var(--bg-subtle);
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 4px; height: 28px; padding-right: 8px;
+    border-radius: 6px; cursor: pointer; white-space: nowrap;
+  }
+  .tree-row:hover { background: var(--bg-hover); }
+  .tree-row.current { background: var(--bg-selected); font-weight: 600; }
+  .tree-row .chevron { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+                       color: var(--text-muted); flex: none; border-radius: 4px; }
+  .tree-row .chevron svg { width: 12px; height: 12px; transition: transform 0.12s; }
+  .tree-row.expanded .chevron svg { transform: rotate(90deg); }
+  .tree-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .folder-icon { color: #e0a526; }
+  .tree-row .badge { display: flex; }
+  .tree-row .badge svg { width: 14px; height: 14px; }
+
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .breadcrumb {
+    display: flex; align-items: center; gap: 2px; padding: 10px 16px; min-height: 44px;
+    border-bottom: 1px solid var(--border); overflow: hidden; white-space: nowrap;
+  }
+  .breadcrumb a { color: var(--text-muted); text-decoration: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+  .breadcrumb a:hover { background: var(--bg-hover); color: var(--text); }
+  .breadcrumb a:last-child { color: var(--text); font-weight: 600; }
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .sep svg { width: 12px; height: 12px; }
+  .breadcrumb .filter-note { margin-left: 8px; color: var(--text-muted); }
+
+  .table-wrap { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th {
+    position: sticky; top: 0; z-index: 1; background: var(--bg);
+    text-align: left; font-weight: 500; color: var(--text-muted); font-size: 12px;
+    padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .arrow { font-size: 10px; margin-left: 4px; }
+  th.check, td.check { width: 40px; text-align: center; cursor: default; }
+  th.status { width: 190px; } th.size { width: 100px; text-align: right; } th.modified { width: 140px; }
+  tbody tr { height: 36px; cursor: default; }
+  tbody tr:hover { background: var(--bg-hover); }
+  tbody tr.selected { background: var(--bg-selected); }
+  tbody td { padding: 0 8px; border-bottom: 1px solid var(--border); white-space: nowrap;
+             overflow: hidden; text-overflow: ellipsis; }
+  td.size { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+  td.modified { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .name-cell { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+  .name-cell span { overflow: hidden; text-overflow: ellipsis; }
+  .name-cell .file-icon { color: var(--text-muted); }
+  .name-cell .dim { color: var(--text-muted); }
+  input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px;
+    border-radius: 999px; font-size: 12px; font-weight: 500;
+  }
+  .pill svg { width: 13px; height: 13px; }
+  .pill.OnlineOnly { color: var(--online); background: var(--online-bg); }
+  .pill.Downloaded { color: var(--downloaded); background: var(--downloaded-bg); }
+  .pill.Differs { color: var(--differs); background: var(--differs-bg); }
+  .pill.LocalOnly { color: var(--local); background: var(--local-bg); }
+  .pill.Partial { color: var(--text-muted); background: var(--bg-hover); }
+  .meter { width: 48px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  .meter div { height: 100%; background: var(--downloaded); }
+
+  .empty { padding: 48px 16px; text-align: center; color: var(--text-muted); }
+  .more { padding: 12px 16px; color: var(--text-muted); }
+
+  footer {
+    display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+    border-top: 1px solid var(--border); background: var(--bg);
+  }
+  footer .summary { flex: 1; color: var(--text-muted); min-width: 0; overflow: hidden;
+                    white-space: nowrap; text-overflow: ellipsis; }
+  footer .summary b { color: var(--text); font-weight: 600; }
+  .message { padding: 0 16px 10px; color: var(--text-muted); font-size: 12px; min-height: 16px; }
+
+  /* Context menu */
+  .menu {
+    position: fixed; z-index: 10; min-width: 200px; padding: 4px; display: none;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+  }
+  .menu.open { display: block; }
+  .menu .item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+  .menu .item:hover { background: var(--bg-hover); }
+  .menu .item.disabled { opacity: 0.4; pointer-events: none; }
+  .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+
+  body.busy header, body.busy .content, body.busy footer { pointer-events: none; opacity: 0.6; }
+  body.busy { cursor: progress; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1 id="bucketName">&nbsp;</h1>
+      <div class="path" id="localFolder">&nbsp;</div>
+    </div>
+    <label class="search">
+      <svg class="icon"><use href="#i-search"/></svg>
+      <input id="filter" type="text" placeholder="Filter, such as ses-01 or *.nwb" spellcheck="false">
+    </label>
+    <button id="refresh" class="icon-only" title="Read the local folder again">
+      <svg class="icon"><use href="#i-refresh"/></svg>
+    </button>
+    <button id="update" class="primary" title="List the bucket, add placeholders for new objects and compare the files with it">
+      <svg class="icon"><use href="#i-cloud-sync"/></svg>Update from bucket
+    </button>
+  </header>
+
+  <div class="content">
+    <aside id="tree"></aside>
+    <main>
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="table-wrap" id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="check"><input type="checkbox" id="selectAll" title="Select all"></th>
+              <th data-sort="name">Name</th>
+              <th class="status" data-sort="status">Status</th>
+              <th class="size" data-sort="size">Size</th>
+              <th class="modified" data-sort="modified">Modified</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="tableNote"></div>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <div class="summary" id="summary"></div>
+    <button id="download"><svg class="icon"><use href="#i-download"/></svg>Download</button>
+    <button id="onlineOnly"><svg class="icon"><use href="#i-cloud"/></svg>Make online only</button>
+    <button id="open"><svg class="icon"><use href="#i-open"/></svg>Open</button>
+    <button id="reveal"><svg class="icon"><use href="#i-folder-open"/></svg><span id="revealLabel">Show in Finder</span></button>
+  </footer>
+  <div class="message" id="message"></div>
+
+  <div class="menu" id="menu"></div>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.7-4.3L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.7 4.3L21 15"/><path d="M21 20v-5h-5"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 0 1-.9-9.9A6 6 0 0 1 17.6 9 4.5 4.5 0 0 1 17.5 18Z"/></symbol>
+      <symbol id="i-cloud-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 0 1-.9-9.9A6 6 0 0 1 17.6 9 4.5 4.5 0 0 1 17.5 18Z"/><path d="m9.5 13.5 2.5 2.5 2.5-2.5"/><path d="M12 16v-6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16 10"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19Z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></symbol>
+      <symbol id="i-disk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7.5 5h9L19 13"/><path d="M7 16.5h.1"/></symbol>
+      <symbol id="i-partial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
+      <symbol id="i-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" fill="currentColor" fill-opacity="0.25"/></symbol>
+      <symbol id="i-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v10a2 2 0 0 0 2 2h12.5a2 2 0 0 0 1.9-1.4L21.5 11H7.4a2 2 0 0 0-1.9 1.4L3 19"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+    </defs>
+  </svg>
+
+<script>
+"use strict";
+
+// The table shows at most this many rows. More rows make the page slow
+// to draw, and a filter finds a file faster than scrolling does.
+const MAX_ROWS = 2000;
+
+const STATE_INFO = {
+  OnlineOnly: { label: "Online only", icon: "i-cloud", order: 0 },
+  Differs: { label: "Differs from bucket", icon: "i-alert", order: 1 },
+  Downloaded: { label: "Downloaded", icon: "i-check", order: 2 },
+  LocalOnly: { label: "Not in bucket", icon: "i-disk", order: 3 },
+};
+
+let htmlComponent = null;
+let meta = { bucketName: "", localFolder: "", prefix: "", isListed: false, message: "" };
+let files = [];
+let folders = new Map();
+const view = {
+  folder: "",
+  expanded: new Set([""]),
+  selected: new Set(),   // keys of rows: "d:" + folder path or "f:" + file path
+  anchorKey: null,
+  sort: { key: "name", direction: 1 },
+  filter: "",
+  rows: [],
+};
+
+const $ = (id) => document.getElementById(id);
+const icon = (id, cls = "") => `<svg class="icon ${cls}"><use href="#${id}"/></svg>`;
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function formatBytes(bytes) {
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) return "";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let exponent = bytes > 0 ? Math.floor(Math.log(bytes) / Math.log(1024)) : 0;
+  exponent = Math.min(Math.max(exponent, 0), units.length - 1);
+  return exponent === 0 ? `${bytes} B` : `${(bytes / 1024 ** exponent).toFixed(1)} ${units[exponent]}`;
+}
+
+function countText(count, noun) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function parentOf(path) {
+  const index = path.lastIndexOf("/");
+  return index < 0 ? "" : path.slice(0, index);
+}
+
+function nameOf(path) {
+  return path.slice(path.lastIndexOf("/") + 1);
+}
+
+// ---------------------------------------------------------------- Model
+
+function receiveState(state) {
+  meta = state;
+  const f = state.files;
+  files = f.path.map((path, i) => ({
+    path,
+    name: nameOf(path),
+    folder: parentOf(path),
+    state: f.state[i],
+    localBytes: f.localBytes[i],
+    remoteBytes: f.remoteBytes[i],
+    modified: f.modified[i],
+  }));
+  buildFolders();
+
+  if (!folders.has(view.folder)) view.folder = "";
+  for (const key of [...view.selected]) {
+    const path = key.slice(2);
+    const exists = key.startsWith("d:") ? folders.has(path) : files.some((file) => file.path === path);
+    if (!exists) view.selected.delete(key);
+  }
+  renderAll();
+}
+
+function newFolder(path) {
+  return {
+    path, name: path === "" ? meta.bucketName : nameOf(path), parent: parentOf(path),
+    children: new Set(), files: [],
+    total: 0, online: 0, differs: 0, localBytes: 0, remoteBytes: 0, latest: "",
+  };
+}
+
+function ensureFolder(path) {
+  let folder = folders.get(path);
+  if (folder) return folder;
+  folder = newFolder(path);
+  folders.set(path, folder);
+  if (path !== "") ensureFolder(folder.parent).children.add(path);
+  return folder;
+}
+
+function buildFolders() {
+  folders = new Map();
+  ensureFolder("");
+  for (const file of files) {
+    ensureFolder(file.folder).files.push(file);
+    // Every folder above the file counts it
+    let path = file.folder;
+    for (;;) {
+      const folder = folders.get(path);
+      folder.total += 1;
+      if (file.state === "OnlineOnly") folder.online += 1;
+      if (file.state === "Differs") folder.differs += 1;
+      folder.localBytes += file.localBytes || 0;
+      folder.remoteBytes += file.remoteBytes || 0;
+      if (file.state !== "OnlineOnly" && file.modified > folder.latest) folder.latest = file.modified;
+      if (path === "") break;
+      path = parentOf(path);
+    }
+  }
+}
+
+function filesBelow(folderPath) {
+  if (folderPath === "") return files;
+  const start = folderPath + "/";
+  return files.filter((file) => file.path.startsWith(start));
+}
+
+function matchesFilter(file, filterText) {
+  const text = filterText.trim().toLowerCase();
+  if (text === "") return true;
+  if (/[*?]/.test(text)) {
+    const expression = "^" + text.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$";
+    return new RegExp(expression).test(file.name.toLowerCase());
+  }
+  return file.path.toLowerCase().includes(text);
+}
+
+function currentRows() {
+  let rows;
+  if (view.filter.trim() === "") {
+    const folder = folders.get(view.folder);
+    const subfolders = [...folder.children].map((path) => ({ key: "d:" + path, kind: "folder", folder: folders.get(path) }));
+    const ownFiles = folder.files.map((file) => ({ key: "f:" + file.path, kind: "file", file }));
+    rows = [...sortRows(subfolders), ...sortRows(ownFiles)];
+  } else {
+    rows = sortRows(filesBelow(view.folder)
+      .filter((file) => matchesFilter(file, view.filter))
+      .map((file) => ({ key: "f:" + file.path, kind: "file", file })));
+  }
+  return rows;
+}
+
+function rowSortValue(row, key) {
+  if (row.kind === "folder") {
+    const folder = row.folder;
+    switch (key) {
+      case "status": return folder.online / Math.max(folder.total, 1);
+      case "size": return meta.isListed ? folder.remoteBytes : folder.localBytes;
+      case "modified": return folder.latest;
+      default: return folder.name.toLowerCase();
+    }
+  }
+  const file = row.file;
+  switch (key) {
+    case "status": return STATE_INFO[file.state].order;
+    case "size": return fileSize(file) ?? -1;
+    case "modified": return file.state === "OnlineOnly" ? "" : file.modified;
+    default: return displayName(file).toLowerCase();
+  }
+}
+
+function sortRows(rows) {
+  const { key, direction } = view.sort;
+  return rows
+    .map((row) => ({ row, value: rowSortValue(row, key) }))
+    .sort((a, b) => (a.value < b.value ? -direction : a.value > b.value ? direction : 0))
+    .map((item) => item.row);
+}
+
+// The size of the object, where the bucket has been listed, is the size of
+// the file whatever its state. Otherwise only a downloaded file tells it.
+function fileSize(file) {
+  if (file.remoteBytes !== null && file.remoteBytes !== undefined) return file.remoteBytes;
+  if (file.localBytes > 0) return file.localBytes;
+  return null;
+}
+
+function displayName(file) {
+  if (view.filter.trim() === "") return file.name;
+  return view.folder === "" ? file.path : file.path.slice(view.folder.length + 1);
+}
+
+function selectedFiles() {
+  const result = new Map();
+  for (const key of view.selected) {
+    const path = key.slice(2);
+    const list = key.startsWith("d:") ? filesBelow(path) : files.filter((file) => file.path === path);
+    for (const file of list) result.set(file.path, file);
+  }
+  return [...result.values()];
+}
+
+// ---------------------------------------------------------------- Rendering
+
+function renderAll() {
+  $("bucketName").textContent = meta.prefix ? `${meta.bucketName} / ${meta.prefix}` : meta.bucketName;
+  // The path is cut at the start when it is too long, which the right-to-left
+  // direction of its element does. The marks keep its slashes in place.
+  $("localFolder").textContent = "\u200E" + meta.localFolder + "\u200E";
+  $("localFolder").title = meta.localFolder;
+  $("revealLabel").textContent = meta.revealLabel || "Show in folder";
+  renderTree();
+  renderBreadcrumb();
+  renderTable();
+  renderFooter();
+}
+
+function folderBadge(folder) {
+  if (folder.total === 0) return "";
+  if (folder.differs > 0) return `<span class="badge" style="color:var(--differs)" title="Some files differ from the bucket">${icon("i-alert")}</span>`;
+  if (folder.online === folder.total) return `<span class="badge" style="color:var(--online)" title="Online only">${icon("i-cloud")}</span>`;
+  if (folder.online === 0) return `<span class="badge" style="color:var(--downloaded)" title="Downloaded">${icon("i-check")}</span>`;
+  return `<span class="badge" style="color:var(--text-muted)" title="${folder.total - folder.online} of ${folder.total} files downloaded">${icon("i-partial")}</span>`;
+}
+
+function renderTree() {
+  const parts = [];
+  const visit = (path, depth) => {
+    const folder = folders.get(path);
+    const hasChildren = folder.children.size > 0;
+    const isExpanded = view.expanded.has(path);
+    const classes = ["tree-row", path === view.folder ? "current" : "", isExpanded ? "expanded" : ""].join(" ");
+    parts.push(
+      `<div class="${classes}" data-path="${escapeHtml(path)}" style="padding-left:${4 + depth * 14}px">` +
+      `<span class="chevron" data-toggle="1">${hasChildren ? icon("i-chevron") : ""}</span>` +
+      `${icon("i-folder", "folder-icon")}<span class="name">${escapeHtml(folder.name)}</span>${folderBadge(folder)}</div>`);
+    if (hasChildren && isExpanded) {
+      [...folder.children].sort((a, b) => a.localeCompare(b)).forEach((child) => visit(child, depth + 1));
+    }
+  };
+  visit("", 0);
+  $("tree").innerHTML = parts.join("");
+}
+
+function renderBreadcrumb() {
+  const crumbs = [`<a data-path="">${escapeHtml(meta.bucketName)}</a>`];
+  if (view.folder !== "") {
+    const segments = view.folder.split("/");
+    segments.forEach((segment, i) => {
+      crumbs.push(`<span class="sep">${icon("i-chevron")}</span>`);
+      crumbs.push(`<a data-path="${escapeHtml(segments.slice(0, i + 1).join("/"))}">${escapeHtml(segment)}</a>`);
+    });
+  }
+  if (view.filter.trim() !== "") {
+    crumbs.push(`<span class="filter-note">· matches in this folder and its subfolders</span>`);
+  }
+  $("breadcrumb").innerHTML = crumbs.join("");
+}
+
+function statusPill(state) {
+  const info = STATE_INFO[state];
+  return `<span class="pill ${state}">${icon(info.icon)}${info.label}</span>`;
+}
+
+function folderStatus(folder) {
+  if (folder.total === 0) return "";
+  if (folder.differs > 0) return `<span class="pill Differs">${icon("i-alert")}${folder.differs} differ</span>`;
+  if (folder.online === folder.total) return statusPill("OnlineOnly");
+  if (folder.online === 0) return statusPill("Downloaded");
+  const downloaded = folder.total - folder.online;
+  const percent = Math.round((100 * downloaded) / folder.total);
+  return `<span class="pill Partial"><span class="meter"><div style="width:${percent}%"></div></span>${downloaded} of ${folder.total}</span>`;
+}
+
+function renderTable() {
+  const rows = currentRows();
+  view.rows = rows;
+  const shown = rows.slice(0, MAX_ROWS);
+
+  const html = shown.map((row) => {
+    const isSelected = view.selected.has(row.key);
+    if (row.kind === "folder") {
+      const folder = row.folder;
+      const size = meta.isListed ? folder.remoteBytes : folder.localBytes;
+      return `<tr class="${isSelected ? "selected" : ""}" data-key="${escapeHtml(row.key)}">` +
+        `<td class="check"><input type="checkbox" ${isSelected ? "checked" : ""}></td>` +
+        `<td><div class="name-cell">${icon("i-folder", "folder-icon")}<span>${escapeHtml(folder.name)}</span></div></td>` +
+        `<td>${folderStatus(folder)}</td>` +
+        `<td class="size">${formatBytes(size)}</td>` +
+        `<td class="modified">${escapeHtml(folder.latest)}</td></tr>`;
+    }
+    const file = row.file;
+    const name = displayName(file);
+    const folderPart = name.includes("/") ? `<span class="dim">${escapeHtml(parentOf(name))}/</span>` : "";
+    return `<tr class="${isSelected ? "selected" : ""}" data-key="${escapeHtml(row.key)}">` +
+      `<td class="check"><input type="checkbox" ${isSelected ? "checked" : ""}></td>` +
+      `<td><div class="name-cell" title="${escapeHtml(file.path)}">${icon("i-file", "file-icon")}<span>${folderPart}${escapeHtml(file.name)}</span></div></td>` +
+      `<td>${statusPill(file.state)}</td>` +
+      `<td class="size">${formatBytes(fileSize(file))}</td>` +
+      `<td class="modified">${file.state === "OnlineOnly" ? "" : escapeHtml(file.modified)}</td></tr>`;
+  });
+  $("rows").innerHTML = html.join("");
+
+  let note = "";
+  if (rows.length === 0) {
+    note = `<div class="empty">${view.filter.trim() ? "No files match the filter." : "This folder is empty."}</div>`;
+  } else if (rows.length > shown.length) {
+    note = `<div class="more">Showing the first ${shown.length} of ${rows.length} items. Use the filter to narrow them down.</div>`;
+  }
+  $("tableNote").innerHTML = note;
+
+  for (const th of document.querySelectorAll("thead th[data-sort]")) {
+    const label = th.textContent.replace(/[▲▼]/g, "").trim();
+    th.innerHTML = escapeHtml(label) + (th.dataset.sort === view.sort.key
+      ? `<span class="arrow">${view.sort.direction > 0 ? "▲" : "▼"}</span>` : "");
+  }
+  const selectAll = $("selectAll");
+  const nSelectedShown = rows.filter((row) => view.selected.has(row.key)).length;
+  selectAll.checked = rows.length > 0 && nSelectedShown === rows.length;
+  selectAll.indeterminate = nSelectedShown > 0 && nSelectedShown < rows.length;
+}
+
+function renderFooter() {
+  const selection = selectedFiles();
+  const states = new Set(selection.map((file) => file.state));
+  $("download").disabled = !(states.has("OnlineOnly") || states.has("Differs"));
+  $("onlineOnly").disabled = !(states.has("Downloaded") || states.has("Differs"));
+  $("open").disabled = view.selected.size !== 1;
+
+  let summary;
+  if (view.selected.size > 0) {
+    const bytes = selection.reduce((sum, file) => sum + (fileSize(file) || 0), 0);
+    const nOnline = selection.filter((file) => file.state === "OnlineOnly").length;
+    summary = `<b>${countText(selection.length, "file")} selected</b> · ${formatBytes(bytes)}` +
+      (nOnline > 0 ? ` · ${nOnline} online only` : "");
+  } else {
+    const folder = folders.get(view.folder);
+    const downloaded = folder.total - folder.online;
+    summary = `${countText(folder.total, "file")} · <b>${downloaded} downloaded</b> (${formatBytes(folder.localBytes)} on disk)` +
+      (meta.isListed ? ` · ${formatBytes(folder.remoteBytes)} in bucket` : "");
+  }
+  $("summary").innerHTML = summary;
+
+  $("message").textContent = meta.message ||
+    (meta.isListed ? "" : "Status is judged from the local files: empty files are online only. " +
+      "Update from the bucket to find new objects and files that differ.");
+}
+
+// ---------------------------------------------------------------- Interaction
+
+function send(name, data = {}) {
+  if (htmlComponent) htmlComponent.sendEventToMATLAB(name, JSON.stringify(data));
+}
+
+function selectedPaths() {
+  return selectedFiles().map((file) => file.path);
+}
+
+function openFolder(path) {
+  view.folder = path;
+  view.selected.clear();
+  view.anchorKey = null;
+  // The folders above the current one are expanded, so that it shows
+  let parent = path;
+  while (parent !== "") {
+    parent = parentOf(parent);
+    view.expanded.add(parent);
+  }
+  renderAll();
+  $("tableWrap").scrollTop = 0;
+}
+
+function openRow(key) {
+  const path = key.slice(2);
+  if (key.startsWith("d:")) openFolder(path);
+  else send("open", { paths: [path] });
+}
+
+function selectRow(key, event) {
+  const keys = view.rows.map((row) => row.key);
+  if (event.shiftKey && view.anchorKey && keys.includes(view.anchorKey)) {
+    const [from, to] = [keys.indexOf(view.anchorKey), keys.indexOf(key)].sort((a, b) => a - b);
+    if (!(event.metaKey || event.ctrlKey)) view.selected.clear();
+    keys.slice(from, to + 1).forEach((k) => view.selected.add(k));
+  } else if (event.metaKey || event.ctrlKey || event.target.type === "checkbox") {
+    if (view.selected.has(key)) view.selected.delete(key);
+    else view.selected.add(key);
+    view.anchorKey = key;
+  } else {
+    view.selected.clear();
+    view.selected.add(key);
+    view.anchorKey = key;
+  }
+  renderTable();
+  renderFooter();
+}
+
+function showMenu(x, y, items) {
+  const menu = $("menu");
+  menu.innerHTML = items.map((item, i) => item === "-" ? "<hr>"
+    : `<div class="item ${item.disabled ? "disabled" : ""}" data-index="${i}">${icon(item.icon)}${escapeHtml(item.label)}</div>`).join("");
+  menu.onclick = (event) => {
+    const element = event.target.closest(".item");
+    if (!element) return;
+    hideMenu();
+    items[Number(element.dataset.index)].run();
+  };
+  menu.classList.add("open");
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = Math.min(x, window.innerWidth - rect.width - 4) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - rect.height - 4) + "px";
+}
+
+function hideMenu() {
+  $("menu").classList.remove("open");
+}
+
+function fileMenuItems() {
+  const states = new Set(selectedFiles().map((file) => file.state));
+  const single = view.selected.size === 1 ? [...view.selected][0] : null;
+  return [
+    { label: "Download", icon: "i-download", disabled: !(states.has("OnlineOnly") || states.has("Differs")),
+      run: () => send("download", { paths: selectedPaths() }) },
+    { label: "Make online only", icon: "i-cloud", disabled: !(states.has("Downloaded") || states.has("Differs")),
+      run: () => send("onlineOnly", { paths: selectedPaths() }) },
+    "-",
+    { label: "Open", icon: "i-open", disabled: !single, run: () => openRow(single) },
+    { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", disabled: view.selected.size === 0,
+      run: () => send("reveal", { paths: [[...view.selected][0].slice(2)] }) },
+  ];
+}
+
+function folderMenuItems(path) {
+  const states = new Set(filesBelow(path).map((file) => file.state));
+  return [
+    { label: "Download folder", icon: "i-download", disabled: !(states.has("OnlineOnly") || states.has("Differs")),
+      run: () => send("download", { paths: filesBelow(path).map((file) => file.path) }) },
+    { label: "Make folder online only", icon: "i-cloud", disabled: !(states.has("Downloaded") || states.has("Differs")),
+      run: () => send("onlineOnly", { paths: filesBelow(path).map((file) => file.path) }) },
+    "-",
+    { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", run: () => send("reveal", { paths: [path] }) },
+  ];
+}
+
+function setBusy(isBusy) {
+  document.body.classList.toggle("busy", isBusy);
+  if (isBusy) hideMenu();
+}
+
+function wireEvents() {
+  $("tree").addEventListener("click", (event) => {
+    const row = event.target.closest(".tree-row");
+    if (!row) return;
+    const path = row.dataset.path;
+    if (event.target.closest("[data-toggle]") && folders.get(path).children.size > 0) {
+      if (view.expanded.has(path)) view.expanded.delete(path);
+      else view.expanded.add(path);
+      renderTree();
+    } else {
+      openFolder(path);
+    }
+  });
+  $("tree").addEventListener("dblclick", (event) => {
+    const row = event.target.closest(".tree-row");
+    if (!row || event.target.closest("[data-toggle]")) return;
+    const path = row.dataset.path;
+    if (view.expanded.has(path)) view.expanded.delete(path);
+    else view.expanded.add(path);
+    renderTree();
+  });
+  $("tree").addEventListener("contextmenu", (event) => {
+    const row = event.target.closest(".tree-row");
+    if (!row) return;
+    event.preventDefault();
+    showMenu(event.clientX, event.clientY, folderMenuItems(row.dataset.path));
+  });
+
+  $("breadcrumb").addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-path]");
+    if (link) openFolder(link.dataset.path);
+  });
+
+  $("rows").addEventListener("click", (event) => {
+    const row = event.target.closest("tr[data-key]");
+    if (row) selectRow(row.dataset.key, event);
+  });
+  $("rows").addEventListener("dblclick", (event) => {
+    const row = event.target.closest("tr[data-key]");
+    if (row && event.target.type !== "checkbox") openRow(row.dataset.key);
+  });
+  $("rows").addEventListener("contextmenu", (event) => {
+    const row = event.target.closest("tr[data-key]");
+    if (!row) return;
+    event.preventDefault();
+    // A right-click on a row that is not selected acts on that row
+    if (!view.selected.has(row.dataset.key)) {
+      view.selected.clear();
+      view.selected.add(row.dataset.key);
+      view.anchorKey = row.dataset.key;
+      renderTable();
+      renderFooter();
+    }
+    showMenu(event.clientX, event.clientY, fileMenuItems());
+  });
+
+  document.querySelector("thead").addEventListener("click", (event) => {
+    const th = event.target.closest("th[data-sort]");
+    if (!th) return;
+    const key = th.dataset.sort;
+    view.sort = { key, direction: view.sort.key === key ? -view.sort.direction : 1 };
+    renderTable();
+  });
+  $("selectAll").addEventListener("change", (event) => {
+    for (const row of view.rows) {
+      if (event.target.checked) view.selected.add(row.key);
+      else view.selected.delete(row.key);
+    }
+    renderTable();
+    renderFooter();
+  });
+
+  $("filter").addEventListener("input", (event) => {
+    view.filter = event.target.value;
+    view.selected.clear();
+    renderBreadcrumb();
+    renderTable();
+    renderFooter();
+  });
+
+  $("refresh").addEventListener("click", () => send("refresh"));
+  $("update").addEventListener("click", () => send("update"));
+  $("download").addEventListener("click", () => send("download", { paths: selectedPaths() }));
+  $("onlineOnly").addEventListener("click", () => send("onlineOnly", { paths: selectedPaths() }));
+  $("open").addEventListener("click", () => openRow([...view.selected][0]));
+  $("reveal").addEventListener("click", () => {
+    const key = [...view.selected][0];
+    send("reveal", { paths: [key ? key.slice(2) : view.folder] });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#menu")) hideMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    const isTyping = event.target.tagName === "INPUT" && event.target.type === "text";
+    if (event.key === "Escape") {
+      hideMenu();
+      if (!isTyping) { view.selected.clear(); renderTable(); renderFooter(); }
+    } else if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      view.rows.forEach((row) => view.selected.add(row.key));
+      renderTable();
+      renderFooter();
+    } else if (!isTyping && event.key === "Enter" && view.selected.size === 1) {
+      openRow([...view.selected][0]);
+    } else if (!isTyping && event.key === "Backspace" && view.folder !== "") {
+      openFolder(parentOf(view.folder));
+    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      $("filter").focus();
+    }
+  });
+}
+
+// MATLAB calls setup once the page has loaded
+function setup(component) {
+  htmlComponent = component;
+  component.addEventListener("state", (event) => receiveState(JSON.parse(event.Data)));
+  component.addEventListener("busy", (event) => setBusy(JSON.parse(event.Data).busy));
+  send("ready");
+}
+
+wireEvents();
+</script>
+</body>
+</html>
