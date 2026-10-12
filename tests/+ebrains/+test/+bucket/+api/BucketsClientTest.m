@@ -251,6 +251,24 @@ classdef BucketsClientTest < matlab.unittest.TestCase
 
             request = testCase.Client.getRequest(1);
             testCase.verifyTrue(endsWith(strjoin(request.URL.Path, "/"), "/my-bucket/" + dottedName));
+        end 
+        
+        %% Timeouts
+        function testRequestsFailWhenNoDataArrivesForTheTimeout(testCase)
+            % Without a DataTimeout, a request to a server that has stopped
+            % answering waits forever.
+            testCase.Client.addResponse('OK', struct('objects_count', 3, 'bytes', 1024));
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.getBucketStat("my-bucket");
+            testCase.Client.deleteObject("my-bucket", "old.txt");
+
+            expectedTimeout = ebrains.bucket.api.BucketsClient.DATA_TIMEOUT_SECONDS;
+            testCase.verifyLessThan(expectedTimeout, Inf);
+            for index = 1:2
+                options = testCase.Client.getRequest(index).Options;
+                testCase.verifyEqual(options.DataTimeout, expectedTimeout);
+            end
         end
     end
 end

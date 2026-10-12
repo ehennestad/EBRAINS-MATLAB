@@ -246,6 +246,37 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(uploads{1}{3}{2}, "sub/file.txt"); % Filename shown in the progress display
         end
 
+        function testUploadFileErrorHoldsNoSignedQuery(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            signedUrl = "https://store.example.org/b/file.txt?X-Amz-Signature=SECRETSIG";
+            testCase.Client.addResponse('OK', struct('url', signedUrl));
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "file.txt", sourceFile, ...
+                    Client=testCase.Client, Uploader=@(source, url, varargin) failLikeHttpClient(url)));
+
+            verifyNoSignedQuery(testCase, exception, "https://store.example.org/b/file.txt")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
+        end
+
+        function testUploadFileConnectionErrorHoldsNoSignedQuery(testCase)
+            % Nothing listens on the discard port, so the default uploader
+            % fails with the connection error of the HTTP client.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            sourceFile = fullfile(folderFixture.Folder, "upload.txt");
+            writelines("content", sourceFile);
+            testCase.Client.addResponse('OK', struct('url', 'http://127.0.0.1:9/b/file.txt?X-Amz-Signature=SECRETSIG'));
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "file.txt", sourceFile, ...
+                    Client=testCase.Client, DisplayMode="Command Window"));
+
+            verifyNoSignedQuery(testCase, exception, "http://127.0.0.1:9/b/file.txt")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
+        end
+
         %% downloadFile
         function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
             testCase.Client.addResponse('NotFound', 'Object not found');
@@ -314,6 +345,33 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
                     Client=testCase.Client, Downloader=downloader), ...
                 'Test:TransferBroke');
+        end
+
+        function testDownloadFileErrorHoldsNoSignedQuery(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            signedUrl = "https://store.example.org/b/file.txt?X-Amz-Signature=SECRETSIG";
+            testCase.Client.addResponse('OK', struct('url', signedUrl));
+
+            exception = captureError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                    Client=testCase.Client, Downloader=@(target, url, varargin) failLikeHttpClient(url)));
+
+            verifyNoSignedQuery(testCase, exception, "https://store.example.org/b/file.txt")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
+        end
+
+        function testDownloadFileConnectionErrorHoldsNoSignedQuery(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            testCase.Client.addResponse('OK', struct('url', 'http://127.0.0.1:9/b/file.txt?X-Amz-Signature=SECRETSIG'));
+
+            exception = captureError(...
+                @() ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                    Client=testCase.Client, DisplayMode="Command Window"));
+
+            verifyNoSignedQuery(testCase, exception, "http://127.0.0.1:9/b/file.txt")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
         end
 
         %% createVirtualBucket
@@ -503,4 +561,37 @@ function fileNames = listFileNames(folder)
 % listFileNames - Names of the files directly in a folder, as a string row
     listing = dir(folder);
     fileNames = string({listing(~[listing.isdir]).name});
+end
+
+function [wasSuccess, response] = failLikeHttpClient(url) %#ok<STOUT> the outputs of an uploader
+% failLikeHttpClient - Throw a connection error that names the URL, as the HTTP client does
+    cause = MException('MATLAB:webservices:ConnectionRefused', ...
+        'Error connecting to %s: Could not connect to server', url);
+    exception = MException('MATLAB:webservices:ConnectionRefused', ...
+        'Error connecting to %s: Could not connect to server', url);
+    throw(exception.addCause(cause))
+end
+
+function exception = captureError(fcn)
+% captureError - Return the error a function throws, or an empty MException if it throws none
+    exception = MException.empty;
+    try
+        fcn();
+    catch exception
+    end
+end
+
+function verifyNoSignedQuery(testCase, exception, urlWithoutQuery)
+% verifyNoSignedQuery - Verify that an error and its causes name the URL without its signature
+    testCase.assertNotEmpty(exception, "Expected the transfer to throw.");
+    messages = string(exception.message);
+    for i = 1:numel(exception.cause)
+        messages(end+1) = string(exception.cause{i}.message); %#ok<AGROW>
+    end
+    testCase.verifyNumElements(messages, 2);
+    for message = messages
+        testCase.verifySubstring(message, urlWithoutQuery);
+        testCase.verifyFalse(contains(message, "SECRETSIG"), ...
+            sprintf('The message "%s" holds the signature of the URL.', message));
+    end
 end

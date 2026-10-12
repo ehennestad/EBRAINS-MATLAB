@@ -19,7 +19,7 @@ dsvIdentifier = '08ab00ea-3e19-4300-9d9f-c0ef0ec8e445';
 
 % Every request to the KG needs a login, including reads of released
 % metadata.
-ebrains.authenticate()
+ebrains.login()
 
 dsv = kgpull(dsvIdentifier, "NumLinksToResolve", 2);
 
