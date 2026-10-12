@@ -19,7 +19,7 @@ Lightweight MATLAB helpers and API clients for working with EBRAINS services: au
 - Search collabs through the Collaboratory API
 
 ## Requirements
-- MATLAB R2022b or newer
+- MATLAB R2022b or newer. The virtual bucket browser (`ebrains.bucket.app.VirtualBucketBrowser`) needs R2023a or newer; the functions work on R2022b.
 - An EBRAINS account and internet access
 
 ## Installation
