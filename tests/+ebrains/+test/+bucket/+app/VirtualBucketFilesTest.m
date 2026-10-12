@@ -24,7 +24,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             files = ebrains.bucket.app.internal.classifyFiles(localFiles);
 
             testCase.verifyEqual(files.Path, ["a.txt"; "b.txt"]);
-            testCase.verifyEqual(files.State, ["Downloaded"; "OnlineOnly"]);
+            testCase.verifyEqual(files.State, ["downloaded"; "online_only"]);
             testCase.verifyEqual(files.RemoteBytes, [NaN; NaN]);
         end
 
@@ -43,7 +43,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
 
             expected = dictionary( ...
                 ["placeholder", "downloaded", "resized", "outdated", "extra", "new"], ...
-                ["OnlineOnly", "Downloaded", "Differs", "Differs", "LocalOnly", "OnlineOnly"]);
+                ["online_only", "downloaded", "differs", "differs", "local_only", "online_only"]);
             testCase.verifyEqual(files.State, expected(files.Path));
             testCase.verifyEqual(files.LocalBytes(files.Path == "new"), NaN);
             testCase.verifyEqual(files.RemoteBytes(files.Path == "extra"), NaN);
@@ -53,14 +53,14 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             files = ebrains.bucket.app.internal.classifyFiles( ...
                 makeFiles("empty.txt", 0), makeFiles("empty.txt", 0));
 
-            testCase.verifyEqual(files.State, "Downloaded");
+            testCase.verifyEqual(files.State, "downloaded");
         end
 
         function testEmptyListingMarksEveryFileLocalOnly(testCase)
             files = ebrains.bucket.app.internal.classifyFiles( ...
                 makeFiles("a.txt", 3), makeFiles(strings(0, 1), zeros(0, 1)));
 
-            testCase.verifyEqual(files.State, "LocalOnly");
+            testCase.verifyEqual(files.State, "local_only");
         end
 
         %% Placeholders
