@@ -13,6 +13,9 @@ classdef VirtualBucketBrowser < handle
 %       virtual bucket in localFolder. Its folder .ebrains says which
 %       bucket it stands for (see ebrains.bucket.internal.metadata.folderName).
 %
+%       ebrains.bucket.app.VirtualBucketBrowser() asks for the folder
+%       first. Cancelling the dialog opens no browser.
+%
 %       ebrains.bucket.app.VirtualBucketBrowser(localFolder, BucketName=NAME)
 %       also makes localFolder a virtual bucket of the bucket NAME if it is
 %       not one yet. A folder that does not exist is created and filled
@@ -41,9 +44,10 @@ classdef VirtualBucketBrowser < handle
 %                    bucket of the folder.
 %       Prefix     : Folder of the bucket that the virtual bucket holds,
 %                    such as "results/", as given to createVirtualBucket.
-%                    Paths below localFolder are relative to it. Default
-%                    is "", the whole bucket, or the prefix of a folder
-%                    that is a virtual bucket already.
+%                    Paths below localFolder are relative to it. For a
+%                    folder that is a virtual bucket already, it must be
+%                    the prefix of the folder and may be left out. Default
+%                    is "", the whole bucket, for a folder that is not.
 %       Client     : ebrains.bucket.api.BucketsClient that sends the
 %                    requests. Meant for tests and custom clients; a
 %                    default client is created otherwise.
@@ -110,11 +114,19 @@ classdef VirtualBucketBrowser < handle
     methods
         function app = VirtualBucketBrowser(localFolder, options)
             arguments
-                localFolder (1,1) string {mustBeNonzeroLengthText} = uigetdir
+                localFolder string {mustBeScalarOrEmpty} = chooseFolder()
                 options.BucketName (1,1) string = ""
-                options.Prefix (1,1) string = ""
+                options.Prefix string {mustBeScalarOrEmpty} = string.empty
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
+            end
+
+            % The folder dialog was cancelled: there is nothing to open
+            if isempty(localFolder)
+                return
+            end
+            if localFolder == ""
+                error('EBRAINS:Bucket:InvalidFolder', 'Give the folder of the virtual bucket.')
             end
 
             % The page and MATLAB talk through events of the uihtml
@@ -126,18 +138,28 @@ classdef VirtualBucketBrowser < handle
             end
 
             bucketInfo = ebrains.bucket.internal.metadata.readBucketInfo(localFolder);
-            if isempty(bucketInfo)
+            isNewVirtualBucket = isempty(bucketInfo);
+            if isNewVirtualBucket
                 if options.BucketName == ""
                     error('EBRAINS:Bucket:NotAVirtualBucket', ...
                         ['"%s" is not a virtual bucket. Give BucketName to make it one, ' ...
                          'or create one with ebrains.bucket.createVirtualBucket.'], localFolder)
                 end
+                prefix = "";
+                if ~isempty(options.Prefix)
+                    prefix = options.Prefix;
+                end
                 bucketInfo = struct("BucketName", options.BucketName, ...
-                    "Prefix", ebrains.bucket.internal.normalizePrefix(options.Prefix), ...
+                    "Prefix", ebrains.bucket.internal.normalizePrefix(prefix), ...
                     "ListedTime", NaT(TimeZone="UTC"));
             elseif options.BucketName ~= ""
+                % A prefix that is left out is that of the folder
+                prefix = bucketInfo.Prefix;
+                if ~isempty(options.Prefix)
+                    prefix = options.Prefix;
+                end
                 refusal = ebrains.bucket.internal.metadata.otherBucketRefusal( ...
-                    bucketInfo, options.BucketName, options.Prefix);
+                    bucketInfo, options.BucketName, prefix);
                 if refusal ~= ""
                     error('EBRAINS:Bucket:OtherBucket', '%s', refusal)
                 end
@@ -155,9 +177,13 @@ classdef VirtualBucketBrowser < handle
             app.Client = options.Client;
             app.Downloader = options.Downloader;
 
-            % A folder that is not a virtual bucket yet becomes one
-            ebrains.bucket.internal.metadata.writeBucketInfo( ...
-                app.LocalFolder, app.BucketName, app.Prefix, app.ListedTime)
+            % A folder that is not a virtual bucket yet becomes one. One that
+            % is already is only read, so that it can be on a read-only
+            % location.
+            if isNewVirtualBucket
+                ebrains.bucket.internal.metadata.writeBucketInfo( ...
+                    app.LocalFolder, app.BucketName, app.Prefix, app.ListedTime)
+            end
             [manifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(app.LocalFolder);
             if hasManifest
                 app.RemoteFiles = manifestFiles;
@@ -243,11 +269,21 @@ classdef VirtualBucketBrowser < handle
             isFinderFile = regexprep(localFiles.Path, "^.*/", "") == ".DS_Store";
             app.LocalFiles = localFiles(~isFinderFile, :);
 
-            if app.IsListed
-                app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles, app.RemoteFiles);
-            else
+            if ~app.IsListed
                 app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles);
+                return
             end
+
+            % On a file system that ignores case, a local file and an
+            % object whose names differ only in case are one file, and of
+            % objects that differ only in case only one can have a file.
+            ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(app.LocalFolder, app.LocalFiles.Path);
+            remoteFiles = app.RemoteFiles;
+            if ignoreCase
+                remoteFiles = ebrains.bucket.sync.internal.dropCaseCollisions(remoteFiles);
+            end
+            app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles, remoteFiles, ...
+                IgnoreCase=ignoreCase);
         end
     end
 
@@ -281,11 +317,9 @@ classdef VirtualBucketBrowser < handle
             isFailed = false(nFiles, 1);
             isCancelled = false;
             for i = 1:nFiles
-                path = files.Path(i);
+                relativePath = files.Path(i);
                 try
-                    ebrains.bucket.downloadFile(app.BucketName, app.Prefix + path, fullfile(app.LocalFolder, path), ...
-                        DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
-                        Downloader=app.Downloader);
+                    app.downloadOne(relativePath)
                 catch exception
                     isFailed(i) = true;
                     failureMessages(i) = exception.message;
@@ -308,6 +342,30 @@ classdef VirtualBucketBrowser < handle
                 uialert(app.UIFigure, failureReport(files.Path(isFailed), failureMessages(isFailed), nFiles), ...
                     "Some files were not downloaded")
             end
+        end
+
+        function downloadOne(app, relativePath)
+        % downloadOne - Download an object into its file, as a sync from the bucket does
+        %
+        %   The file gets the size check and the time of its object that
+        %   ebrains.bucket.sync.fromBucket gives a download, so that a
+        %   later sync in either direction sees it as unchanged. Both come
+        %   from the last listing; without one the download is only put in
+        %   place.
+            expectedBytes = NaN;
+            modifiedTime = NaT;
+            if app.IsListed
+                [isListed, index] = ismember(relativePath, app.RemoteFiles.Path);
+                if isListed
+                    expectedBytes = app.RemoteFiles.Bytes(index);
+                    modifiedTime = app.RemoteFiles.ModifiedTime(index);
+                end
+            end
+            ebrains.bucket.sync.internal.downloadAndReplace(app.BucketName, app.Prefix + relativePath, ...
+                fullfile(app.LocalFolder, relativePath), ...
+                ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, ...
+                DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
+                Downloader=app.Downloader);
         end
 
         function makePathsOnlineOnly(app, paths)
@@ -364,25 +422,25 @@ classdef VirtualBucketBrowser < handle
             app.refresh()
         end
 
-        function openPath(app, path)
+        function openPath(app, relativePath)
         % openPath - Open a file with the default application of the system
-            state = app.Files.State(app.Files.Path == path);
+            state = app.Files.State(app.Files.Path == relativePath);
             if state == "online_only"
-                message = sprintf("""%s"" is online only. Download it and open it?", path);
+                message = sprintf("""%s"" is online only. Download it and open it?", relativePath);
                 if ~app.confirm(message, "Download file?", "Download and open")
                     return
                 end
-                app.downloadPaths(path)
-                if app.Files.State(app.Files.Path == path) == "online_only"
+                app.downloadPaths(relativePath)
+                if app.Files.State(app.Files.Path == relativePath) == "online_only"
                     return
                 end
             end
-            app.runSystemCommand(openFileCommand(fullfile(app.LocalFolder, path)))
+            app.runSystemCommand(openFileCommand(fullfile(app.LocalFolder, relativePath)))
         end
 
-        function revealPath(app, path)
+        function revealPath(app, relativePath)
         % revealPath - Show a file or folder in the file manager of the system
-            app.runSystemCommand(revealCommand(fullfile(app.LocalFolder, path)))
+            app.runSystemCommand(revealCommand(fullfile(app.LocalFolder, relativePath)))
         end
 
         function runSystemCommand(app, command)
@@ -498,6 +556,16 @@ classdef VirtualBucketBrowser < handle
     end
 end
 
+function folder = chooseFolder()
+% chooseFolder - Ask for the folder of a virtual bucket; empty if the dialog is cancelled
+    folder = uigetdir(pwd, "Choose the folder of the virtual bucket");
+    if isequal(folder, 0)
+        folder = string.empty;
+    else
+        folder = string(folder);
+    end
+end
+
 function absolutePath = getAbsolutePath(folder)
 % getAbsolutePath - Absolute path of an existing folder
     listing = dir(folder);
@@ -569,16 +637,16 @@ function command = openFileCommand(filePath)
     end
 end
 
-function command = revealCommand(path)
+function command = revealCommand(absolutePath)
 % revealCommand - Command that shows a file or folder in the file manager of the system
     if ismac
-        command = "open -R " + quoteForShell(path);
+        command = "open -R " + quoteForShell(absolutePath);
     elseif ispc
-        command = "explorer /select,""" + path + """";
-    elseif isfolder(path)
-        command = "xdg-open " + quoteForShell(path);
+        command = "explorer /select,""" + absolutePath + """";
+    elseif isfolder(absolutePath)
+        command = "xdg-open " + quoteForShell(absolutePath);
     else
-        command = "xdg-open " + quoteForShell(fileparts(path));
+        command = "xdg-open " + quoteForShell(fileparts(absolutePath));
     end
 end
 

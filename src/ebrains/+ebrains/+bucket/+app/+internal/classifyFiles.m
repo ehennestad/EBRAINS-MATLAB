@@ -1,4 +1,4 @@
-function files = classifyFiles(localFiles, remoteFiles)
+function files = classifyFiles(localFiles, remoteFiles, options)
 % classifyFiles - Give each file of a virtual bucket a state
 %
 %   files = ebrains.bucket.app.internal.classifyFiles(localFiles) judges
@@ -18,6 +18,12 @@ function files = classifyFiles(localFiles, remoteFiles)
 %       remoteFiles : File table of the bucket, with paths in the same form
 %                     as those of localFiles. Leave out, or give [], when
 %                     the bucket has not been listed.
+%
+%   Name-Value Arguments
+%       IgnoreCase : Whether paths that differ only in case name the same
+%                    file, as on a file system that ignores case. A local
+%                    file matched this way takes the path of its object.
+%                    Default is false.
 %
 %   Output Arguments
 %       files : Table with one row per path found on either side, sorted by
@@ -40,12 +46,13 @@ function files = classifyFiles(localFiles, remoteFiles)
     arguments
         localFiles table
         remoteFiles = []
+        options.IgnoreCase (1,1) logical = false
     end
 
     if isempty(remoteFiles) && ~istable(remoteFiles)
         files = classifyLocalFiles(localFiles);
     else
-        files = classifyAgainstListing(localFiles, remoteFiles);
+        files = classifyAgainstListing(localFiles, remoteFiles, options.IgnoreCase);
     end
 end
 
@@ -61,15 +68,15 @@ function files = classifyLocalFiles(localFiles)
     files = sortrows(files, "Path");
 end
 
-function files = classifyAgainstListing(localFiles, remoteFiles)
+function files = classifyAgainstListing(localFiles, remoteFiles, ignoreCase)
 % classifyAgainstListing - States from a comparison of the local files with the bucket
 
     % The plan of a download from the bucket says which local files differ
     % from their objects, by the rule ebrains.bucket.sync.fromBucket uses.
-    plan = ebrains.bucket.sync.internal.planSync(remoteFiles, localFiles);
+    plan = ebrains.bucket.sync.internal.planSync(remoteFiles, localFiles, IgnoreCase=ignoreCase);
     nFiles = height(plan);
 
-    [isLocal, localIndex] = ismember(plan.Path, localFiles.Path);
+    [isLocal, localIndex] = ismember(matchKeys(plan.Path, ignoreCase), matchKeys(localFiles.Path, ignoreCase));
     localBytes = NaN(nFiles, 1);
     localBytes(isLocal) = localFiles.Bytes(localIndex(isLocal));
     localTime = NaT(nFiles, 1, 'TimeZone', 'UTC');
@@ -89,4 +96,12 @@ function files = classifyAgainstListing(localFiles, remoteFiles)
 
     files = table(plan.Path, localBytes, localTime, remoteBytes, state, ...
         'VariableNames', ["Path", "LocalBytes", "LocalTime", "RemoteBytes", "State"]);
+end
+
+function keys = matchKeys(paths, ignoreCase)
+% matchKeys - What the paths of the two sides are matched by
+    keys = paths;
+    if ignoreCase
+        keys = lower(paths);
+    end
 end
