@@ -34,6 +34,11 @@ classdef SyncOptions
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither transferred nor deleted. See
 %                     ebrains.bucket.sync.internal.excludeFiles for the rules.
+%       ExcludeFrom : Files of exclude patterns, one per line, in the
+%                     layout of a .gitignore file. Their patterns are added
+%                     to Exclude. See
+%                     ebrains.bucket.sync.internal.parseExcludeFile for the
+%                     layout.
 %       DryRun      : Only plan: list what would be transferred and
 %                     deleted, and change nothing. A deletion that a real
 %                     run would refuse (see MaxDelete) is listed as skipped
@@ -57,6 +62,7 @@ classdef SyncOptions
         Comparison (1,1) string ...
             {mustBeMember(Comparison, ["SizeAndTime", "Size", "Checksum"])} = "SizeAndTime"
         Exclude string = string.empty
+        ExcludeFrom string {mustBeFile} = string.empty
         DryRun (1,1) logical = false
         MaxDelete (1,1) double {mustBeNonnegative} = Inf
         Verbose (1,1) logical = true

@@ -9,6 +9,7 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
             testCase.verifyFalse(options.Delete);
             testCase.verifyEqual(options.Comparison, "SizeAndTime");
             testCase.verifyEmpty(options.Exclude);
+            testCase.verifyEmpty(options.ExcludeFrom);
             testCase.verifyFalse(options.DryRun);
             testCase.verifyEqual(options.MaxDelete, Inf);
             testCase.verifyTrue(options.Verbose);
@@ -36,6 +37,11 @@ classdef SyncOptionsTest < matlab.unittest.TestCase
         function testInvalidComparisonIsRejected(testCase)
             testCase.verifyError(@() ebrains.bucket.sync.SyncOptions(Comparison="Hash"), ...
                 ?MException);
+        end
+
+        function testMissingExcludeFileIsRejected(testCase)
+            testCase.verifyError(@() ebrains.bucket.sync.SyncOptions(ExcludeFrom="missing.ignore"), ...
+                'MATLAB:validators:mustBeFile');
         end
 
         function testUnknownOptionIsRejected(testCase)
