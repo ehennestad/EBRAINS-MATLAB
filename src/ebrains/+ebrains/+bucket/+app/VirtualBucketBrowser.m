@@ -92,6 +92,14 @@ classdef VirtualBucketBrowser < handle
         % Message - Note on the last action, shown below the file list
         Message (1,1) string = ""
 
+        % ListingPageSize - Objects asked for per request when the bucket is listed
+        %
+        % The time of a listing grows with the objects it returns (about
+        % 30 ms each, as measured on the Data Proxy), not with the requests,
+        % so pages of this size report progress about every half minute at
+        % little extra cost.
+        ListingPageSize (1,1) double = 1000
+
         % IsPageReady - Whether the page has loaded and can receive events
         IsPageReady (1,1) logical = false
 
@@ -102,7 +110,7 @@ classdef VirtualBucketBrowser < handle
     methods
         function app = VirtualBucketBrowser(localFolder, options)
             arguments
-                localFolder (1,1) string {mustBeNonzeroLengthText}
+                localFolder (1,1) string {mustBeNonzeroLengthText} = uigetdir
                 options.BucketName (1,1) string = ""
                 options.Prefix (1,1) string = ""
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
@@ -179,17 +187,27 @@ classdef VirtualBucketBrowser < handle
         %   placeholder. Local files that the bucket does not have are kept.
             restoreControls = app.setBusy();  %#ok<NASGU>
             progressDialog = uiprogressdlg(app.UIFigure, Title="Update from bucket", ...
-                Message=sprintf("Listing the objects of bucket ""%s""...", app.BucketName), ...
-                Indeterminate="on");
+                Message=sprintf("Counting the objects of bucket ""%s""...", app.BucketName), ...
+                Indeterminate="on", Cancelable="on");
             closeDialog = onCleanup(@() delete(progressDialog));
 
             try
+                % The count comes from one request, which tells how long the
+                % listing will take before it starts. It counts the whole
+                % bucket, also when the virtual bucket holds a folder of it.
+                nObjects = ebrains.bucket.getObjectCount(app.BucketName, Client=app.Client);
+                progress = ebrains.bucket.app.internal.ListingProgress(progressDialog, nObjects, app.Prefix == "");
+                progress.update(0)
+
                 listedTime = datetime("now", TimeZone="UTC");
                 remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles( ...
-                    app.BucketName, app.Prefix, app.Client);
+                    app.BucketName, app.Prefix, app.Client, PageSize=app.ListingPageSize, ...
+                    ProgressFcn=@(nListed, ~) progress.update(nListed));
             catch exception
                 delete(closeDialog)
-                uialert(app.UIFigure, exception.message, "Could not list the bucket")
+                if exception.identifier ~= "EBRAINS:Bucket:ListingCancelled"
+                    uialert(app.UIFigure, exception.message, "Could not list the bucket")
+                end
                 return
             end
 

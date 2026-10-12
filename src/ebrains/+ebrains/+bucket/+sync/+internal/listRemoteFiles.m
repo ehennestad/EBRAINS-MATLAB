@@ -1,4 +1,4 @@
-function [files, listing] = listRemoteFiles(bucketName, prefix, client, verbose)
+function [files, listing] = listRemoteFiles(bucketName, prefix, client, options)
 % listRemoteFiles - List the files of a bucket, or of a folder in it, for a sync
 %
 %   files = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix,
@@ -28,9 +28,9 @@ function [files, listing] = listRemoteFiles(bucketName, prefix, client, verbose)
 %   also returns the listing as ebrains.bucket.listBucketObjects returns
 %   it, folder objects included.
 %
-%   ebrains.bucket.sync.internal.listRemoteFiles(..., verbose) prints
-%   progress while the pages of the listing arrive when verbose is true.
-%   The default is false.
+%   ebrains.bucket.sync.internal.listRemoteFiles(..., Name=Value) passes
+%   the options Verbose, PageSize and ProgressFcn to
+%   ebrains.bucket.listBucketObjects.
 %
 %   See also ebrains.bucket.sync.internal.listLocalFiles, ebrains.bucket.listBucketObjects
 
@@ -38,10 +38,13 @@ function [files, listing] = listRemoteFiles(bucketName, prefix, client, verbose)
         bucketName (1,1) string
         prefix (1,1) string
         client (1,1) ebrains.bucket.api.BucketsClient
-        verbose (1,1) logical = false
+        options.Verbose (1,1) logical = false
+        options.PageSize (1,1) double = 10000
+        options.ProgressFcn = []
     end
 
-    listing = ebrains.bucket.listBucketObjects(bucketName, Prefix=prefix, Client=client, Verbose=verbose);
+    listing = ebrains.bucket.listBucketObjects(bucketName, Prefix=prefix, Client=client, ...
+        Verbose=options.Verbose, PageSize=options.PageSize, ProgressFcn=options.ProgressFcn);
     objects = listing;
 
     if isempty(objects)

@@ -90,7 +90,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(fileread(fullfile(target, "sub", "b.txt")), 'abc');
             testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "downloaded"]);
-            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/sub/b.txt');
+            testCase.Client.verifyRequestURL(4, '/buckets/my-bucket/sub/b.txt');
         end
 
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
@@ -119,7 +119,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(testCase.App.Files.Path, ["a.txt"; "sub/b.txt"]);
             testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "downloaded"]);
-            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/set/sub/b.txt');
+            testCase.Client.verifyRequestURL(4, '/buckets/my-bucket/set/sub/b.txt');
         end
     end
 
@@ -168,6 +168,45 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
     end
 
+    methods (Test) % Progress of a listing
+        function testUpdateListsInSmallPages(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 3);
+
+            testCase.openApp(target);
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/stat');
+            testCase.Client.verifyRequestURL(3, 'limit=1000');
+        end
+
+        function testProgressShowsCountAndTimeLeft(testCase)
+            progress = ebrains.bucket.app.internal.ListingProgress(makeDialogStub(), 20481, true);
+
+            progress.update(4000)
+
+            testCase.verifySubstring(char(progress.Dialog.Message), 'Listed 4,000 of about 20,481 objects.');
+            testCase.verifySubstring(char(progress.Dialog.Message), 'left.');
+            testCase.verifyEqual(progress.Dialog.Value, 4000 / 20481, AbsTol=1e-12);
+        end
+
+        function testProgressOfFolderShowsNoFraction(testCase)
+            progress = ebrains.bucket.app.internal.ListingProgress(makeDialogStub(), 20481, false);
+
+            progress.update(1000)
+
+            testCase.verifyEqual(progress.Dialog.Indeterminate, "on");
+            testCase.verifySubstring(char(progress.Dialog.Message), '1,000 listed so far');
+        end
+
+        function testCancelStopsTheListing(testCase)
+            dialog = makeDialogStub();
+            dialog.CancelRequested = true;
+            progress = ebrains.bucket.app.internal.ListingProgress(dialog, 10, true);
+
+            testCase.verifyError(@() progress.update(5), 'EBRAINS:Bucket:ListingCancelled');
+        end
+    end
+
     methods (Access = private)
         function openApp(testCase, folder)
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
@@ -189,15 +228,28 @@ function sendPageEvent(name, paths)
 end
 
 function addListing(client, names, bytes)
-% addListing - Queue the stat and the single page of a listing
+% addListing - Queue the responses to an update from the bucket
+%
+%   The browser counts the objects with the stat endpoint before it lists
+%   them, and the listing asks for the stat again, then gets one page.
     objects = struct( ...
         'name', cellstr(reshape(names, [], 1)), ...
         'bytes', num2cell(reshape(bytes, [], 1)), ...
         'last_modified', '2000-01-01T00:00:00', ...
         'hash', '', ...
         'content_type', 'application/octet-stream');
-    client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0));
+    stat = struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0);
+    client.addResponse('OK', stat);
+    client.addResponse('OK', stat);
     client.addResponse('OK', struct('objects', objects));
+end
+
+function dialog = makeDialogStub()
+% makeDialogStub - Stand-in for a uiprogressdlg, with the properties ListingProgress uses
+%
+%   uiprogressdlg needs a visible figure. ListingProgress keeps the struct
+%   in its Dialog property, where a test reads what it set.
+    dialog = struct("CancelRequested", false, "Indeterminate", "on", "Value", 0, "Message", "");
 end
 
 function writeAbc(target, varargin)
