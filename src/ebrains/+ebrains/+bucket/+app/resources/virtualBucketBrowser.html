@@ -4,13 +4,91 @@
 <meta charset="utf-8">
 <title>Virtual bucket</title>
 <!--
-  Page of ebrains.bucket.app.VirtualBucketBrowser.
+  Page of the virtual bucket browser. A host shows the page and holds the
+  files, the Data Proxy client and the virtual bucket rules: MATLAB
+  (ebrains.bucket.app.VirtualBucketBrowser, in a uihtml component) or
+  Python (ebrains-bucket-sync, in pywebview). The page is the view only.
 
-  MATLAB sends two events, each with JSON text as data:
-    state - the bucket, the folder and every file with its state
-    busy  - {"busy": true|false} while MATLAB carries out a request
-  The page sends requests to MATLAB as JSON text: ready, refresh, update,
-  and download, onlineOnly, open and reveal with {"paths": [...]}.
+  PROTOCOL
+
+  The host sends the page events and the page sends the host requests.
+  Both have a name and data, and the data is JSON text in either direction.
+  Paths are relative to the folder of the virtual bucket, with "/" between
+  the segments, as in the shared spec of ebrains-bucket-sync.
+
+  Events from the host
+    state     The bucket, the folder and every file with its state:
+                {bucketName, localFolder, prefix, isListed, listedAt,
+                 revealLabel, message,
+                 files: {path: [], state: [], localBytes: [], remoteBytes: [],
+                         modified: []}}
+              The lists under files have one entry per file, in one order.
+                path        - path of the file
+                state       - "online_only", "downloaded", "differs" or
+                              "local_only" (spec/README.md#file-states)
+                localBytes  - size of the local file, null if there is none
+                remoteBytes - size of the object, null if it is not known
+                modified    - time of the last change of the local file as
+                              "yyyy-MM-dd HH:mm" in local time, "" if none
+              bucketName and prefix name the bucket and the folder of it
+              that the virtual bucket holds ("" for the whole bucket);
+              localFolder is the absolute path of the virtual bucket.
+              isListed says whether the states come from a listing of the
+              bucket, and listedAt when it was listed, in the format of
+              modified or "" if never. revealLabel is the label of the
+              action that shows a file in the file manager, such as "Show
+              in Finder". message is a note on the last action, "" for none.
+    busy      {busy: true|false}. The page is disabled while the host
+              carries out a request.
+    confirm   {id, title, message, confirmText}. Asks the user to confirm
+              an action. The page replies with the request confirmed
+              {id, confirmed: true|false}; closing the dialog any other way
+              than its confirm button answers false.
+    alert     {title, message, icon}. Tells the user something. icon is
+              "error", "warning", "info" or "success", "error" if left out.
+              No reply.
+    progress  {id, title, message, value, cancelable}. Shows the progress
+              of a task. value is a number from 0 to 1, or null for a task
+              of unknown length. A later progress event with the same id
+              updates the dialog, and fields left out keep their value.
+              With cancelable true the dialog has a Cancel button, which
+              sends the request progressCancel {id} once; the dialog stays
+              until the host closes it.
+    progressClose {id}. Closes the progress dialog of the id.
+
+  Requests to the host
+    ready           The page has loaded and can receive events. The host
+                    answers with state.
+    refresh         Read the local folder again and send the state.
+    update          List the bucket, add placeholders for new objects and
+                    compare the files with the listing.
+    download        {paths}. Download the files.
+    onlineOnly      {paths}. Replace the files with empty placeholders.
+    open            {paths}. Open the one file with the application of the
+                    system, downloading it first if it is online only.
+    reveal          {paths}. Show the one file or folder in the file manager.
+    confirmed       {id, confirmed}. The answer to a confirm event.
+    progressCancel  {id}. The user pressed Cancel in a progress dialog.
+
+  The page draws a dialog only on a confirm, alert or progress event. A
+  host with dialogs of its own, such as MATLAB, never sends them.
+
+  Hosts
+    uihtml     MATLAB calls setup(htmlComponent) once the page has loaded.
+               Requests go through htmlComponent.sendEventToMATLAB(name,
+               text). Events sent with sendEventToHTMLSource arrive as
+               events of the component named after them, with the text in
+               event.Data.
+    pywebview  Python exposes as js_api an object with a method
+               request(name, text), so that window.pywebview.api.request
+               carries the requests. The page attaches to the host when
+               window.pywebview exists, or on the pywebviewready event.
+               Events are sent by evaluating
+               window.virtualBucketBrowser.receive(name, text) in the page.
+    none       In a plain browser the page draws but has no host: requests
+               are logged to the console and dropped. Events can still be
+               fed to the page through window.virtualBucketBrowser.receive,
+               which helps when developing it.
 -->
 <style>
   :root {
@@ -32,6 +110,8 @@
     --differs-bg: #fdf1e2;
     --local: #67707b;
     --local-bg: #eef0f2;
+    --error: #b42318;
+    --backdrop: rgba(16, 24, 40, 0.35);
     --shadow: 0 6px 24px rgba(16, 24, 40, 0.14), 0 1px 3px rgba(16, 24, 40, 0.08);
   }
   @media (prefers-color-scheme: dark) {
@@ -53,6 +133,8 @@
       --differs-bg: #3a2a17;
       --local: #9aa3ad;
       --local-bg: #2a2f36;
+      --error: #f97066;
+      --backdrop: rgba(0, 0, 0, 0.55);
       --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     }
   }
@@ -201,6 +283,27 @@
   .menu .item.disabled { opacity: 0.4; pointer-events: none; }
   .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 
+  /* Dialogs, drawn on a host's request. The last one opened is shown. */
+  .dialog-layer {
+    position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
+    background: var(--backdrop);
+  }
+  .dialog-layer.open { display: flex; }
+  .dialog {
+    width: min(460px, calc(100vw - 32px)); padding: 16px 18px; user-select: text;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+  }
+  .dialog:not(:last-child) { display: none; }
+  .dialog h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+  .dialog h2 .dialog-icon { display: flex; }
+  .dialog h2 .dialog-icon svg { width: 18px; height: 18px; }
+  .dialog p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .progress-bar { height: 6px; margin-top: 12px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .progress-bar div { height: 100%; background: var(--accent); transition: width 0.2s; }
+  .progress-bar.indeterminate div { width: 30%; animation: progress-slide 1.2s ease-in-out infinite; }
+  @keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(334%); } }
+
   body.busy header, body.busy .content, body.busy footer { pointer-events: none; opacity: 0.6; }
   body.busy { cursor: progress; }
 </style>
@@ -256,6 +359,7 @@
   <div class="message" id="message"></div>
 
   <div class="menu" id="menu"></div>
+  <div class="dialog-layer" id="dialogs"></div>
 
   <svg width="0" height="0" style="position:absolute">
     <defs>
@@ -273,6 +377,8 @@
       <symbol id="i-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v10a2 2 0 0 0 2 2h12.5a2 2 0 0 0 1.9-1.4L21.5 11H7.4a2 2 0 0 0-1.9 1.4L3 19"/></symbol>
       <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8v.1"/></symbol>
+      <symbol id="i-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></symbol>
     </defs>
   </svg>
 
@@ -290,7 +396,6 @@ const STATE_INFO = {
   local_only: { label: "Not in bucket", icon: "i-disk", order: 3 },
 };
 
-let htmlComponent = null;
 let meta = { bucketName: "", localFolder: "", prefix: "", isListed: false, listedAt: "", message: "" };
 let files = [];
 let folders = new Map();
@@ -630,11 +735,52 @@ function renderFooter() {
   $("message").textContent = meta.message ? `${meta.message} ${listingNote}` : listingNote;
 }
 
-// ---------------------------------------------------------------- Interaction
+// ---------------------------------------------------------------- Host bridge
+//
+// The host is the program that shows the page. Requests go out and events
+// come in through `host` alone, so that nothing else in the page depends
+// on how a host is wired. Handlers are registered before a host attaches,
+// and a host gets the ready request once it has. Without a host, as in a
+// plain browser, requests are logged and dropped.
+const host = (() => {
+  const handlers = new Map();
+  let transport = null;
 
-function send(name, data = {}) {
-  if (htmlComponent) htmlComponent.sendEventToMATLAB(name, JSON.stringify(data));
-}
+  function dispatch(name, text) {
+    const handler = handlers.get(name);
+    if (!handler) {
+      console.warn(`virtualBucketBrowser: no handler for the event "${name}"`);
+      return;
+    }
+    handler(JSON.parse(text));
+  }
+
+  const bridge = {
+    on(name, handler) {
+      handlers.set(name, handler);
+    },
+    send(name, data = {}) {
+      if (!transport) {
+        console.info(`virtualBucketBrowser: no host for the request "${name}"`, data);
+        return;
+      }
+      transport.send(name, JSON.stringify(data));
+    },
+    // A transport sends a request as (name, text). One whose events come
+    // as callbacks of its own, like uihtml, also has listen(name, receive).
+    attach(newTransport) {
+      transport = newTransport;
+      if (transport.listen) {
+        for (const name of handlers.keys()) transport.listen(name, (text) => dispatch(name, text));
+      }
+      bridge.send("ready");
+    },
+    dispatch,
+  };
+  return bridge;
+})();
+
+// ---------------------------------------------------------------- Interaction
 
 function selectedPaths() {
   return selectedFiles().map((file) => file.path);
@@ -657,7 +803,7 @@ function openFolder(path) {
 function openRow(key) {
   const path = key.slice(2);
   if (key.startsWith("d:")) openFolder(path);
-  else send("open", { paths: [path] });
+  else host.send("open", { paths: [path] });
 }
 
 function selectRow(key, event) {
@@ -704,13 +850,13 @@ function fileMenuItems() {
   const single = view.selected.size === 1 ? [...view.selected][0] : null;
   return [
     { label: "Download", icon: "i-download", disabled: !(states.has("online_only") || states.has("differs")),
-      run: () => send("download", { paths: selectedPaths() }) },
+      run: () => host.send("download", { paths: selectedPaths() }) },
     { label: "Make online only", icon: "i-cloud", disabled: !(states.has("downloaded") || states.has("differs")),
-      run: () => send("onlineOnly", { paths: selectedPaths() }) },
+      run: () => host.send("onlineOnly", { paths: selectedPaths() }) },
     "-",
     { label: "Open", icon: "i-open", disabled: !single, run: () => openRow(single) },
     { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", disabled: view.selected.size === 0,
-      run: () => send("reveal", { paths: [[...view.selected][0].slice(2)] }) },
+      run: () => host.send("reveal", { paths: [[...view.selected][0].slice(2)] }) },
   ];
 }
 
@@ -718,11 +864,11 @@ function folderMenuItems(path) {
   const states = new Set(filesBelow(path).map((file) => file.state));
   return [
     { label: "Download folder", icon: "i-download", disabled: !(states.has("online_only") || states.has("differs")),
-      run: () => send("download", { paths: filesBelow(path).map((file) => file.path) }) },
+      run: () => host.send("download", { paths: filesBelow(path).map((file) => file.path) }) },
     { label: "Make folder online only", icon: "i-cloud", disabled: !(states.has("downloaded") || states.has("differs")),
-      run: () => send("onlineOnly", { paths: filesBelow(path).map((file) => file.path) }) },
+      run: () => host.send("onlineOnly", { paths: filesBelow(path).map((file) => file.path) }) },
     "-",
-    { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", run: () => send("reveal", { paths: [path] }) },
+    { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", run: () => host.send("reveal", { paths: [path] }) },
   ];
 }
 
@@ -853,20 +999,24 @@ function wireEvents() {
     renderFooter();
   });
 
-  $("refresh").addEventListener("click", () => send("refresh"));
-  $("update").addEventListener("click", () => send("update"));
-  $("download").addEventListener("click", () => send("download", { paths: selectedPaths() }));
-  $("onlineOnly").addEventListener("click", () => send("onlineOnly", { paths: selectedPaths() }));
+  $("refresh").addEventListener("click", () => host.send("refresh"));
+  $("update").addEventListener("click", () => host.send("update"));
+  $("download").addEventListener("click", () => host.send("download", { paths: selectedPaths() }));
+  $("onlineOnly").addEventListener("click", () => host.send("onlineOnly", { paths: selectedPaths() }));
   $("open").addEventListener("click", () => openRow([...view.selected][0]));
   $("reveal").addEventListener("click", () => {
     const key = [...view.selected][0];
-    send("reveal", { paths: [key ? key.slice(2) : view.folder] });
+    host.send("reveal", { paths: [key ? key.slice(2) : view.folder] });
   });
 
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#menu")) hideMenu();
   });
   document.addEventListener("keydown", (event) => {
+    if (dialogs.isOpen()) {
+      dialogs.onKey(event);
+      return;
+    }
     const isTyping = event.target.tagName === "INPUT" && event.target.type === "text";
     if (event.key === "Escape") {
       hideMenu();
@@ -887,15 +1037,186 @@ function wireEvents() {
   });
 }
 
-// MATLAB calls setup once the page has loaded
-function setup(component) {
-  htmlComponent = component;
-  component.addEventListener("state", (event) => receiveState(JSON.parse(event.Data)));
-  component.addEventListener("busy", (event) => setBusy(JSON.parse(event.Data).busy));
-  send("ready");
+// ---------------------------------------------------------------- Dialogs
+//
+// A host without dialogs of its own asks the page to draw them with the
+// confirm, alert and progress events. One dialog shows at a time, the
+// last one opened; the ones below it wait until it closes.
+
+const DIALOG_ICONS = {
+  error: { icon: "i-error", color: "var(--error)" },
+  warning: { icon: "i-alert", color: "var(--differs)" },
+  info: { icon: "i-info", color: "var(--accent)" },
+  success: { icon: "i-check", color: "var(--downloaded)" },
+};
+
+const dialogs = (() => {
+  const stack = [];
+  const progressById = new Map();
+
+  function build(kind, { title, iconName, message, extraHtml = "", buttonsHtml }) {
+    const iconInfo = DIALOG_ICONS[iconName];
+    const iconHtml = iconInfo ? `<span class="dialog-icon" style="color:${iconInfo.color}">${icon(iconInfo.icon)}</span>` : "";
+    const element = document.createElement("div");
+    element.className = `dialog ${kind}`;
+    element.setAttribute("role", "dialog");
+    element.innerHTML = `<h2>${iconHtml}<span class="dialog-title">${escapeHtml(title)}</span></h2>` +
+      `<p>${escapeHtml(message)}</p>${extraHtml}<div class="buttons">${buttonsHtml}</div>`;
+    return element;
+  }
+
+  function top() {
+    return stack[stack.length - 1];
+  }
+
+  function focusTop() {
+    const dialog = top();
+    $("dialogs").classList.toggle("open", Boolean(dialog));
+    if (dialog) dialog.element.querySelector("[data-focus]")?.focus();
+  }
+
+  function show(dialog) {
+    hideMenu();
+    stack.push(dialog);
+    $("dialogs").appendChild(dialog.element);
+    focusTop();
+  }
+
+  function close(dialog) {
+    const index = stack.indexOf(dialog);
+    if (index < 0) return;
+    stack.splice(index, 1);
+    dialog.element.remove();
+    focusTop();
+  }
+
+  function onButton(element, run) {
+    element.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (button && !button.disabled) run(button.dataset.action);
+    });
+  }
+
+  // Cancel has the focus, as the safe answer to a question about losing data
+  function confirm({ id, title, message, confirmText }) {
+    const dialog = {};
+    dialog.element = build("confirm", { title, iconName: "warning", message, buttonsHtml:
+      `<button data-action="cancel" data-focus>Cancel</button>` +
+      `<button class="primary" data-action="confirm">${escapeHtml(confirmText)}</button>` });
+    const answer = (confirmed) => {
+      close(dialog);
+      host.send("confirmed", { id, confirmed });
+    };
+    onButton(dialog.element, (action) => answer(action === "confirm"));
+    dialog.onEscape = () => answer(false);
+    show(dialog);
+  }
+
+  function alert({ title, message, icon: iconName = "error" }) {
+    const dialog = {};
+    dialog.element = build("alert", { title, iconName, message, buttonsHtml:
+      `<button class="primary" data-action="ok" data-focus>OK</button>` });
+    onButton(dialog.element, () => close(dialog));
+    dialog.onEscape = () => close(dialog);
+    show(dialog);
+  }
+
+  function progress(data) {
+    let dialog = progressById.get(data.id);
+    if (!dialog) {
+      dialog = { title: "", message: "", value: null, cancelable: false, cancelRequested: false };
+      dialog.element = build("progress", { title: "", message: "",
+        extraHtml: `<div class="progress-bar"><div></div></div>`,
+        buttonsHtml: `<button data-action="cancel" data-focus>Cancel</button>` });
+      // The host hears of the cancel once, and closes the dialog itself
+      onButton(dialog.element, () => {
+        dialog.cancelRequested = true;
+        renderProgress(dialog);
+        host.send("progressCancel", { id: data.id });
+      });
+      progressById.set(data.id, dialog);
+      show(dialog);
+    }
+    for (const key of ["title", "message", "value", "cancelable"]) {
+      if (data[key] !== undefined) dialog[key] = data[key];
+    }
+    renderProgress(dialog);
+  }
+
+  function renderProgress(dialog) {
+    const element = dialog.element;
+    element.querySelector(".dialog-title").textContent = dialog.title;
+    element.querySelector("p").textContent = dialog.message;
+    const bar = element.querySelector(".progress-bar");
+    const isIndeterminate = dialog.value === null || dialog.value === undefined;
+    bar.classList.toggle("indeterminate", isIndeterminate);
+    bar.firstElementChild.style.width = isIndeterminate ? "" : `${Math.round(100 * Math.min(Math.max(dialog.value, 0), 1))}%`;
+    const cancel = element.querySelector("button");
+    cancel.style.display = dialog.cancelable ? "" : "none";
+    cancel.disabled = dialog.cancelRequested;
+    cancel.textContent = dialog.cancelRequested ? "Cancelling…" : "Cancel";
+  }
+
+  function closeProgress(id) {
+    const dialog = progressById.get(id);
+    if (!dialog) return;
+    progressById.delete(id);
+    close(dialog);
+  }
+
+  // Keys while a dialog is open go to it: Escape closes it, Tab stays among
+  // its buttons, and the focused button takes Enter itself.
+  function onKey(event) {
+    const dialog = top();
+    if (event.key === "Escape") {
+      if (dialog.onEscape) dialog.onEscape();
+    } else if (event.key === "Tab") {
+      const buttons = [...dialog.element.querySelectorAll("button")]
+        .filter((button) => !button.disabled && button.style.display !== "none");
+      if (buttons.length === 0) return;
+      event.preventDefault();
+      const index = buttons.indexOf(document.activeElement);
+      const step = event.shiftKey ? -1 : 1;
+      buttons[(index + step + buttons.length) % buttons.length].focus();
+    }
+  }
+
+  return { confirm, alert, progress, closeProgress, onKey, isOpen: () => stack.length > 0 };
+})();
+
+// ---------------------------------------------------------------- Hosts
+
+// MATLAB's uihtml component calls setup(htmlComponent) once the page has
+// loaded. Its events carry the JSON text in Data.
+function setup(htmlComponent) {
+  host.attach({
+    send: (name, text) => htmlComponent.sendEventToMATLAB(name, text),
+    listen: (name, receive) => htmlComponent.addEventListener(name, (event) => receive(event.Data)),
+  });
 }
 
+// A host that evaluates JavaScript in the page, such as pywebview, sends
+// its events through this global.
+window.virtualBucketBrowser = { receive: (name, text) => host.dispatch(name, text) };
+
+// pywebview exposes the Python host as window.pywebview.api, which can
+// appear after the page has loaded; pywebviewready says when it has.
+function attachPywebview() {
+  host.attach({
+    send: (name, text) => window.pywebview.api.request(name, text)
+      .catch((error) => console.error(`virtualBucketBrowser: the request "${name}" failed`, error)),
+  });
+}
+
+host.on("state", receiveState);
+host.on("busy", (data) => setBusy(data.busy));
+host.on("confirm", dialogs.confirm);
+host.on("alert", dialogs.alert);
+host.on("progress", dialogs.progress);
+host.on("progressClose", (data) => dialogs.closeProgress(data.id));
 wireEvents();
+if (window.pywebview) attachPywebview();
+else window.addEventListener("pywebviewready", attachPywebview, { once: true });
 </script>
 </body>
 </html>
