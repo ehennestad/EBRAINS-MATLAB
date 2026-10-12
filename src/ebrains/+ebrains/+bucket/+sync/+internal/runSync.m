@@ -125,7 +125,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     isCopy = actions.Action == copyAction;
     isDelete = actions.Action == "delete";
-    [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), syncOptions.MaxDelete);
+    [refusalId, refusal] = ebrains.bucket.sync.internal.deletionRefusal( ...
+        actions, height(sourceFiles), syncOptions.MaxDelete);
     if otherBucket ~= ""
         refusal = otherBucket;
     end
@@ -332,38 +333,6 @@ function keys = matchKeys(paths, ignoreCase)
     keys = paths;
     if ignoreCase
         keys = lower(paths);
-    end
-end
-
-function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles, maxDelete)
-% deletionRefusal - Why the planned deletions look like a mistake, or ""
-%
-%   Checked before anything is changed. The identifier is the error
-%   identifier a real run stops with.
-
-    identifier = "";
-    reason = "";
-
-    nDelete = sum(isDelete);
-    if nDelete == 0
-        return
-    end
-
-    % An empty source with Delete would empty the target. That is more
-    % often a mistyped folder or prefix than what is wanted, and the
-    % target can be emptied with deleteObject or delete instead.
-    if nSourceFiles == 0
-        identifier = "EBRAINS:Bucket:Sync:EmptySource";
-        reason = sprintf(['The source has no files, so the sync would delete ' ...
-            'all %d file(s) of the target. Check the folder and the prefix.'], nDelete);
-        return
-    end
-
-    if nDelete > maxDelete
-        identifier = "EBRAINS:Bucket:Sync:TooManyDeletions";
-        reason = sprintf(['The sync would delete %d file(s), more than ' ...
-            'MaxDelete (%d), for example "%s".'], ...
-            nDelete, maxDelete, actions.Path(find(isDelete, 1)));
     end
 end
 
