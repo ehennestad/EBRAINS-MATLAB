@@ -140,6 +140,62 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(kept.Path, ["a1.txt"; "sub/xzy"]);
         end
 
+        %% parseExcludeFile and readExcludeFile
+        % The first four tests are the cases of spec/fixtures/exclude-file
+        % of the ebrains-bucket-sync Python package.
+        function testExcludeFileSkipsCommentsAndBlankLines(testCase)
+            text = "# Version control" + newline + ".git/" + newline + newline + "   " + newline ...
+                + "  # indented comment" + newline + "*.tmp" + newline;
+
+            patterns = ebrains.bucket.sync.internal.parseExcludeFile(text);
+
+            testCase.verifyEqual(patterns, [".git/"; "*.tmp"]);
+        end
+
+        function testExcludeFileRemovesWhitespaceAndByteOrderMark(testCase)
+            [cr, tab] = deal(string(char(13)), string(char(9)));
+            text = string(char(65279)) + "*.tmp  " + cr + newline + tab + ".DS_Store" + cr ...
+                + "__pycache__/" + newline;
+
+            patterns = ebrains.bucket.sync.internal.parseExcludeFile(text);
+
+            testCase.verifyEqual(patterns, ["*.tmp"; ".DS_Store"; "__pycache__/"]);
+        end
+
+        function testExcludeFileKeepsHashInsideLine(testCase)
+            text = "notes#1.txt" + newline + "*.log # not a comment" + newline;
+
+            patterns = ebrains.bucket.sync.internal.parseExcludeFile(text);
+
+            testCase.verifyEqual(patterns, ["notes#1.txt"; "*.log # not a comment"]);
+        end
+
+        function testExcludeFileRefusesNegation(testCase)
+            text = "*.txt" + newline + newline + "!keep.txt" + newline;
+
+            try
+                ebrains.bucket.sync.internal.parseExcludeFile(text);
+                testCase.verifyFail("A file with a negation was parsed.");
+            catch exception
+                testCase.verifyEqual(string(exception.identifier), "EBRAINS:Bucket:Sync:ExcludeFileNegation");
+                testCase.verifySubstring(exception.message, 'Line 3 ("!keep.txt")');
+            end
+        end
+
+        function testReadExcludeFileNamesTheFileOfARefusedLine(testCase)
+            excludeFile = fullfile(testCase.Folder, "dataset.ignore");
+            writeFile(excludeFile, "*.txt" + newline + "!keep.txt" + newline);
+
+            try
+                ebrains.bucket.sync.internal.readExcludeFile(excludeFile);
+                testCase.verifyFail("A file with a negation was read.");
+            catch exception
+                testCase.verifyEqual(string(exception.identifier), "EBRAINS:Bucket:Sync:ExcludeFileNegation");
+                testCase.verifySubstring(exception.message, char(excludeFile));
+                testCase.verifySubstring(exception.message, 'Line 2 ("!keep.txt")');
+            end
+        end
+
         %% listLocalFiles
         function testListLocalFilesGivesRelativePathsWithSlashes(testCase)
             writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
@@ -356,6 +412,36 @@ classdef SyncTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(actions.Path, "a.txt");
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testSyncToBucketCombinesExcludeAndExcludeFrom(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "scratch.tmp"), "abc");
+            writeFile(fullfile(testCase.Folder, ".git", "config"), "abc");
+            excludeFile = fullfile(testCase.applyFixture( ...
+                matlab.unittest.fixtures.TemporaryFolderFixture).Folder, "dataset.ignore");
+            writeFile(excludeFile, "# version control" + newline + ".git/" + newline);
+            addListing(testCase.Client, makeObjects(["a.txt", "remote.tmp", ".git/HEAD"], ...
+                [3, 1, 1], ["2100-01-01T00:00:00", "", ""]));
+
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Exclude="*.tmp", ExcludeFrom=excludeFile, Delete=true, ...
+                Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, "a.txt");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testSyncToBucketStopsBeforeListingOnRefusedExcludeFile(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            excludeFile = fullfile(testCase.applyFixture( ...
+                matlab.unittest.fixtures.TemporaryFolderFixture).Folder, "dataset.ignore");
+            writeFile(excludeFile, "*.txt" + newline + "!a.txt" + newline);
+
+            testCase.verifyError(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                ExcludeFrom=excludeFile, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:ExcludeFileNegation');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
         function testSyncToBucketRefusesToEmptyBucketFromEmptyFolder(testCase)

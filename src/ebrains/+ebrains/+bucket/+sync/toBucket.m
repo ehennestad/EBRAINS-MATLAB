@@ -49,6 +49,11 @@ function actions = toBucket(localFolder, bucketName, options)
 %                     [".git", "*.tmp", "raw/scratch"]. Excluded files are
 %                     neither uploaded nor deleted. See
 %                     ebrains.bucket.sync.internal.excludeFiles for the rules.
+%       ExcludeFrom : Files of exclude patterns, one per line, in the
+%                     layout of a .gitignore file. Their patterns are added
+%                     to Exclude. See
+%                     ebrains.bucket.sync.internal.parseExcludeFile for the
+%                     layout.
 %       DryRun      : Only plan: list what would be uploaded and deleted,
 %                     and change nothing. A deletion that a real run would
 %                     refuse (see MaxDelete and below) is listed as skipped

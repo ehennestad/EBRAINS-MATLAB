@@ -24,6 +24,14 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         client (1,1) ebrains.bucket.api.BucketsClient
     end
 
+    % The exclude files are read before the bucket is listed, so a file
+    % that cannot be used stops the sync before any request for it.
+    excludePatterns = reshape(syncOptions.Exclude, [], 1);
+    for excludeFile = reshape(syncOptions.ExcludeFrom, 1, [])
+        excludePatterns = [excludePatterns; ...
+            ebrains.bucket.sync.internal.readExcludeFile(excludeFile)]; %#ok<AGROW>
+    end
+
     isToBucket = direction == "ToBucket";
     prefix = normalizePrefix(syncOptions.Prefix);
     remoteLabel = "bucket """ + bucketName + """";
@@ -34,8 +42,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % 1. List both sides
     [localFiles, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
-    localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, syncOptions.Exclude);
-    remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, syncOptions.Exclude);
+    localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, excludePatterns);
+    remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, excludePatterns);
 
     % The files of a local folder that could not be read are missing from
     % the listing, so the plan would take them for deleted or extraneous.
@@ -43,7 +51,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % error while listing. A folder that is excluded does not count.
     unreadableFolderTable = ebrains.bucket.sync.internal.excludeFiles( ...
         ebrains.bucket.sync.internal.makeFileTable(unreadableFolders, zeros(size(unreadableFolders))), ...
-        syncOptions.Exclude);
+        excludePatterns);
     unreadableFolders = unreadableFolderTable.Path;
     deletionHoldBack = "";
     if ~isempty(unreadableFolders)
