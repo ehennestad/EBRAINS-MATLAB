@@ -159,6 +159,80 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
+        function testBucketNameWithoutPrefixOpensPrefixedBucket(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "set/a.txt", 3);
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
+                Prefix="set", Client=testCase.Client, Downloader=@writeAbc);
+            delete(testCase.App)
+
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
+                Client=testCase.Client, Downloader=@writeAbc);
+
+            testCase.verifyEqual(testCase.App.Prefix, "set/");
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(target, ...
+                BucketName="my-bucket", Prefix="other", Client=testCase.Client), 'EBRAINS:Bucket:OtherBucket');
+        end
+
+        function testOpeningAVirtualBucketWritesNothing(testCase)
+            % A virtual bucket on a read-only location must open, so the
+            % description is only read. The file keeps the old time it is
+            % given here.
+            testCase.openApp(testCase.Folder);
+            delete(testCase.App)
+            bucketFile = fullfile(testCase.Folder, ".ebrains", "bucket.json");
+            oldTime = datetime(2000, 1, 1, TimeZone="UTC");
+            java.io.File(char(bucketFile)).setLastModified(round(posixtime(oldTime) * 1000));
+
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
+                Client=testCase.Client, Downloader=@writeAbc);
+
+            modifiedTime = datetime(java.io.File(char(bucketFile)).lastModified() / 1000, ...
+                ConvertFrom="posixtime", TimeZone="UTC");
+            testCase.verifyEqual(modifiedTime, oldTime);
+        end
+
+        function testDownloadGivesFileTheTimeOfItsObject(testCase)
+            % A sync to the bucket must not upload the file again, so it
+            % gets the time of its object, as a sync from the bucket does.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.openApp(target);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", "a.txt")
+
+            fileTime = datetime(java.io.File(char(fullfile(target, "a.txt"))).lastModified() / 1000, ...
+                ConvertFrom="posixtime", TimeZone="UTC");
+            testCase.verifyEqual(fileTime, datetime(2000, 1, 1, TimeZone="UTC"));
+        end
+
+        function testDownloadOfWrongSizeKeepsThePlaceholder(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 10);
+            testCase.openApp(target);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(dir(fullfile(target, "a.txt")).bytes, 0);
+            testCase.verifyEqual(testCase.App.Files.State, "online_only");
+        end
+
+        function testFilesThatDifferOnlyInCaseAreOneFile(testCase)
+            assumeCaseInsensitive(testCase);
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, ["Data.txt", "data.txt"], [3, 3]);
+            testCase.openApp(target);
+            writeFile(fullfile(target, "data.txt"), "abc");
+
+            sendPageEvent("refresh")
+
+            testCase.verifyEqual(testCase.App.Files.Path, "Data.txt", ...
+                'Only the first of the objects is shown, under its own name.');
+            testCase.verifyEqual(testCase.App.Files.State, "downloaded");
+        end
+
         function testOtherBucketIsRefused(testCase)
             testCase.openApp(testCase.Folder);
             delete(testCase.App)
@@ -213,6 +287,15 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
                 Client=testCase.Client, Downloader=@writeAbc);
         end
     end
+end
+
+function assumeCaseInsensitive(testCase)
+% assumeCaseInsensitive - Filter the test unless the test folder ignores the case of names
+    probeFile = fullfile(testCase.Folder, "case-probe");
+    writeFile(probeFile, "");
+    isInsensitive = isfile(fullfile(testCase.Folder, "CASE-PROBE"));
+    delete(probeFile)
+    testCase.assumeTrue(isInsensitive, 'The file system of the test folder tells names apart by case.');
 end
 
 function sendPageEvent(name, paths)
