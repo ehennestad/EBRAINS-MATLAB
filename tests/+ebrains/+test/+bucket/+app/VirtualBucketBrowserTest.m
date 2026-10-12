@@ -11,6 +11,9 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         Client ebrains.mocks.MockBucketsClient
         Folder string
         App ebrains.bucket.app.VirtualBucketBrowser
+
+        % OpenedURL - Addresses the browser asked its opener to show
+        OpenedURL (1,:) string = string.empty(1, 0)
     end
 
     methods (TestClassSetup)
@@ -242,6 +245,31 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
     end
 
+    methods (Test) % The page of the bucket
+        function testOpenOnlineShowsThePageOfTheBucket(testCase)
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, BucketName="my-bucket", ...
+                Client=testCase.Client, Downloader=@writeAbc, Opener=@(url) recordURL(testCase, url));
+
+            sendPageEvent("openOnline")
+
+            testCase.verifyEqual(testCase.OpenedURL, "https://wiki.ebrains.eu/bin/view/Collabs/my-bucket/Bucket");
+        end
+
+        function testDatasetBucketHasAPageUnderItsName(testCase)
+            datasetBucket = "d-3e860b3e-967c-425d-aa68-120451c5fe4b";
+
+            url = ebrains.bucket.internal.buildBucketViewURL(datasetBucket);
+
+            testCase.verifyEqual(url, "https://wiki.ebrains.eu/bin/view/Collabs/" + datasetBucket + "/Bucket");
+        end
+
+        function testBucketNameIsEncodedAsOneSegment(testCase)
+            url = ebrains.bucket.internal.buildBucketViewURL("odd name/x");
+
+            testCase.verifyEqual(url, "https://wiki.ebrains.eu/bin/view/Collabs/odd%20name%2Fx/Bucket");
+        end
+    end
+
     methods (Test) % Progress of a listing
         function testUpdateListsInSmallPages(testCase)
             target = fullfile(testCase.Folder, "virtual");
@@ -333,6 +361,11 @@ function dialog = makeDialogStub()
 %   uiprogressdlg needs a visible figure. ListingProgress keeps the struct
 %   in its Dialog property, where a test reads what it set.
     dialog = struct("CancelRequested", false, "Indeterminate", "on", "Value", 0, "Message", "");
+end
+
+function recordURL(testCase, url)
+% recordURL - Opener that records the address instead of showing it
+    testCase.OpenedURL(end+1) = url;
 end
 
 function writeAbc(target, varargin)
