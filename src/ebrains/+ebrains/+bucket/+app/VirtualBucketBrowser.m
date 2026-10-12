@@ -453,6 +453,11 @@ classdef VirtualBucketBrowser < handle
         %   The page sends its requests as JSON text: an object with the
         %   field "paths", the paths of the files or the folder the request
         %   is about.
+        %
+        %   The page can also draw confirm, alert and progress dialogs for
+        %   a host that has none (see the protocol in its header). MATLAB
+        %   has uiconfirm, uialert and uiprogressdlg and never asks for
+        %   them, so the page never sends their replies here.
             request = jsondecode(event.HTMLEventData);
             paths = strings(0, 1);
             if isfield(request, "paths")
@@ -478,7 +483,7 @@ classdef VirtualBucketBrowser < handle
                     case "reveal"
                         app.revealPath(paths(1))
                     otherwise
-                        % The page sends no other events
+                        % The page sends no other requests to MATLAB
                 end
             catch exception
                 uialert(app.UIFigure, exception.message, "Something went wrong")
