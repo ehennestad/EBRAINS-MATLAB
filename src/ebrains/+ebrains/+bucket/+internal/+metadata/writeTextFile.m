@@ -17,12 +17,7 @@ function writeTextFile(filePath, text)
 
     temporaryFile = string(tempname(folder)) + ".tmp";
     try
-        [fileID, errorMessage] = fopen(temporaryFile, "w");
-        if fileID == -1
-            error('EBRAINS:Bucket:CouldNotWriteFile', 'Could not write "%s": %s', filePath, errorMessage)
-        end
-        fwrite(fileID, unicode2native(char(text), "UTF-8"));
-        fclose(fileID);
+        writeBytes(temporaryFile, unicode2native(char(text), "UTF-8"), filePath)
         movefile(temporaryFile, filePath, "f");
     catch exception
         if isfile(temporaryFile)
@@ -30,4 +25,17 @@ function writeTextFile(filePath, text)
         end
         rethrow(exception)
     end
+end
+
+function writeBytes(temporaryFile, bytes, filePath)
+% writeBytes - Write bytes to a file that is closed again whether the write succeeds or fails
+%
+%   The file must be closed before it is moved, and before it is deleted
+%   after a failed write, which Windows refuses for an open file.
+    [fileID, errorMessage] = fopen(temporaryFile, "w");
+    if fileID == -1
+        error('EBRAINS:Bucket:CouldNotWriteFile', 'Could not write "%s": %s', filePath, errorMessage)
+    end
+    closeFile = onCleanup(@() fclose(fileID));
+    fwrite(fileID, bytes);
 end
