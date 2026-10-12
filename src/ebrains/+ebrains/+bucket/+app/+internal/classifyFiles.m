@@ -26,12 +26,14 @@ function files = classifyFiles(localFiles, remoteFiles)
 %               LocalBytes  - Size of the local file, NaN if there is none
 %               LocalTime   - Time of the last change of the local file
 %               RemoteBytes - Size of the object, NaN if it is not known
-%               State       - "OnlineOnly"  : the local file is an empty
+%               State       - "online_only" : the local file is an empty
 %                                             placeholder, or is missing
-%                             "Downloaded"  : the local file holds the data
-%                             "Differs"     : the local file differs from
+%                             "downloaded"  : the local file holds the data
+%                             "differs"     : the local file differs from
 %                                             the object
-%                             "LocalOnly"   : the bucket has no such object
+%                             "local_only"  : the bucket has no such object
+%               The states are those of spec/README.md#file-states of the
+%               ebrains-bucket-sync package.
 %
 %   See also ebrains.bucket.sync.internal.planSync, ebrains.bucket.app.VirtualBucketBrowser
 
@@ -50,8 +52,8 @@ end
 function files = classifyLocalFiles(localFiles)
 % classifyLocalFiles - States from the sizes of the local files alone
 
-    state = repmat("Downloaded", height(localFiles), 1);
-    state(localFiles.Bytes == 0) = "OnlineOnly";
+    state = repmat("downloaded", height(localFiles), 1);
+    state(localFiles.Bytes == 0) = "online_only";
 
     files = table(localFiles.Path, localFiles.Bytes, localFiles.ModifiedTime, ...
         NaN(height(localFiles), 1), state, ...
@@ -77,13 +79,13 @@ function files = classifyAgainstListing(localFiles, remoteFiles)
     remoteBytes = NaN(nFiles, 1);
     remoteBytes(isRemote) = remoteFiles.Bytes(remoteIndex(isRemote));
 
-    state = repmat("Downloaded", nFiles, 1);
-    state(plan.Reason == "size" | plan.Reason == "newer" | plan.Reason == "checksum") = "Differs";
+    state = repmat("downloaded", nFiles, 1);
+    state(plan.Reason == "size" | plan.Reason == "newer" | plan.Reason == "checksum") = "differs";
     % An empty local file of an object that is not empty is the placeholder
     % of a virtual bucket, not a copy that differs.
-    state(localBytes == 0 & remoteBytes > 0) = "OnlineOnly";
-    state(plan.Reason == "new") = "OnlineOnly";
-    state(plan.Reason == "extraneous") = "LocalOnly";
+    state(localBytes == 0 & remoteBytes > 0) = "online_only";
+    state(plan.Reason == "new") = "online_only";
+    state(plan.Reason == "extraneous") = "local_only";
 
     files = table(plan.Path, localBytes, localTime, remoteBytes, state, ...
         'VariableNames', ["Path", "LocalBytes", "LocalTime", "RemoteBytes", "State"]);

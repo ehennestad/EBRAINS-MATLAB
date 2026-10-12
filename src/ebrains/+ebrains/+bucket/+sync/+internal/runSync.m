@@ -12,6 +12,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %       2. Plan what to copy and delete (ebrains.bucket.sync.internal.planSync).
 %       3. Copy the new and changed files.
 %       4. Delete the extraneous files, if asked to and no copy failed.
+%   When localFolder is a virtual bucket (see
+%   ebrains.bucket.internal.metadata.readBucketInfo), the sync must be of
+%   its bucket and prefix, a sync to the bucket leaves its placeholders
+%   alone, and its manifest is updated from the listing the sync made.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -39,9 +43,21 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         remoteLabel = remoteLabel + ", folder """ + prefix + """";
     end
 
+    % A virtual bucket of another bucket or folder would end up holding the
+    % objects of two. A dry run changes nothing, so it shows the plan with
+    % the refusal instead of stopping.
+    bucketInfo = ebrains.bucket.internal.metadata.readBucketInfo(localFolder);
+    otherBucket = ebrains.bucket.internal.metadata.otherBucketRefusal(bucketInfo, bucketName, prefix);
+    if otherBucket ~= "" && ~syncOptions.DryRun
+        error('EBRAINS:Bucket:Sync:OtherBucket', '%s', otherBucket)
+    end
+    isVirtualBucket = ~isempty(bucketInfo) && otherBucket == "";
+
     % 1. List both sides
     [localFiles, unreadableFolders, linkedFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    listedTime = datetime("now", TimeZone="UTC");
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
+    listedFiles = remoteFiles;
 
     % On a file system that ignores case, such as the default ones of
     % macOS and Windows, a local file and an object whose names differ
@@ -109,6 +125,12 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=syncOptions.Comparison, Delete=syncOptions.Delete, IgnoreCase=ignoreCase);
+    if isToBucket && isVirtualBucket
+        [manifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(localFolder);
+        if hasManifest
+            actions = ebrains.bucket.sync.internal.protectPlaceholders(actions, localFiles, manifestFiles);
+        end
+    end
     actions.Action(actions.Action == "copy") = copyAction;
 
     % The status of each file is kept in plain arrays while the sync runs,
@@ -121,6 +143,9 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     isCopy = actions.Action == copyAction;
     isDelete = actions.Action == "delete";
     [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), syncOptions.MaxDelete);
+    if otherBucket ~= ""
+        refusal = otherBucket;
+    end
 
     if syncOptions.Verbose
         if isToBucket
@@ -134,6 +159,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     if syncOptions.DryRun
         % A dry run shows the plan, a refusal included, rather than stop
         status(isCopy) = "planned";
+        if otherBucket ~= ""
+            status(isCopy) = "skipped";
+            message(isCopy) = otherBucket;
+        end
         skipReason = refusal;
         if skipReason == ""
             skipReason = deletionHoldBack;
@@ -232,6 +261,11 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     actions.Status = status;
     actions.Message = message;
 
+    if isVirtualBucket
+        updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...
+            localFiles, actions, isToBucket)
+    end
+
     if syncOptions.Verbose
         fprintf('Done: %d copied, %d deleted, %d failed.\n', ...
             sum(isCopy & status == "done"), ...
@@ -256,6 +290,24 @@ function paths = excludePaths(paths, excludePatterns, ignoreCase)
         ebrains.bucket.sync.internal.makeFileTable(paths, zeros(size(paths))), ...
         excludePatterns, IgnoreCase=ignoreCase);
     paths = pathTable.Path;
+end
+
+function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, actions, isToBucket)
+% updateManifest - Record the listing of a sync as the manifest of a virtual bucket
+%
+%   A sync to the bucket changed it after the listing, so the files it
+%   uploaded and the objects it deleted are applied to the listing. A
+%   failed transfer leaves the entry as the listing gave it.
+    manifestFiles = listedFiles;
+    if isToBucket
+        isDone = actions.Status == "done";
+        uploadedPaths = actions.Path(isDone & actions.Action == "upload");
+        deletedPaths = actions.Path(isDone & actions.Action == "delete");
+        manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
+            localFiles(ismember(localFiles.Path, uploadedPaths), :), deletedPaths);
+    end
+    ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
+    ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
 end
 
 function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel, ignoreCase)

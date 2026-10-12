@@ -9,34 +9,41 @@ classdef VirtualBucketBrowser < handle
 %   replaces their local copies with empty placeholders.
 %
 %   Syntax:
-%       ebrains.bucket.app.VirtualBucketBrowser(bucketName, localFolder)
-%       opens the virtual bucket of bucketName in localFolder. If the
-%       folder does not exist, it is created and filled with placeholders
-%       from a listing of the bucket.
+%       ebrains.bucket.app.VirtualBucketBrowser(localFolder) opens the
+%       virtual bucket in localFolder. Its folder .ebrains says which
+%       bucket it stands for (see ebrains.bucket.internal.metadata.folderName).
+%
+%       ebrains.bucket.app.VirtualBucketBrowser(localFolder, BucketName=NAME)
+%       also makes localFolder a virtual bucket of the bucket NAME if it is
+%       not one yet. A folder that does not exist is created and filled
+%       with placeholders from a listing of the bucket.
 %
 %       app = ebrains.bucket.app.VirtualBucketBrowser(...) also returns the
 %       browser object.
 %
-%   The state of each file is judged from the local folder alone when the
-%   browser opens: an empty file is online only and any other file is
-%   downloaded. Listing a bucket of many objects takes a while, so the
-%   bucket is listed only when "Update from bucket" is pressed. The update
-%   adds placeholders for objects that the folder does not have yet, and
-%   marks the files that differ from their objects and the files that the
-%   bucket does not have.
+%   Each file is compared with the manifest, the objects of the last
+%   listing of the bucket, which the virtual bucket keeps. Listing a bucket
+%   of many objects takes a while, so the bucket is listed again only when
+%   "Update from bucket" is pressed. The update adds placeholders for
+%   objects that the folder does not have yet. A folder that was never
+%   listed is judged from its files alone: an empty file is online only
+%   and any other file is downloaded.
 %
 %   The browser is a web page in a uihtml component, and requires MATLAB
 %   R2023a or later.
 %
 %   Input Arguments
-%       bucketName  : Name of the bucket
 %       localFolder : Folder of the virtual bucket
 %
 %   Name-Value Arguments
+%       BucketName : Name of the bucket. Needed for a folder that is not a
+%                    virtual bucket yet; for one that is, it must be the
+%                    bucket of the folder.
 %       Prefix     : Folder of the bucket that the virtual bucket holds,
 %                    such as "results/", as given to createVirtualBucket.
 %                    Paths below localFolder are relative to it. Default
-%                    is "", the whole bucket.
+%                    is "", the whole bucket, or the prefix of a folder
+%                    that is a virtual bucket already.
 %       Client     : ebrains.bucket.api.BucketsClient that sends the
 %                    requests. Meant for tests and custom clients; a
 %                    default client is created otherwise.
@@ -44,8 +51,9 @@ classdef VirtualBucketBrowser < handle
 %                    for ebrains.bucket.downloadFile. Meant for tests.
 %
 %   Example:
-%       ebrains.bucket.app.VirtualBucketBrowser( ...
-%           "d-ca602c23-364a-4c9b-943b-87d1b09a5821", "temp_data")
+%       ebrains.bucket.app.VirtualBucketBrowser("temp_data", ...
+%           BucketName="d-ca602c23-364a-4c9b-943b-87d1b09a5821")
+%       ebrains.bucket.app.VirtualBucketBrowser("temp_data")
 %
 %   See also ebrains.bucket.createVirtualBucket, ebrains.bucket.downloadFile,
 %   ebrains.bucket.sync.fromBucket
@@ -63,8 +71,11 @@ classdef VirtualBucketBrowser < handle
         % Files - State of each file, as ebrains.bucket.app.internal.classifyFiles returns it
         Files table
 
-        % IsListed - Whether the files have been compared with a listing of the bucket
+        % IsListed - Whether the files are compared with a listing of the bucket
         IsListed (1,1) logical = false
+
+        % ListedTime - When the bucket was last listed, NaT if it never was
+        ListedTime (1,1) datetime = NaT(TimeZone="UTC")
     end
 
     properties (Access = private)
@@ -74,8 +85,8 @@ classdef VirtualBucketBrowser < handle
         % LocalFiles - File table of the local folder, from the last scan
         LocalFiles table
 
-        % RemoteFiles - File table of the bucket, with paths relative to
-        % LocalFolder, from the last update. Empty until the first update.
+        % RemoteFiles - File table of the last listing of the bucket, with
+        % paths relative to LocalFolder. Empty if it was never listed.
         RemoteFiles = []
 
         % Message - Note on the last action, shown below the file list
@@ -89,10 +100,10 @@ classdef VirtualBucketBrowser < handle
     end
 
     methods
-        function app = VirtualBucketBrowser(bucketName, localFolder, options)
+        function app = VirtualBucketBrowser(localFolder, options)
             arguments
-                bucketName (1,1) string {mustBeNonzeroLengthText}
                 localFolder (1,1) string {mustBeNonzeroLengthText}
+                options.BucketName (1,1) string = ""
                 options.Prefix (1,1) string = ""
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
@@ -106,16 +117,44 @@ classdef VirtualBucketBrowser < handle
                     'The virtual bucket browser requires MATLAB R2023a or later.')
             end
 
+            bucketInfo = ebrains.bucket.internal.metadata.readBucketInfo(localFolder);
+            if isempty(bucketInfo)
+                if options.BucketName == ""
+                    error('EBRAINS:Bucket:NotAVirtualBucket', ...
+                        ['"%s" is not a virtual bucket. Give BucketName to make it one, ' ...
+                         'or create one with ebrains.bucket.createVirtualBucket.'], localFolder)
+                end
+                bucketInfo = struct("BucketName", options.BucketName, ...
+                    "Prefix", ebrains.bucket.internal.normalizePrefix(options.Prefix), ...
+                    "ListedTime", NaT(TimeZone="UTC"));
+            elseif options.BucketName ~= ""
+                refusal = ebrains.bucket.internal.metadata.otherBucketRefusal( ...
+                    bucketInfo, options.BucketName, options.Prefix);
+                if refusal ~= ""
+                    error('EBRAINS:Bucket:OtherBucket', '%s', refusal)
+                end
+            end
+
             isNewFolder = ~isfolder(localFolder);
             if isNewFolder
                 mkdir(localFolder)
             end
 
-            app.BucketName = bucketName;
+            app.BucketName = bucketInfo.BucketName;
             app.LocalFolder = getAbsolutePath(localFolder);
-            app.Prefix = ebrains.bucket.internal.normalizePrefix(options.Prefix);
+            app.Prefix = bucketInfo.Prefix;
+            app.ListedTime = bucketInfo.ListedTime;
             app.Client = options.Client;
             app.Downloader = options.Downloader;
+
+            % A folder that is not a virtual bucket yet becomes one
+            ebrains.bucket.internal.metadata.writeBucketInfo( ...
+                app.LocalFolder, app.BucketName, app.Prefix, app.ListedTime)
+            [manifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(app.LocalFolder);
+            if hasManifest
+                app.RemoteFiles = manifestFiles;
+                app.IsListed = true;
+            end
 
             app.scanLocalFolder()
             app.createComponents()
@@ -153,6 +192,7 @@ classdef VirtualBucketBrowser < handle
             closeDialog = onCleanup(@() delete(progressDialog));
 
             try
+                listedTime = datetime("now", TimeZone="UTC");
                 remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles( ...
                     app.BucketName, app.Prefix, app.Client);
             catch exception
@@ -164,10 +204,13 @@ classdef VirtualBucketBrowser < handle
             progressDialog.Message = "Creating placeholders for new objects...";
             isNew = ~ismember(remoteFiles.Path, app.LocalFiles.Path);
             ebrains.bucket.app.internal.createPlaceholderFiles(app.LocalFolder, remoteFiles.Path(isNew));
+            ebrains.bucket.internal.metadata.writeManifest(app.LocalFolder, remoteFiles)
+            ebrains.bucket.internal.metadata.writeBucketInfo(app.LocalFolder, app.BucketName, app.Prefix, listedTime)
 
             app.RemoteFiles = remoteFiles;
             app.IsListed = true;
-            app.Message = "Compared with the bucket. Added placeholders for " + countText(sum(isNew), "new object") + ".";
+            app.ListedTime = listedTime;
+            app.Message = "Added placeholders for " + countText(sum(isNew), "new object") + ".";
             app.refresh()
         end
     end
@@ -194,14 +237,14 @@ classdef VirtualBucketBrowser < handle
         function downloadPaths(app, paths)
         % downloadPaths - Download the files of the given paths that are online only or differ
             files = app.Files(ismember(app.Files.Path, paths), :);
-            files = files(files.State == "OnlineOnly" | files.State == "Differs", :);
+            files = files(files.State == "online_only" | files.State == "differs", :);
             if isempty(files)
                 uialert(app.UIFigure, "The selected files are downloaded already.", ...
                     "Nothing to download", Icon="info")
                 return
             end
 
-            nDiffering = sum(files.State == "Differs");
+            nDiffering = sum(files.State == "differs");
             if nDiffering > 0
                 message = sprintf(['%d of the files differ from the bucket. Downloading them ' ...
                     'replaces the local copies, and changes made to those copies are lost.'], nDiffering);
@@ -253,8 +296,8 @@ classdef VirtualBucketBrowser < handle
         % makePathsOnlineOnly - Replace the downloaded files of the given paths with placeholders
             files = app.Files(ismember(app.Files.Path, paths), :);
 
-            nLocalOnly = sum(files.State == "LocalOnly");
-            files = files(files.State == "Downloaded" | files.State == "Differs", :);
+            nLocalOnly = sum(files.State == "local_only");
+            files = files(files.State == "downloaded" | files.State == "differs", :);
             if isempty(files)
                 if nLocalOnly > 0
                     message = ['The bucket does not have the selected files, so their ' ...
@@ -269,7 +312,7 @@ classdef VirtualBucketBrowser < handle
             % A file that matches its object can be downloaded again, so it
             % is replaced without asking. Any other file may hold changes
             % that exist nowhere else.
-            nDiffering = sum(files.State == "Differs");
+            nDiffering = sum(files.State == "differs");
             freedBytes = formatBytes(sum(files.LocalBytes, "omitnan"));
             if ~app.IsListed
                 message = sprintf(['Replace %d local files (%s) with empty placeholders? ' ...
@@ -306,13 +349,13 @@ classdef VirtualBucketBrowser < handle
         function openPath(app, path)
         % openPath - Open a file with the default application of the system
             state = app.Files.State(app.Files.Path == path);
-            if state == "OnlineOnly"
+            if state == "online_only"
                 message = sprintf("""%s"" is online only. Download it and open it?", path);
                 if ~app.confirm(message, "Download file?", "Download and open")
                     return
                 end
                 app.downloadPaths(path)
-                if app.Files.State(app.Files.Path == path) == "OnlineOnly"
+                if app.Files.State(app.Files.Path == path) == "online_only"
                     return
                 end
             end
@@ -411,6 +454,7 @@ classdef VirtualBucketBrowser < handle
                 "localFolder", app.LocalFolder, ...
                 "prefix", app.Prefix, ...
                 "isListed", app.IsListed, ...
+                "listedAt", formatLocalTime(app.ListedTime), ...
                 "revealLabel", revealActionName(), ...
                 "message", app.Message, ...
                 "files", struct( ...
@@ -465,6 +509,15 @@ function message = failureReport(failedPaths, failureMessages, nFiles)
         join(lines, newline + newline);
     if nFailed > nNamed
         message = message + newline + newline + sprintf("and %d more.", nFailed - nNamed);
+    end
+end
+
+function text = formatLocalTime(time)
+% formatLocalTime - Time in the local time zone, as the page shows it, or "" for NaT
+    time.TimeZone = "local";
+    text = string(time, "yyyy-MM-dd HH:mm");
+    if ismissing(text)
+        text = "";
     end
 end
 

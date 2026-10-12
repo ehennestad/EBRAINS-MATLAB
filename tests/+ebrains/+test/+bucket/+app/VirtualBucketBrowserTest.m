@@ -48,7 +48,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.openApp(testCase.Folder);
 
             testCase.verifyEqual(testCase.App.Files.Path, ["a.txt"; "sub/b.txt"]);
-            testCase.verifyEqual(testCase.App.Files.State, ["Downloaded"; "OnlineOnly"]);
+            testCase.verifyEqual(testCase.App.Files.State, ["downloaded"; "online_only"]);
             testCase.verifyFalse(testCase.App.IsListed);
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
@@ -59,7 +59,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             testCase.openApp(target);
 
-            testCase.verifyEqual(testCase.App.Files.State, ["OnlineOnly"; "OnlineOnly"]);
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "online_only"]);
             testCase.verifyEqual(dir(fullfile(target, "sub", "b.txt")).bytes, 0);
             testCase.verifyTrue(testCase.App.IsListed);
         end
@@ -74,7 +74,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             files = testCase.App.Files;
             testCase.verifyEqual(files.Path, ["changed.txt"; "extra.txt"; "new.txt"]);
-            testCase.verifyEqual(files.State, ["Differs"; "LocalOnly"; "OnlineOnly"]);
+            testCase.verifyEqual(files.State, ["differs"; "local_only"; "online_only"]);
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "new.txt")));
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "extra.txt")), 'abc', ...
                 'A file that the bucket does not have is kept.');
@@ -89,7 +89,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             sendPageEvent("download", "sub/b.txt")
 
             testCase.verifyEqual(fileread(fullfile(target, "sub", "b.txt")), 'abc');
-            testCase.verifyEqual(testCase.App.Files.State, ["OnlineOnly"; "Downloaded"]);
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "downloaded"]);
             testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/sub/b.txt');
         end
 
@@ -117,7 +117,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             sendPageEvent("onlineOnly", "a.txt")
 
             testCase.verifyEqual(dir(fullfile(testCase.Folder, "a.txt")).bytes, 0);
-            testCase.verifyEqual(testCase.App.Files.State, "OnlineOnly");
+            testCase.verifyEqual(testCase.App.Files.State, "online_only");
         end
 
         function testPathsAreRelativeToPrefix(testCase)
@@ -126,21 +126,66 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             % object by its full name.
             target = fullfile(testCase.Folder, "virtual");
             addListing(testCase.Client, ["set/a.txt", "set/sub/b.txt"], [3, 3]);
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser("my-bucket", target, ...
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
                 Prefix="set", Client=testCase.Client, Downloader=@writeAbc);
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
 
             sendPageEvent("download", "sub/b.txt")
 
             testCase.verifyEqual(testCase.App.Files.Path, ["a.txt"; "sub/b.txt"]);
-            testCase.verifyEqual(testCase.App.Files.State, ["OnlineOnly"; "Downloaded"]);
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "downloaded"]);
             testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/set/sub/b.txt');
+        end
+    end
+
+    methods (Test) % The .ebrains folder
+        function testReopeningComparesWithTheSavedListing(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, ["a.txt", "b.txt"], [3, 3]);
+            testCase.openApp(target);
+            writeFile(fullfile(target, "b.txt"), "abcd");
+            delete(testCase.App)
+            nRequests = testCase.Client.getRequestCount();
+
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, ...
+                Client=testCase.Client, Downloader=@writeAbc);
+
+            testCase.verifyEqual(testCase.App.BucketName, "my-bucket");
+            testCase.verifyTrue(testCase.App.IsListed);
+            testCase.verifyFalse(isnat(testCase.App.ListedTime));
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "differs"]);
+            testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
+                'Reopening a virtual bucket does not list the bucket.');
+        end
+
+        function testFolderThatIsNotAVirtualBucketNeedsBucketName(testCase)
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
+                Client=testCase.Client), 'EBRAINS:Bucket:NotAVirtualBucket');
+        end
+
+        function testExistingFolderBecomesVirtualBucketWithoutListing(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+
+            testCase.openApp(testCase.Folder);
+
+            info = ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder);
+            testCase.verifyEqual(info.BucketName, "my-bucket");
+            testCase.verifyTrue(isnat(info.ListedTime));
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testOtherBucketIsRefused(testCase)
+            testCase.openApp(testCase.Folder);
+            delete(testCase.App)
+
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
+                BucketName="other-bucket", Client=testCase.Client), 'EBRAINS:Bucket:OtherBucket');
         end
     end
 
     methods (Access = private)
         function openApp(testCase, folder)
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser("my-bucket", folder, ...
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
                 Client=testCase.Client, Downloader=@writeAbc);
         end
     end
