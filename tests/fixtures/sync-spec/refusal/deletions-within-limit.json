@@ -1,0 +1,11 @@
+{
+  "description": "Deletions up to max_delete are allowed.",
+  "plan": [
+    { "path": "keep.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "a.txt", "action": "delete", "reason": "extraneous", "bytes": 1 },
+    { "path": "b.txt", "action": "delete", "reason": "extraneous", "bytes": 1 }
+  ],
+  "n_source_files": 1,
+  "max_delete": 2,
+  "expected_code": null
+}

@@ -1,0 +1,26 @@
+{
+  "description": "Without a manifest, an empty file is online only and any other file is downloaded.",
+  "local": [
+    {
+      "path": "b.txt",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "a.txt",
+      "bytes": 3,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "manifest": null,
+  "expected": [
+    {
+      "path": "a.txt",
+      "state": "downloaded"
+    },
+    {
+      "path": "b.txt",
+      "state": "online_only"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "description": "A size difference is reported as such, before a checksum or time difference.",
+  "policy": { "comparison": "Checksum", "delete": false },
+  "source": [{ "path": "a.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z", "hash": "aaa" }],
+  "target": [{ "path": "a.txt", "bytes": 2, "modified_time": "2024-01-01T00:00:00Z", "hash": "bbb" }],
+  "expected": [{ "path": "a.txt", "action": "copy", "reason": "size", "bytes": 1 }]
+}

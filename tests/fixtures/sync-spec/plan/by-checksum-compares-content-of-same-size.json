@@ -1,0 +1,19 @@
+{
+  "description": "With the Checksum comparison, the checksum decides where it is known on both sides, even against the time, and the time decides where it is not. Checksums compare without regard to case.",
+  "policy": { "comparison": "Checksum", "delete": false },
+  "source": [
+    { "path": "edited.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z", "hash": "aaa" },
+    { "path": "same.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z", "hash": "bbb" },
+    { "path": "unknown.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z", "hash": "" }
+  ],
+  "target": [
+    { "path": "edited.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z", "hash": "ccc" },
+    { "path": "same.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z", "hash": "BBB" },
+    { "path": "unknown.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z", "hash": "ddd" }
+  ],
+  "expected": [
+    { "path": "edited.txt", "action": "copy", "reason": "checksum", "bytes": 1 },
+    { "path": "same.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "unknown.txt", "action": "copy", "reason": "newer", "bytes": 1 }
+  ]
+}

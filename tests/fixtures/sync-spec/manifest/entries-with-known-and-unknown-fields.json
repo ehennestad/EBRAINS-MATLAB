@@ -1,0 +1,24 @@
+{
+  "description": "An unknown time and an unknown checksum are empty fields. Rows are sorted by path in code point order, so an uppercase name comes before a lowercase one.",
+  "text": "path,bytes,modified_time,hash\nREADME.md,12,2024-01-02T03:04:05Z,0cc175b9c0f1b6a831c399e269772661\nsub/a.nwb,5368709121,2024-01-02T03:04:05Z,\nsub/b.csv,0,,\n",
+  "entries": [
+    {
+      "path": "README.md",
+      "bytes": 12,
+      "modified_time": "2024-01-02T03:04:05Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "sub/a.nwb",
+      "bytes": 5368709121,
+      "modified_time": "2024-01-02T03:04:05Z",
+      "hash": ""
+    },
+    {
+      "path": "sub/b.csv",
+      "bytes": 0,
+      "modified_time": null,
+      "hash": ""
+    }
+  ]
+}
