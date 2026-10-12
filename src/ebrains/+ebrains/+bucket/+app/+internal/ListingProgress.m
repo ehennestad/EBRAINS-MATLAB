@@ -29,6 +29,10 @@ classdef ListingProgress < handle
         end
 
         function update(progress, nListed)
+            % A click on Cancel reaches the dialog only when MATLAB
+            % processes its events, which it does not do on its own
+            % between the requests of a listing.
+            drawnow
             if progress.Dialog.CancelRequested
                 error('EBRAINS:Bucket:ListingCancelled', 'The listing of the bucket was cancelled.')
             end
