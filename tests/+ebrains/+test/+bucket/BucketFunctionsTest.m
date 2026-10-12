@@ -132,6 +132,19 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEmpty(objects);
         end
 
+        function testListBucketObjectsReportsProgressPerPage(testCase)
+            testCase.Client.addResponse('OK', makeStat(3, 0));
+            testCase.Client.addResponse('OK', makePage(["a.txt", "b.txt"]));
+            testCase.Client.addResponse('OK', makePage("c.txt"));
+            [recordProgress, getReports] = progressRecorder();
+
+            ebrains.bucket.listBucketObjects("my-bucket", PageSize=2, ...
+                ProgressFcn=recordProgress, Client=testCase.Client);
+
+            testCase.verifyEqual(getReports(), [2, 3; 3, 3]);
+            testCase.Client.verifyRequestURL(2, 'limit=2');
+        end
+
         function testListBucketObjectsSendsPrefix(testCase)
             testCase.Client.addResponse('OK', makeStat(5, 4096));
             testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/y.txt"]));
@@ -623,6 +636,24 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:getBucketStat:NotFound');
         end
     end
+end
+
+function [recordProgress, getReports] = progressRecorder()
+% progressRecorder - ProgressFcn that records each call, and a function that returns the record
+%
+%   The record is a containers.Map, a handle, so the two functions share it.
+    record = containers.Map('KeyType', 'double', 'ValueType', 'any');
+    recordProgress = @(nListed, nObjects) addReport(record, [nListed, nObjects]);
+    getReports = @() reportsOf(record);
+end
+
+function addReport(record, report)
+    record(record.Count + 1) = report; %#ok<NASGU> containers.Map is a handle
+end
+
+function reports = reportsOf(record)
+    recorded = values(record);
+    reports = vertcat(zeros(0, 2), recorded{:});
 end
 
 function bucketStat = makeStat(objectCount, bytes)

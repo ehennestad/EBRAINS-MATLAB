@@ -48,7 +48,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 
     listedTime = datetime("now", TimeZone="UTC");
     [listedFiles, S] = ebrains.bucket.sync.internal.listRemoteFiles( ...
-        bucketName, prefix, options.Client, logical(options.Verbose));
+        bucketName, prefix, options.Client, Verbose=logical(options.Verbose));
 
     % The listing returns the objects of the bucket rather than the folders
     % implied by their names, so an entry stands for a folder only where the
