@@ -103,8 +103,17 @@
   .content { flex: 1; display: flex; min-height: 0; }
   aside {
     width: 260px; flex: none; overflow: auto; padding: 8px 6px;
-    border-right: 1px solid var(--border); background: var(--bg-subtle);
+    background: var(--bg-subtle);
   }
+  .splitter {
+    flex: none; width: 5px; margin-left: -2px; margin-right: -2px; z-index: 2;
+    cursor: col-resize; position: relative;
+  }
+  .splitter::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 2px; width: 1px; background: var(--border);
+  }
+  .splitter:hover::after, body.resizing .splitter::after { width: 3px; left: 1px; background: var(--accent); }
+  body.resizing { cursor: col-resize; }
   .tree-row {
     display: flex; align-items: center; gap: 4px; height: 28px; padding-right: 8px;
     border-radius: 6px; cursor: pointer; white-space: nowrap;
@@ -216,6 +225,7 @@
 
   <div class="content">
     <aside id="tree"></aside>
+    <div class="splitter" id="splitter" title="Drag to resize. Double-click to reset."></div>
     <main>
       <div class="breadcrumb" id="breadcrumb"></div>
       <div class="table-wrap" id="tableWrap">
@@ -721,7 +731,49 @@ function setBusy(isBusy) {
   if (isBusy) hideMenu();
 }
 
+// The width of the folder panel is kept between sessions where the page
+// can store it. Storage can be unavailable, in which case the default is used.
+const DEFAULT_TREE_WIDTH = 260;
+const WIDTH_KEY = "virtualBucketBrowser.treeWidth";
+
+function setTreeWidth(width) {
+  const clamped = Math.round(Math.min(Math.max(width, 160), window.innerWidth * 0.6));
+  $("tree").style.width = clamped + "px";
+  return clamped;
+}
+
+function wireSplitter() {
+  try {
+    const stored = Number(window.localStorage.getItem(WIDTH_KEY));
+    if (stored > 0) setTreeWidth(stored);
+  } catch (error) { /* storage unavailable: keep the default width */ }
+
+  const splitter = $("splitter");
+  splitter.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = $("tree").getBoundingClientRect().width;
+    document.body.classList.add("resizing");
+    const onMove = (moveEvent) => setTreeWidth(startWidth + moveEvent.clientX - startX);
+    const onUp = () => {
+      document.body.classList.remove("resizing");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      try {
+        window.localStorage.setItem(WIDTH_KEY, String(Math.round($("tree").getBoundingClientRect().width)));
+      } catch (error) { /* storage unavailable: the width lasts for this session */ }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+  splitter.addEventListener("dblclick", () => {
+    setTreeWidth(DEFAULT_TREE_WIDTH);
+    try { window.localStorage.removeItem(WIDTH_KEY); } catch (error) { /* nothing stored */ }
+  });
+}
+
 function wireEvents() {
+  wireSplitter();
   $("tree").addEventListener("click", (event) => {
     const row = event.target.closest(".tree-row");
     if (!row) return;
