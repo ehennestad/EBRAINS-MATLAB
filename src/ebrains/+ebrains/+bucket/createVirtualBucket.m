@@ -50,66 +50,74 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     [listedFiles, S] = ebrains.bucket.sync.internal.listRemoteFiles( ...
         bucketName, prefix, options.Client, Verbose=logical(options.Verbose));
 
-    % The listing returns the objects of the bucket rather than the folders
-    % implied by their names, so an entry stands for a folder only where the
-    % bucket says so. Whether the name has an extension says nothing:
-    % "README" and "Snakefile" are files.
-    isFolder = ebrains.bucket.internal.isFolderObject(S);
-
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
-    for i = 1:numel(S)
-        objectName = string(S(i).name);
+    % The listing returns the objects of the bucket rather than the folders
+    % implied by their names, so an entry stands for a folder only where the
+    % bucket says so (see ebrains.bucket.internal.isFolderObject). Whether
+    % the name has an extension says nothing: "README" and "Snakefile" are
+    % files. The folders of the files are created with them; the folder
+    % objects matter for folders that hold no file.
+    for folderPath = reshape(folderPathsOf(S, prefix), 1, [])
+        localFolder = fullfile(virtualBucketRootPath, folderPath);
+        if ~isfolder(localFolder); mkdir(localFolder); end
+    end
 
-        % The listing is narrowed to the prefix already. The folder object
-        % of the prefix itself is the root, which is in place.
-        if ~startsWith(objectName, prefix) || strlength(objectName) == strlength(prefix)
-            continue
-        end
-        relativePath = extractAfter(objectName, strlength(prefix));
-        % An object named like the .ebrains folder would replace the
-        % description of the virtual bucket.
-        if ebrains.bucket.internal.metadata.isMetadataPath(regexprep(relativePath, "/$", ""))
-            continue
-        end
-        filePath = fullfile(virtualBucketRootPath, relativePath);
+    % listedFiles holds the files below the prefix whose names stay below
+    % the root (see ebrains.bucket.sync.internal.listRemoteFiles), the
+    % same files the manifest records.
+    nFiles = height(listedFiles);
+    for i = 1:nFiles
+        filePath = fullfile(virtualBucketRootPath, listedFiles.Path(i));
 
-        if isFolder(i)
-            if ~isfolder(filePath); mkdir(filePath); end
-            continue
-        end
-
-        % The folders of the object's own name are created as needed; the
-        % root of the virtual bucket is already in place.
         parentFolderPath = fileparts(filePath);
-        if strlength(parentFolderPath) > 0 && ~isfolder(parentFolderPath)
+        if ~isfolder(parentFolderPath)
             mkdir(parentFolderPath)
         end
 
         % A file that exists is kept: it may hold data downloaded since the
         % bucket was first cloned, and opening it for writing would empty it.
-        if isfile(filePath)
-            continue
+        if ~isfile(filePath)
+            createEmptyFile(filePath)
         end
 
-        % Create the empty file from MATLAB rather than via a shell command,
-        % so object names with spaces or shell metacharacters need no quoting
-        % and the function also works on Windows.
-        [fileID, errorMessage] = fopen(filePath, "w");
-        if fileID == -1
-            error(...
-                'EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
-                'Failed to create virtual file for %s with error:\n%s', filePath, errorMessage)
-        end
-        fclose(fileID);
-
-        if mod(i, 100) == 0 || i == numel(S)
-            if options.Verbose
-                fprintf("Created %d/%d virtual files\n", i, numel(S))
-            end
+        if options.Verbose && (mod(i, 100) == 0 || i == nFiles)
+            fprintf("Created %d/%d virtual files\n", i, nFiles)
         end
     end
 
     ebrains.bucket.internal.metadata.writeManifest(virtualBucketRootPath, listedFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(virtualBucketRootPath, bucketName, prefix, listedTime)
+end
+
+function folderPaths = folderPathsOf(objects, prefix)
+% folderPathsOf - Paths below the prefix of the objects that mark folders
+%
+%   The folder object of the prefix itself is the root, which is in place.
+%   A folder named like the .ebrains folder would replace the description
+%   of the virtual bucket, and a folder whose name does not stay below the
+%   root is not created, as its files are not.
+    folderPaths = strings(0, 1);
+    if isempty(objects)
+        return
+    end
+    names = reshape(string({objects.name}), [], 1);
+    names = names(ebrains.bucket.internal.isFolderObject(objects));
+    names = names(startsWith(names, prefix) & strlength(names) > strlength(prefix));
+    folderPaths = regexprep(extractAfter(names, strlength(prefix)), "/$", "");
+    folderPaths = folderPaths(ebrains.bucket.internal.isSafeRelativePath(folderPaths) ...
+        & ~ebrains.bucket.internal.metadata.isMetadataPath(folderPaths));
+end
+
+function createEmptyFile(filePath)
+% createEmptyFile - Create an empty file from MATLAB
+%
+%   A shell command would need the name quoted for spaces and
+%   metacharacters, and would differ on Windows.
+    [fileID, errorMessage] = fopen(filePath, "w");
+    if fileID == -1
+        error('EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
+            'Failed to create virtual file for %s with error:\n%s', filePath, errorMessage)
+    end
+    fclose(fileID);
 end
