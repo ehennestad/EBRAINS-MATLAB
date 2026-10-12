@@ -30,7 +30,8 @@ classdef VirtualBucketBrowser < handle
 %   "Update from bucket" is pressed. The update adds placeholders for
 %   objects that the folder does not have yet. A folder that was never
 %   listed is judged from its files alone: an empty file is online only
-%   and any other file is downloaded.
+%   and any other file is downloaded. "Open online" shows the page of
+%   the bucket in the Collaboratory in a web browser.
 %
 %   The browser is a web page in a uihtml component, and requires MATLAB
 %   R2023a or later.
@@ -53,6 +54,9 @@ classdef VirtualBucketBrowser < handle
 %                    default client is created otherwise.
 %       Downloader : Function that downloads a signed URL to a file, as
 %                    for ebrains.bucket.downloadFile. Meant for tests.
+%       Opener     : Function that is called with an address to open in
+%                    a web browser. Meant for tests; WEB is called
+%                    otherwise.
 %
 %   Example:
 %       ebrains.bucket.app.VirtualBucketBrowser("temp_data", ...
@@ -85,6 +89,7 @@ classdef VirtualBucketBrowser < handle
     properties (Access = private)
         Client ebrains.bucket.api.BucketsClient
         Downloader function_handle
+        Opener function_handle
 
         % LocalFiles - File table of the local folder, from the last scan
         LocalFiles table
@@ -119,6 +124,7 @@ classdef VirtualBucketBrowser < handle
                 options.Prefix string {mustBeScalarOrEmpty} = string.empty
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
+                options.Opener (1,1) function_handle = @web
             end
 
             % The folder dialog was cancelled: there is nothing to open
@@ -168,6 +174,7 @@ classdef VirtualBucketBrowser < handle
             app.ListedTime = bucketInfo.ListedTime;
             app.Client = options.Client;
             app.Downloader = options.Downloader;
+            app.Opener = options.Opener;
 
             % A folder that is not a virtual bucket yet becomes one. One that
             % is already is only read, so that it can be on a read-only
@@ -417,6 +424,11 @@ classdef VirtualBucketBrowser < handle
             app.runSystemCommand(revealCommand(fullfile(app.LocalFolder, relativePath)))
         end
 
+        function openBucketOnline(app)
+        % openBucketOnline - Show the page of the bucket in the Collaboratory in a web browser
+            app.Opener(ebrains.bucket.internal.buildBucketViewURL(app.BucketName))
+        end
+
         function runSystemCommand(app, command)
         % runSystemCommand - Run a command of the operating system, and report a failure
         %
@@ -482,6 +494,8 @@ classdef VirtualBucketBrowser < handle
                         app.openPath(paths(1))
                     case "reveal"
                         app.revealPath(paths(1))
+                    case "openOnline"
+                        app.openBucketOnline()
                     otherwise
                         % The page sends no other requests to MATLAB
                 end
