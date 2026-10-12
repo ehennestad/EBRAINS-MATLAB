@@ -15,6 +15,13 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %           ebrains.bucket.sync.fromBucket: the object "results/a.txt" of
 %           Prefix "results/" becomes the file "a.txt".
 %
+%   The folder .ebrains at the root records the bucket, the prefix and the
+%   objects of the listing (see ebrains.bucket.internal.metadata.folderName),
+%   which ebrains.bucket.app.VirtualBucketBrowser and the sync functions
+%   read. A folder that is a virtual bucket already must be one of the same
+%   bucket and prefix. Files that exist are kept, so running the function
+%   again adds placeholders for new objects.
+%
 %   Name-Value Arguments
 %       Prefix  : Folder of the bucket to create, such as "results/". A
 %                 missing trailing "/" is added. Default is "", the whole
@@ -33,8 +40,15 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     end
 
     prefix = ebrains.bucket.internal.normalizePrefix(options.Prefix);
-    S = ebrains.bucket.listBucketObjects(bucketName, "Prefix", prefix, ...
-        "Verbose", options.Verbose, "Client", options.Client);
+    refusal = ebrains.bucket.internal.metadata.otherBucketRefusal( ...
+        ebrains.bucket.internal.metadata.readBucketInfo(virtualBucketRootPath), bucketName, prefix);
+    if refusal ~= ""
+        error('EBRAINS:Bucket:OtherBucket', '%s', refusal)
+    end
+
+    listedTime = datetime("now", TimeZone="UTC");
+    [listedFiles, S] = ebrains.bucket.sync.internal.listRemoteFiles( ...
+        bucketName, prefix, options.Client, logical(options.Verbose));
 
     % The listing returns the objects of the bucket rather than the folders
     % implied by their names, so an entry stands for a folder only where the
@@ -52,7 +66,13 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         if ~startsWith(objectName, prefix) || strlength(objectName) == strlength(prefix)
             continue
         end
-        filePath = fullfile(virtualBucketRootPath, extractAfter(objectName, strlength(prefix)));
+        relativePath = extractAfter(objectName, strlength(prefix));
+        % An object named like the .ebrains folder would replace the
+        % description of the virtual bucket.
+        if ebrains.bucket.internal.metadata.isMetadataPath(regexprep(relativePath, "/$", ""))
+            continue
+        end
+        filePath = fullfile(virtualBucketRootPath, relativePath);
 
         if isFolder(i)
             if ~isfolder(filePath); mkdir(filePath); end
@@ -89,4 +109,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             end
         end
     end
+
+    ebrains.bucket.internal.metadata.writeManifest(virtualBucketRootPath, listedFiles)
+    ebrains.bucket.internal.metadata.writeBucketInfo(virtualBucketRootPath, bucketName, prefix, listedTime)
 end

@@ -7,7 +7,8 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
 %   ebrains.bucket.sync.internal.makeFileTable. Paths are relative to
 %   rootFolder and use "/" as separator on every platform, as object names
 %   do. Folders are not listed: an object store has no empty folders to
-%   sync them to. The checksums are left unknown, since computing them
+%   sync them to. The .ebrains folder of a virtual bucket and the
+%   files below it are left out. The checksums are left unknown, since computing them
 %   means reading every file.
 %
 %   [files, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(rootFolder)
@@ -63,6 +64,11 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
     modifiedTimes = fileModifiedTimes(absolutePaths, reshape([listing(isFile).datenum], [], 1));
 
     files = ebrains.bucket.sync.internal.makeFileTable(paths, [listing(isFile).bytes], modifiedTimes);
+
+    % The .ebrains folder describes the folder as a virtual bucket. It is
+    % not part of what is synced.
+    files = files(~ebrains.bucket.internal.metadata.isMetadataPath(files.Path), :);
+    unreadableFolders = unreadableFolders(~ebrains.bucket.internal.metadata.isMetadataPath(unreadableFolders));
 end
 
 function relativePaths = toRelativePaths(absolutePaths, absoluteRoot)
