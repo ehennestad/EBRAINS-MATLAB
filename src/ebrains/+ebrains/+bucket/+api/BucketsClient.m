@@ -24,6 +24,14 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         ErrorIdPrefix = "EBRAINS:Bucket"
     end
 
+    properties (Constant, Hidden)
+        % Seconds a request may go without receiving data before it fails.
+        % DataTimeout limits both the wait for the response header and a
+        % pause within the response body, whereas the HTTPOptions default
+        % of Inf waits forever for a server that has stopped answering.
+        DATA_TIMEOUT_SECONDS = 120
+    end
+
     methods
         function bucketStat = getBucketStat(obj, bucketName)
         % getBucketStat - Get the stat record of a bucket
@@ -199,6 +207,13 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             if statusCode < 200 || statusCode >= 300
                 obj.throwError("deleteObject", response)
             end
+        end
+    end
+
+    methods (Access = protected)
+        function httpOptions = getDefaultHttpOptions(obj)
+        % getDefaultHttpOptions - Options that end a request to a server that stopped answering
+            httpOptions = matlab.net.http.HTTPOptions(DataTimeout=obj.DATA_TIMEOUT_SECONDS);
         end
     end
 

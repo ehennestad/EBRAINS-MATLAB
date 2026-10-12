@@ -31,7 +31,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %       AccessToken - The access token, fetched or refreshed on demand
 %       ExpiresIn   - Time left until the access token expires
 %
-%   See also ebrains.authenticate, ebrains.getTokenManager,
+%   See also ebrains.login, ebrains.getTokenManager,
 %   DeviceFlowTokenClient, ClientCredentialsFlowTokenClient,
 %   ebrains.iam.enum.Scope
 

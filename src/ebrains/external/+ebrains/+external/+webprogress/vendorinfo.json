@@ -1,7 +1,7 @@
 {
   "Source": "https://github.com/ehennestad/http-progressbar-matlab",
-  "Reference": "v2.0.0",
-  "CommitID": "7068f9487ac0aecff519e0fc7e0e306f53bebf94",
+  "Reference": "v2.1.0",
+  "CommitID": "63c1c5d4e7780acad8dbf0b55f98518db0bc7719",
   "SourceFolder": "src/webprogress/+webprogress",
   "SourceNamespace": "webprogress",
   "TargetNamespace": "ebrains.external.webprogress",

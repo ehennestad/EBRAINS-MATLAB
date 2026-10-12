@@ -4,7 +4,7 @@ function oidcClientId = OIDCClientID()
 %   client id that the toolbox authenticates as by default with the
 %   EBRAINS identity provider.
 %
-%   See also ebrains.authenticate, ebrains.iam.DeviceFlowTokenClient
+%   See also ebrains.login, ebrains.iam.DeviceFlowTokenClient
 
     oidcClientId = "ebrains-services-toolbox-matlab";
 end
