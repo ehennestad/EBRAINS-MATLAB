@@ -103,6 +103,22 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
                 'a.txt,3', 'The object named like the manifest does not replace it.');
         end
 
+        function testCreateVirtualBucketLeavesOutUnsafeNames(testCase)
+            % An object whose name leaves the root is neither created nor
+            % listed in the manifest. Folder objects are checked too.
+            addListing(testCase.Client, ["../outside.txt", "a.txt", "../out/", "empty/"], [3, 3, 0, 0]);
+
+            testCase.verifyWarning(@() ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, ...
+                Client=testCase.Client), 'EBRAINS:Bucket:UnsafeObjectName');
+
+            testCase.verifyFalse(isfile(fullfile(testCase.Folder, "..", "outside.txt")));
+            testCase.verifyFalse(isfolder(fullfile(testCase.Folder, "..", "out")));
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
+            testCase.verifyTrue(isfolder(fullfile(testCase.Folder, "empty")), ...
+                'A folder object without files below it is created as a folder.');
+            testCase.verifyEqual(ebrains.bucket.internal.metadata.readManifest(testCase.Folder).Path, "a.txt");
+        end
+
         function testCreateVirtualBucketRefusesOtherBucket(testCase)
             ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
 
@@ -160,6 +176,38 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(actions.Action, ["none"; "none"]);
             testCase.verifyEqual(actions.Reason, ["placeholder"; "placeholder"]);
+        end
+
+        function testPushWithoutManifestLeavesPlaceholdersAlone(testCase)
+            % A virtual bucket registered without a listing has no
+            % manifest, so the listing the sync makes must tell the
+            % placeholders apart.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "empty.txt"), "");
+            % Uploaded after the local files were written, so the empty
+            % object is unchanged rather than newer locally
+            addListing(testCase.Client, ["a.txt", "empty.txt"], [3, 0], "2100-01-01T00:00:00");
+
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, ["a.txt"; "empty.txt"]);
+            testCase.verifyEqual(actions.Reason, ["placeholder"; "unchanged"]);
+        end
+
+        function testPushProtectsPlaceholderWhoseObjectGrewSinceListing(testCase)
+            % The manifest has the object at 0 bytes; the bucket now holds
+            % content, which the empty local file must not replace.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, makeFiles("a.txt", 0));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Reason, "placeholder");
         end
 
         function testPushUpdatesManifest(testCase)

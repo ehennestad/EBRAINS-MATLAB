@@ -76,9 +76,16 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % and keeps its name. Matching them exactly would plan that file for
     % deletion as well. An upload compares names exactly, since the bucket
     % tells them apart.
-    ignoreCase = ~isToBucket && isCaseInsensitive(localFolder, localFiles.Path);
+    ignoreCase = ~isToBucket && ebrains.bucket.sync.internal.isCaseInsensitive(localFolder, localFiles.Path);
     if ignoreCase
-        remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel);
+        [remoteFiles, droppedPaths] = ebrains.bucket.sync.internal.dropCaseCollisions(remoteFiles);
+        if ~isempty(droppedPaths)
+            warning('EBRAINS:Bucket:Sync:CaseCollision', ...
+                ['%d object(s) of %s have a name that differs from another only in ' ...
+                 'case, which the local folder cannot hold apart, for example "%s". ' ...
+                 'They are left out of the sync.'], ...
+                numel(droppedPaths), remoteLabel, droppedPaths(1));
+        end
     end
 
     warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel, ignoreCase)
@@ -99,10 +106,13 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=syncOptions.Comparison, Delete=syncOptions.Delete, IgnoreCase=ignoreCase);
     if isToBucket && isVirtualBucket
-        [manifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(localFolder);
-        if hasManifest
-            actions = ebrains.bucket.sync.internal.protectPlaceholders(actions, localFiles, manifestFiles);
-        end
+        % The listing just made says which objects are not empty now, and
+        % the manifest which were not empty when the placeholders were
+        % made, so that a placeholder of an object removed since is not
+        % uploaded as a new empty object.
+        manifestFiles = ebrains.bucket.internal.metadata.readManifest(localFolder);
+        actions = ebrains.bucket.sync.internal.protectPlaceholders( ...
+            actions, localFiles, listedFiles, manifestFiles);
     end
     actions.Action(actions.Action == "copy") = copyAction;
 
@@ -183,8 +193,12 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
                     DisplayMode=syncOptions.DisplayMode, Client=client, ...
                     Uploader=syncOptions.Uploader);
             else
-                message(i) = downloadAndReplace(bucketName, objectName, localFile, ...
-                    sourceFiles(sourceIndices(i), :), syncOptions, client);
+                message(i) = ebrains.bucket.sync.internal.downloadAndReplace( ...
+                    bucketName, objectName, localFile, ...
+                    ExpectedBytes=sourceFiles.Bytes(sourceIndices(i)), ...
+                    ModifiedTime=sourceFiles.ModifiedTime(sourceIndices(i)), ...
+                    DisplayMode=syncOptions.DisplayMode, Client=client, ...
+                    Downloader=syncOptions.Downloader);
             end
             status(i) = "done";
         catch ME
@@ -321,51 +335,6 @@ function keys = matchKeys(paths, ignoreCase)
     end
 end
 
-function tf = isCaseInsensitive(localFolder, localPaths)
-% isCaseInsensitive - Whether the file system of a local folder ignores the case of names
-%
-%   A listed file whose path has letters is looked up with their case
-%   changed. A file system that ignores case finds it under that path,
-%   and the listing has no file of that path. Without such a file there is
-%   nothing to look up, and the default file systems of macOS and Windows
-%   are taken to ignore case and those of other platforms not to.
-
-    hasLetters = upper(localPaths) ~= lower(localPaths);
-    index = find(hasLetters, 1);
-    if isempty(index)
-        tf = ismac || ispc;
-        return
-    end
-
-    probePath = upper(localPaths(index));
-    if probePath == localPaths(index)
-        probePath = lower(localPaths(index));
-    end
-    tf = ~ismember(probePath, localPaths) && isfile(fullfile(localFolder, probePath));
-end
-
-function remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel)
-% dropCaseCollisions - Leave out objects a folder that ignores case cannot hold apart
-%
-%   Of the objects whose paths differ only in case, the first in the
-%   listing is kept and the others are left out with a warning: all of
-%   them would be downloaded into the same local file.
-
-    [~, firstIndices] = unique(lower(remoteFiles.Path), "stable");
-    if numel(firstIndices) == height(remoteFiles)
-        return
-    end
-    isKept = false(height(remoteFiles), 1);
-    isKept(firstIndices) = true;
-    droppedPaths = remoteFiles.Path(~isKept);
-    warning('EBRAINS:Bucket:Sync:CaseCollision', ...
-        ['%d object(s) of %s have a name that differs from another only in ' ...
-         'case, which the local folder cannot hold apart, for example "%s". ' ...
-         'They are left out of the sync.'], ...
-        numel(droppedPaths), remoteLabel, droppedPaths(1));
-    remoteFiles = remoteFiles(isKept, :);
-end
-
 function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles, maxDelete)
 % deletionRefusal - Why the planned deletions look like a mistake, or ""
 %
@@ -395,76 +364,6 @@ function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles,
         reason = sprintf(['The sync would delete %d file(s), more than ' ...
             'MaxDelete (%d), for example "%s".'], ...
             nDelete, maxDelete, actions.Path(find(isDelete, 1)));
-    end
-end
-
-function note = downloadAndReplace(bucketName, objectName, localFile, sourceFile, syncOptions, client)
-% downloadAndReplace - Download to a temporary file, check it, and put it in place
-%
-%   The file at localFile is replaced only once the download is complete
-%   and has the size the listing reports (sourceFile is the row of the
-%   object in the remote file table), so a failed download leaves it as
-%   it was. The temporary file sits next to it, so that the move is a
-%   rename on the same file system. The file is then given the time of
-%   its object; note is "" or says why that failed.
-
-    targetFolder = fileparts(localFile);
-    if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
-        mkdir(targetFolder)
-    end
-    temporaryFile = string(tempname(char(targetFolder))) + ".sync-part";
-    temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
-
-    ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
-        DisplayMode=syncOptions.DisplayMode, Client=client, ...
-        Downloader=syncOptions.Downloader);
-
-    fileInfo = dir(temporaryFile);
-    if isempty(fileInfo)
-        error('EBRAINS:Bucket:Sync:DownloadMissing', ...
-            'The download of "%s" produced no file.', objectName)
-    end
-    if fileInfo(1).bytes ~= sourceFile.Bytes
-        error('EBRAINS:Bucket:Sync:SizeMismatch', ...
-            'The downloaded file "%s" has %d bytes, where the object has %d.', ...
-            objectName, fileInfo(1).bytes, sourceFile.Bytes)
-    end
-
-    movefile(temporaryFile, localFile, "f")
-
-    note = setModifiedTime(localFile, sourceFile.ModifiedTime);
-end
-
-function note = setModifiedTime(filePath, modifiedTime)
-% setModifiedTime - Give a downloaded file the modification time of its object
-%
-%   A file with the time of its object is unchanged to the time
-%   comparison of a later sync in either direction. With the time of its
-%   download it would be newer than its object, and
-%   ebrains.bucket.sync.toBucket would upload it again. MATLAB has no
-%   function that sets the time of a file, so Java does it. Without Java,
-%   or without a known time, the file keeps the time of its download.
-%   note is "" or says why the time could not be set.
-
-    note = "";
-    if isnat(modifiedTime) || ~usejava('jvm')
-        return
-    end
-
-    % Java resolves a relative path against its own working directory,
-    % which need not be MATLAB's, so the path is made absolute.
-    fileInfo = dir(filePath);
-    absolutePath = fullfile(fileInfo(1).folder, fileInfo(1).name);
-    epochMilliseconds = round(posixtime(modifiedTime) * 1000);
-    if ~java.io.File(char(absolutePath)).setLastModified(epochMilliseconds)
-        note = "Downloaded, but the file kept the time of the download, " + ...
-            "so a sync to the bucket would upload it again.";
-    end
-end
-
-function deleteIfFile(filePath)
-    if isfile(filePath)
-        delete(filePath)
     end
 end
 
