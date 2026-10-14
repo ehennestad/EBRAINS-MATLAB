@@ -19,7 +19,7 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
 %       reset    - Delete the shared client
 %
 %   See also OidcTokenClient, ClientCredentialsFlowTokenClient,
-%   ebrains.authenticate, ebrains.getTokenManager
+%   ebrains.login, ebrains.getTokenManager
 
 % Details on the Device Authentication Flow
 % https://wiki.ebrains.eu/bin/view/Collabs/the-collaboratory/Documentation%20IAM/FAQ/Using%20the%20Device%20Authentication%20Flow/
@@ -188,7 +188,15 @@ classdef DeviceFlowTokenClient < ebrains.iam.OidcTokenClient
         %handleTokenResponse - Store the tokens and expiry times of a response
 
             obj.storeToken(tokenResponse.access_token, tokenResponse.expires_in)
-            obj.storeRefreshToken(tokenResponse.refresh_token, tokenResponse.refresh_expires_in)
+
+            % A refresh token belongs to the login that issued it. When this
+            % login issues none, one kept from an earlier login would be
+            % sent on behalf of this one.
+            if isfield(tokenResponse, "refresh_token")
+                obj.storeRefreshTokenFromResponse(tokenResponse)
+            else
+                obj.clearRefreshToken()
+            end
         end
 
         function handleUnspecifiedBadRequestError(obj, errorData)

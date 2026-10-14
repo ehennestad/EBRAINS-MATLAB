@@ -38,6 +38,15 @@ classdef HttpClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestPayload(1), payload);
         end
 
+        function testRequestWithoutOptionsKeepsTheHttpDefaults(testCase)
+            request = testCase.Client.buildRequest("GET");
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.dispatch(request, matlab.net.URI("https://example.org/instances"));
+
+            testCase.verifyEmpty(testCase.Client.getRequest(1).Options);
+        end
+
         %% Error reporting
         function testErrorIdHoldsPrefixOperationAndStatus(testCase)
             response = makeResponse('NotFound', 'no such thing');

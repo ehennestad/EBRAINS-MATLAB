@@ -11,7 +11,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             is sent without a token, which returns
 %                             public data, and a request that needs a
 %                             token raises an error that asks for
-%                             ebrains.authenticate.
+%                             ebrains.login.
 %       AutoRenew (logical) : Whether an expired device flow token is
 %                             renewed with its refresh token before a
 %                             request, which needs no user interaction.

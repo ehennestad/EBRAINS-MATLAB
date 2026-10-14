@@ -4,7 +4,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
     % A request carries a token when a token client can supply one without
     % a login, and goes without one otherwise, unless the AutoLogin
     % preference is true. A refusal of a request without a token asks the
-    % user to run ebrains.authenticate.
+    % user to run ebrains.login.
     %
     % Mock token clients are installed where getTokenManager looks for the
     % singletons. The device flow mock has no poll responses queued, so a
@@ -66,7 +66,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
             testCase.verifyEqual(exception.identifier, 'EBRAINS:Test:fetchThing:Unauthorized');
             testCase.verifySubstring(exception.message, 'requires authentication');
-            testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
+            testCase.verifySubstring(exception.message, 'ebrains.login()');
             testCase.verifySubstring(exception.message, 'ebrains.setpref(AutoLogin=true)');
             testCase.verifySubstring(exception.message, 'The server answered: You are not authenticated.');
         end
@@ -78,7 +78,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
             exception = sendAndReport(testCase.Client, request, response);
 
-            testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
+            testCase.verifySubstring(exception.message, 'ebrains.login()');
             testCase.verifyFalse(contains(exception.message, 'The server answered'));
         end
 
@@ -91,7 +91,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
             exception = sendAndReport(testCase.Client, request, response);
 
             testCase.verifyEqual(exception.identifier, 'EBRAINS:Test:fetchThing:Forbidden');
-            testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
+            testCase.verifySubstring(exception.message, 'ebrains.login()');
         end
 
         function testUnauthorizedWithTokenKeepsServerText(testCase)
@@ -123,7 +123,7 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
             exception = sendAndReport(testCase.Client, requestWithoutToken, response);
 
-            testCase.verifySubstring(exception.message, 'ebrains.authenticate()');
+            testCase.verifySubstring(exception.message, 'ebrains.login()');
         end
     end
 end

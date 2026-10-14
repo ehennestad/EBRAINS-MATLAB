@@ -15,7 +15,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 %       canProvideToken - Whether the client can supply a valid token
 %
 %   See also OidcTokenClient, DeviceFlowTokenClient,
-%   ebrains.authenticate, ebrains.getTokenManager
+%   ebrains.login, ebrains.getTokenManager
 
     properties (Constant)
         FLOW_NAME = "Client Credentials Flow"  % Display name of the authentication flow
@@ -122,7 +122,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
             if ~obj.canAuthenticate()
                 error('EBRAINS:IAM:MissingClientCredentials', ...
                     ['The client credentials flow needs a client id and a client ', ...
-                    'secret. Call ebrains.authenticate with ', ...
+                    'secret. Call ebrains.login with ', ...
                     'OAuthFlow="ClientCredentialsFlow" and give OIDCClientID ', ...
                     'and OIDCClientSecret.'])
             else
@@ -132,7 +132,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
                     'access token taken from the EBRAINS_TOKEN environment ', ...
                     'variable cannot be renewed by this toolbox: set ', ...
                     'EBRAINS_TOKEN to a valid token, or call ', ...
-                    'ebrains.authenticate to log in.'])
+                    'ebrains.login to log in.'])
             end
         end
     end
