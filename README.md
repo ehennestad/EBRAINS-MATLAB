@@ -100,3 +100,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run the tests.
 
 ## License
 Released under the [MIT License](LICENSE). The bundled transfer package in [`src/ebrains/external/+ebrains/+external/+webprogress`](src/ebrains/external/+ebrains/+external/+webprogress) is distributed under its own MIT License, in the `LICENSE` file beside it, whose notice has to be kept with any copy of that package.
+
+## Acknowledgements
+The Device Flow authentication was inspired by and modified from:
+https://github.com/xgui3783/ebrains-iam-util/tree/main
