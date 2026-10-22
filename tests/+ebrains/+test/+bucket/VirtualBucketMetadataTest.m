@@ -104,8 +104,10 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
         end
 
         function testCreateVirtualBucketLeavesOutUnsafeNames(testCase)
-            % An object whose name leaves the root is neither created nor
-            % listed in the manifest. Folder objects are checked too.
+            % The files, the folders and the manifest come from one checked
+            % listing, so an object whose name leaves the root is in none
+            % of them, folder objects included. BucketFunctionsTest covers
+            % which kinds of names are left out.
             addListing(testCase.Client, ["../outside.txt", "a.txt", "../out/", "empty/"], [3, 3, 0, 0]);
 
             testCase.verifyWarning(@() ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, ...

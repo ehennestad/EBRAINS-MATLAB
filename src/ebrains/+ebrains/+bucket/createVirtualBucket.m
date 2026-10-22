@@ -63,9 +63,9 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         if ~isfolder(localFolder); mkdir(localFolder); end
     end
 
-    % listedFiles holds the files below the prefix whose names stay below
-    % the root (see ebrains.bucket.sync.internal.listRemoteFiles), the
-    % same files the manifest records.
+    % listedFiles holds the files below the prefix whose names are plain
+    % relative paths below it (see ebrains.bucket.sync.internal.listRemoteFiles,
+    % which warns about the others), the same files the manifest records.
     nFiles = height(listedFiles);
     for i = 1:nFiles
         filePath = fullfile(virtualBucketRootPath, listedFiles.Path(i));
@@ -95,8 +95,9 @@ function folderPaths = folderPathsOf(objects, prefix)
 %
 %   The folder object of the prefix itself is the root, which is in place.
 %   A folder named like the .ebrains folder would replace the description
-%   of the virtual bucket, and a folder whose name does not stay below the
-%   root is not created, as its files are not.
+%   of the virtual bucket, and a folder whose name below the prefix is not
+%   a plain relative path is not created, as such files are not (see
+%   ebrains.bucket.internal.isSafeRelativePath).
     folderPaths = strings(0, 1);
     if isempty(objects)
         return
