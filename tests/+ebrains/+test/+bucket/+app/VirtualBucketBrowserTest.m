@@ -110,6 +110,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            giveTimeOfListedObjects(fullfile(testCase.Folder, "a.txt"));
             testCase.openApp(testCase.Folder);
             addListing(testCase.Client, "a.txt", 3);
             sendPageEvent("update")
@@ -240,6 +241,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             addListing(testCase.Client, ["Data.txt", "data.txt"], [3, 3]);
             testCase.openApp(target);
             writeFile(fullfile(target, "data.txt"), "abc");
+            giveTimeOfListedObjects(fullfile(target, "data.txt"));
 
             sendPageEvent("refresh")
 
@@ -254,6 +256,42 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
                 BucketName="other-bucket", Client=testCase.Client), 'EBRAINS:Bucket:OtherBucket');
+        end
+
+        function testOtherPrefixIsRefusedWithoutBucketName(testCase)
+            testCase.openApp(testCase.Folder);
+            delete(testCase.App)
+
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
+                Prefix="other", Client=testCase.Client), 'EBRAINS:Bucket:OtherBucket');
+        end
+
+        function testUpdateDeletesPlaceholderOfRemovedObject(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
+            testCase.openApp(target);
+            addListing(testCase.Client, "a.txt", 3);
+
+            sendPageEvent("update")
+
+            testCase.verifyFalse(isfile(fullfile(target, "gone.txt")));
+            testCase.verifyEqual(testCase.App.Files.Path, "a.txt");
+        end
+
+        function testOnlineOnlyOfEditedFileIsNotSilent(testCase)
+            % A file changed in place after its download keeps its size, and
+            % is later than its object. It differs, so emptying it asks first.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.openApp(target);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            sendPageEvent("download", "a.txt")
+            testCase.assertEqual(testCase.App.Files.State, "downloaded");
+            writeFile(fullfile(target, "a.txt"), "xyz");
+
+            testCase.App.refresh()
+
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
         end
     end
 
@@ -347,6 +385,12 @@ function dialog = makeDialogStub()
 %   uiprogressdlg needs a visible figure. ListingProgress keeps the struct
 %   in its Dialog property, where a test reads what it set.
     dialog = struct("CancelRequested", false, "Indeterminate", "on", "Value", 0, "Message", "");
+end
+
+function giveTimeOfListedObjects(filePath)
+% giveTimeOfListedObjects - Give a file the time that addListing gives every object, as a download does
+    listedTime = datetime(2000, 1, 1, TimeZone="UTC");
+    java.io.File(char(filePath)).setLastModified(round(posixtime(listedTime) * 1000));
 end
 
 function writeAbc(target, varargin)

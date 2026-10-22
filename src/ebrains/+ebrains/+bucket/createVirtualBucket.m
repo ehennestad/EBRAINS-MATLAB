@@ -20,7 +20,8 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   which ebrains.bucket.app.VirtualBucketBrowser and the sync functions
 %   read. A folder that is a virtual bucket already must be one of the same
 %   bucket and prefix. Files that exist are kept, so running the function
-%   again adds placeholders for new objects.
+%   again adds placeholders for new objects. It also deletes the empty
+%   placeholders of objects removed since the last listing.
 %
 %   Name-Value Arguments
 %       Prefix  : Folder of the bucket to create, such as "results/". A
@@ -51,6 +52,19 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         bucketName, prefix, options.Client, Verbose=logical(options.Verbose));
 
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
+
+    % A placeholder whose object is gone since the last listing stands for
+    % nothing and holds no data, so it is deleted
+    [oldManifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(virtualBucketRootPath);
+    if hasManifest
+        localFiles = ebrains.bucket.sync.internal.listLocalFiles(virtualBucketRootPath);
+        ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(virtualBucketRootPath, localFiles.Path);
+        removedFiles = ebrains.bucket.sync.internal.placeholdersOfRemovedObjects( ...
+            localFiles, listedFiles, oldManifestFiles, IgnoreCase=ignoreCase);
+        for removedPath = reshape(removedFiles.Path, 1, [])
+            ebrains.bucket.sync.internal.deleteLocalFile(fullfile(virtualBucketRootPath, removedPath))
+        end
+    end
 
     % The listing returns the objects of the bucket rather than the folders
     % implied by their names, so an entry stands for a folder only where the

@@ -248,6 +248,72 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyFalse(isnat(info.ListedTime));
         end
     end
+
+    methods (Test) % Placeholders of removed objects
+        function testPushKeepsProtectingPlaceholderOfRemovedObject(testCase)
+            % The object of gone.txt was removed. Its entry must outlive the
+            % first sync, or the second one uploads an empty object.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "gone.txt"], [3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "gone.txt"), "");
+
+            for iSync = 1:2
+                addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+                actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                    Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+
+                testCase.verifyEqual(actions.Reason, ["placeholder"; "placeholder"], ...
+                    sprintf('Sync %d must leave both placeholders alone.', iSync));
+            end
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, ["a.txt"; "gone.txt"]);
+        end
+
+        function testPullDeletesPlaceholderOfRemovedObject(testCase)
+            % Without Delete, a file with data and an empty file the
+            % manifest does not know are kept
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "gone.txt", "data.txt"], [3, 3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "gone.txt"), "");
+            writeFile(fullfile(testCase.Folder, "data.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "mine.txt"), "");
+            % Uploaded before a.txt was written, so a.txt is not downloaded
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
+
+            gone = actions(actions.Path == "gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason, gone.Status], ["delete", "placeholder", "done"]);
+            testCase.verifyFalse(isfile(fullfile(testCase.Folder, "gone.txt")));
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "data.txt")));
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "mine.txt")));
+        end
+
+        function testCreateVirtualBucketAgainDeletesPlaceholderOfRemovedObject(testCase)
+            addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
+            ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, Client=testCase.Client);
+            addListing(testCase.Client, "a.txt", 3);
+
+            ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, Client=testCase.Client);
+
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
+            testCase.verifyFalse(isfile(fullfile(testCase.Folder, "gone.txt")));
+        end
+
+        function testMetadataFolderIsFoundInAnyCase(testCase)
+            % On a file system that ignores case, an object ".EBRAINS/x"
+            % would be written into the .ebrains folder
+            tf = ebrains.bucket.internal.metadata.isMetadataPath( ...
+                [".ebrains"; ".EBRAINS/manifest.csv"; ".Ebrains"; ".ebrainsx/a"; "a/.ebrains"]);
+
+            testCase.verifyEqual(tf, [true; true; true; false; false]);
+        end
+    end
 end
 
 function files = makeFiles(paths, bytes)

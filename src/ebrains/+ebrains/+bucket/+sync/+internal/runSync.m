@@ -15,7 +15,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %   When localFolder is a virtual bucket (see
 %   ebrains.bucket.internal.metadata.readBucketInfo), the sync must be of
 %   its bucket and prefix, a sync to the bucket leaves its placeholders
-%   alone, and its manifest is updated from the listing the sync made.
+%   alone, a sync from the bucket deletes the placeholders of removed
+%   objects, and its manifest is updated from the listing the sync made.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -132,14 +133,22 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=syncOptions.Comparison, Delete=syncOptions.Delete, IgnoreCase=ignoreCase);
+    manifestFiles = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
+    if isVirtualBucket
+        manifestFiles = ebrains.bucket.internal.metadata.readManifest(localFolder);
+    end
     if isToBucket && isVirtualBucket
         % The listing just made says which objects are not empty now, and
         % the manifest which were not empty when the placeholders were
         % made, so that a placeholder of an object removed since is not
         % uploaded as a new empty object.
-        manifestFiles = ebrains.bucket.internal.metadata.readManifest(localFolder);
         actions = ebrains.bucket.sync.internal.protectPlaceholders( ...
             actions, localFiles, listedFiles, manifestFiles);
+    elseif isVirtualBucket
+        % The folder stands for the bucket, so the placeholder of an object
+        % removed since the manifest stands for nothing and holds no data
+        actions = ebrains.bucket.sync.internal.deleteRemovedPlaceholders( ...
+            actions, localFiles, listedFiles, manifestFiles, IgnoreCase=ignoreCase);
     end
     actions.Action(actions.Action == "copy") = copyAction;
 
@@ -260,7 +269,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
                     Client=client);
             else
-                deleteLocalFile(fullfile(localFolder, relativePath))
+                ebrains.bucket.sync.internal.deleteLocalFile(fullfile(localFolder, relativePath))
             end
             status(i) = "done";
         catch ME
@@ -277,7 +286,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     if isVirtualBucket
         updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...
-            localFiles, actions, isToBucket)
+            localFiles, manifestFiles, actions, isToBucket)
     end
 
     if syncOptions.Verbose
@@ -306,19 +315,21 @@ function paths = excludePaths(paths, excludePatterns, ignoreCase)
     paths = pathTable.Path;
 end
 
-function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, actions, isToBucket)
+function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, oldManifestFiles, actions, isToBucket)
 % updateManifest - Record the listing of a sync as the manifest of a virtual bucket
 %
 %   A sync to the bucket changed it after the listing, so the files it
-%   uploaded and the objects it deleted are applied to the listing. A
-%   failed transfer leaves the entry as the listing gave it.
+%   uploaded and the objects it deleted are applied to the listing, and
+%   the placeholders of removed objects keep their entries. A failed
+%   transfer leaves the entry as the listing gave it.
     manifestFiles = listedFiles;
     if isToBucket
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
         deletedPaths = actions.Path(isDone & actions.Action == "delete");
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
-            localFiles(ismember(localFiles.Path, uploadedPaths), :), deletedPaths);
+            localFiles(ismember(localFiles.Path, uploadedPaths), :), deletedPaths, ...
+            localFiles, oldManifestFiles);
     end
     ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
@@ -414,28 +425,6 @@ function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles,
         reason = sprintf(['The sync would delete %d file(s), more than ' ...
             'MaxDelete (%d), for example "%s".'], ...
             nDelete, maxDelete, actions.Path(find(isDelete, 1)));
-    end
-end
-
-function deleteLocalFile(filePath)
-% deleteLocalFile - Delete one file, and fail with an error when it stays
-%
-%   delete reports a file it cannot remove with a warning rather than an
-%   error, and expands "*" and "?" anywhere in the path to other files,
-%   so a path with either is refused and the file is checked afterwards.
-%   The warning is left to show, since it says why the file stayed.
-
-    if contains(filePath, ["*", "?"])
-        error('EBRAINS:Bucket:Sync:WildcardInName', ...
-            ['The file "%s" was not deleted: its path holds a wildcard ' ...
-             'character, which delete would expand to other files.'], filePath)
-    end
-
-    delete(filePath)
-
-    if isfile(filePath)
-        error('EBRAINS:Bucket:Sync:NotDeleted', ...
-            'The file "%s" could not be deleted.', filePath)
     end
 end
 

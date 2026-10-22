@@ -80,6 +80,12 @@ classdef VirtualBucketBrowser < handle
 
         % ListedTime - When the bucket was last listed, NaT if it never was
         ListedTime (1,1) datetime = NaT(TimeZone="UTC")
+
+        % IsListedInSession - Whether the bucket was listed since the browser opened
+        %
+        % A listing read from the manifest may be old: an object may have
+        % been removed since, and its downloaded file be the only copy.
+        IsListedInSession (1,1) logical = false
     end
 
     properties (Access = private)
@@ -152,14 +158,18 @@ classdef VirtualBucketBrowser < handle
                 bucketInfo = struct("BucketName", options.BucketName, ...
                     "Prefix", ebrains.bucket.internal.normalizePrefix(prefix), ...
                     "ListedTime", NaT(TimeZone="UTC"));
-            elseif options.BucketName ~= ""
-                % A prefix that is left out is that of the folder
+            elseif options.BucketName ~= "" || ~isempty(options.Prefix)
+                % A bucket or prefix that is left out is that of the folder
+                bucketName = bucketInfo.BucketName;
+                if options.BucketName ~= ""
+                    bucketName = options.BucketName;
+                end
                 prefix = bucketInfo.Prefix;
                 if ~isempty(options.Prefix)
                     prefix = options.Prefix;
                 end
                 refusal = ebrains.bucket.internal.metadata.otherBucketRefusal( ...
-                    bucketInfo, options.BucketName, prefix);
+                    bucketInfo, bucketName, prefix);
                 if refusal ~= ""
                     error('EBRAINS:Bucket:OtherBucket', '%s', refusal)
                 end
@@ -218,7 +228,9 @@ classdef VirtualBucketBrowser < handle
         % updateFromBucket - List the bucket, add placeholders for new objects and compare
         %
         %   Objects that the folder has no file for get an empty
-        %   placeholder. Local files that the bucket does not have are kept.
+        %   placeholder, and the placeholders of objects removed since the
+        %   last listing are deleted. Local files with data that the bucket
+        %   does not have are kept.
             restoreControls = app.setBusy();  %#ok<NASGU>
             progressDialog = uiprogressdlg(app.UIFigure, Title="Update from bucket", ...
                 Message=sprintf("Counting the objects of bucket ""%s""...", app.BucketName), ...
@@ -246,15 +258,35 @@ classdef VirtualBucketBrowser < handle
             end
 
             progressDialog.Message = "Creating placeholders for new objects...";
-            isNew = ~ismember(remoteFiles.Path, app.LocalFiles.Path);
+            % On a file system that ignores case, an object whose name
+            % differs only in case from a local file has that file already
+            ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(app.LocalFolder, app.LocalFiles.Path);
+            isNew = ~ismember(matchKeys(remoteFiles.Path, ignoreCase), matchKeys(app.LocalFiles.Path, ignoreCase));
             ebrains.bucket.app.internal.createPlaceholderFiles(app.LocalFolder, remoteFiles.Path(isNew));
+
+            % The folder stands for the bucket, so the placeholder of an
+            % object removed since the last listing stands for nothing
+            removedFiles = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
+            if app.IsListed
+                removedFiles = ebrains.bucket.sync.internal.placeholdersOfRemovedObjects( ...
+                    app.LocalFiles, remoteFiles, app.RemoteFiles, IgnoreCase=ignoreCase);
+            end
+            for removedPath = reshape(removedFiles.Path, 1, [])
+                ebrains.bucket.sync.internal.deleteLocalFile(fullfile(app.LocalFolder, removedPath))
+            end
+
             ebrains.bucket.internal.metadata.writeManifest(app.LocalFolder, remoteFiles)
             ebrains.bucket.internal.metadata.writeBucketInfo(app.LocalFolder, app.BucketName, app.Prefix, listedTime)
 
             app.RemoteFiles = remoteFiles;
             app.IsListed = true;
+            app.IsListedInSession = true;
             app.ListedTime = listedTime;
             app.Message = "Added placeholders for " + countText(sum(isNew), "new object") + ".";
+            if height(removedFiles) > 0
+                app.Message = app.Message + " Removed the placeholders of " + ...
+                    countText(height(removedFiles), "removed object") + ".";
+            end
             app.refresh()
         end
     end
@@ -385,10 +417,12 @@ classdef VirtualBucketBrowser < handle
                 return
             end
 
-            % A file that matches its object can be downloaded again, so it
-            % is replaced without asking. Any other file may hold changes
-            % that exist nowhere else.
+            % A file is replaced without asking only where a listing made
+            % since the browser opened shows that its object exists and has
+            % the size and time of the file, so it can be downloaded again.
+            % Any other file may hold changes that exist nowhere else.
             nDiffering = sum(files.State == "differs");
+            nUntimed = sum(isnat(files.LocalTime) | isnat(files.RemoteTime));
             freedBytes = formatBytes(sum(files.LocalBytes, "omitnan"));
             if ~app.IsListed
                 message = sprintf(['Replace %d local files (%s) with empty placeholders? ' ...
@@ -399,6 +433,17 @@ classdef VirtualBucketBrowser < handle
                 message = sprintf(['%d of the %d files differ from the bucket. Replacing them ' ...
                     'with empty placeholders discards the local copies, and changes made to ' ...
                     'them are lost.'], nDiffering, height(files));
+            elseif ~app.IsListedInSession
+                message = sprintf(['Replace %d local files (%s) with empty placeholders? ' ...
+                    'The files were compared with the listing of %s, and an object may have ' ...
+                    'been removed or changed since. Update from bucket to check them. ' ...
+                    'Changes made to the local copies are lost.'], ...
+                    height(files), freedBytes, formatLocalTime(app.ListedTime));
+            elseif nUntimed > 0
+                message = sprintf(['%d of the %d files have no known time to compare with ' ...
+                    'their objects, so a change made to them cannot be ruled out. Replacing ' ...
+                    'them with empty placeholders discards the local copies.'], ...
+                    nUntimed, height(files));
             else
                 message = "";
             end
@@ -604,6 +649,14 @@ function text = formatLocalTime(time)
     text = string(time, "yyyy-MM-dd HH:mm");
     if ismissing(text)
         text = "";
+    end
+end
+
+function keys = matchKeys(paths, ignoreCase)
+% matchKeys - What paths are matched by, on a file system that ignores case or not
+    keys = paths;
+    if ignoreCase
+        keys = lower(paths);
     end
 end
 
