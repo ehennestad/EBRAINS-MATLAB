@@ -20,6 +20,7 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
     properties (TestParameter)
         PlanFixture = fixtureFiles("plan")
         ExcludeFixture = fixtureFiles("exclude")
+        ExcludeFileFixture = fixtureFiles("exclude-file")
         RefusalFixture = fixtureFiles("refusal")
         ManifestFixture = fixtureFiles("manifest")
         FileStateFixture = fixtureFiles("file-state")
@@ -46,6 +47,27 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
             kept = ebrains.bucket.sync.internal.excludeFiles(files, toStringColumn(fixture.patterns));
 
             testCase.verifyEqual(kept.Path, toStringColumn(fixture.expected_kept), fixture.description);
+        end
+
+        function testExcludeFileFixture(testCase, ExcludeFileFixture)
+            fixture = readFixture(ExcludeFileFixture);
+            text = string(fixture.text);
+
+            if isfield(fixture, "expected_error_line")
+                % The error names the refused line by its number
+                exception = MException.empty;
+                try
+                    ebrains.bucket.sync.internal.parseExcludeFile(text);
+                catch exception
+                end
+                testCase.assertNotEmpty(exception, "The file is refused. " + fixture.description);
+                testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:Sync:ExcludeFileNegation');
+                testCase.verifyTrue(startsWith(exception.message, ...
+                    sprintf("Line %d ", fixture.expected_error_line)), fixture.description);
+            else
+                patterns = ebrains.bucket.sync.internal.parseExcludeFile(text);
+                testCase.verifyEqual(patterns, toStringColumn(fixture.expected_patterns), fixture.description);
+            end
         end
 
         function testRefusalFixture(testCase, RefusalFixture)

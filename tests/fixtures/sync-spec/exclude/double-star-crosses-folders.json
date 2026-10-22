@@ -1,6 +1,16 @@
 {
-  "description": "** matches any characters, \"/\" included, where * stops at a folder separator. A ** between two slashes stands for at least one folder, unlike in a .gitignore file, so \"logs/**/*.log\" leaves \"logs/a.log\" in.",
-  "patterns": ["logs/**/*.log"],
-  "paths": ["logs/a.log", "logs/x/y/b.log", "logs/c.txt", "other/logs/d.log"],
-  "expected_kept": ["logs/a.log", "logs/c.txt", "other/logs/d.log"]
+  "description": "** matches any characters, \"/\" included, where * stops at a folder separator. A ** between two slashes stands for any number of folders, none included, as in a .gitignore file, so \"logs/**/*.log\" leaves out \"logs/a.log\" as well.",
+  "patterns": [
+    "logs/**/*.log"
+  ],
+  "paths": [
+    "logs/a.log",
+    "logs/x/y/b.log",
+    "logs/c.txt",
+    "other/logs/d.log"
+  ],
+  "expected_kept": [
+    "logs/c.txt",
+    "other/logs/d.log"
+  ]
 }

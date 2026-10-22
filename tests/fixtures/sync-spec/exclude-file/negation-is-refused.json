@@ -1,0 +1,5 @@
+{
+  "description": "A line that starts with \"!\" re-includes paths in a .gitignore file. Patterns cannot do that, so the file is refused rather than the line skipped.",
+  "text": "*.txt\n\n!keep.txt\n",
+  "expected_error_line": 3
+}
