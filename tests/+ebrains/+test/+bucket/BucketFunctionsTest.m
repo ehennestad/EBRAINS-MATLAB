@@ -650,6 +650,20 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:PartETagMissing');
         end
 
+        function testUploadFilePartErrorHoldsNoSignedQuery(testCase)
+            sourceFile = makeSourceFile(testCase, 25);
+            testCase.Client.addResponse('OK', struct('uploadId', 'upload-1'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/1?X-Amz-Signature=SECRETSIG'));
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                    Client=testCase.Client, Uploader=@(source, url, varargin) failLikeHttpClient(url)));
+
+            verifyNoSignedQuery(testCase, exception, "https://store.example.org/part/1")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
+        end
+
         %% downloadFile
         function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
             testCase.Client.addResponse('NotFound', 'Object not found');

@@ -151,8 +151,12 @@ function etag = sendPart(part, transfer, maxAttempts)
         attempt = attempt + 1;
         partUrl = transfer.Client.getMultipartUploadUrl( ...
             transfer.BucketName, transfer.ObjectName, transfer.UploadId, part.Number);
-        [wasSuccess, response] = transfer.Uploader(transfer.SourceFile, partUrl, ...
-            Offset=part.Offset, NumBytes=part.NumBytes, ProgressMonitor=transfer.Monitor);
+        try
+            [wasSuccess, response] = transfer.Uploader(transfer.SourceFile, partUrl, ...
+                Offset=part.Offset, NumBytes=part.NumBytes, ProgressMonitor=transfer.Monitor);
+        catch exception
+            throw(ebrains.bucket.internal.redactSignedUrl(exception, partUrl))
+        end
     end
 
     if ~wasSuccess
