@@ -1,0 +1,5 @@
+{
+  "description": "A path that does not stay below the folder is refused, as a listing leaves it out: a .. or . folder, an empty folder name or a backslash.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\n../x.txt,1,,\n",
+  "expected_error_line": 3
+}

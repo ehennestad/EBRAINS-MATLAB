@@ -7,12 +7,19 @@ function files = classifyFiles(localFiles, remoteFiles, options)
 %   other file holds downloaded data.
 %
 %   files = ebrains.bucket.app.internal.classifyFiles(localFiles, remoteFiles)
-%   compares the local files with a listing of the bucket instead, as
-%   ebrains.bucket.sync.fromBucket would, and in the other direction as
-%   well: a downloaded file is unchanged if its size is that of the object
-%   and neither was changed after the other. A download gets the time of
-%   its object, so a file changed in place after its download is later
-%   than its object, and its changes exist only there.
+%   compares the local files with a listing of the bucket instead, by
+%   rule 4 of spec/README.md#file-states of the ebrains-bucket-sync
+%   package. A file whose size differs from its object's differs. A file
+%   whose time and its object's are both known and within 2 seconds of
+%   each other is downloaded, since a download gets the time of its
+%   object. Otherwise, where the object has a checksum, the MD5 checksum
+%   of the local file decides; it is computed only for these files. A
+%   pushed file has an unknown time in the manifest until the next
+%   listing, and a later one after it, so its checksum tells whether it
+%   was changed since. Without a checksum, times that are both known
+%   (and differ) mean the file differs: a file changed in place after its
+%   download is later than its object. An unknown time leaves the file
+%   downloaded.
 %
 %   Input Arguments
 %       localFiles  : File table of the virtual bucket folder, as
@@ -26,6 +33,11 @@ function files = classifyFiles(localFiles, remoteFiles, options)
 %                    file, as on a file system that ignores case. A local
 %                    file matched this way takes the path of its object.
 %                    Default is false.
+%       LocalHashFcn : Function that returns the MD5 checksum of a local
+%                    file, called as LocalHashFcn(path) with a path of
+%                    localFiles, for the files whose checksum decides and
+%                    whose Hash in localFiles is "". Default is [], which
+%                    leaves such a file judged by its times.
 %
 %   Output Arguments
 %       files : Table with one row per path found on either side, sorted by
@@ -51,12 +63,13 @@ function files = classifyFiles(localFiles, remoteFiles, options)
         localFiles table
         remoteFiles = []
         options.IgnoreCase (1,1) logical = false
+        options.LocalHashFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
     end
 
     if isempty(remoteFiles) && ~istable(remoteFiles)
         files = classifyLocalFiles(localFiles);
     else
-        files = classifyAgainstListing(localFiles, remoteFiles, options.IgnoreCase);
+        files = classifyAgainstListing(localFiles, remoteFiles, options.IgnoreCase, options.LocalHashFcn);
     end
 end
 
@@ -72,7 +85,7 @@ function files = classifyLocalFiles(localFiles)
     files = sortrows(files, "Path");
 end
 
-function files = classifyAgainstListing(localFiles, remoteFiles, ignoreCase)
+function files = classifyAgainstListing(localFiles, remoteFiles, ignoreCase, localHashFcn)
 % classifyAgainstListing - States from a comparison of the local files with the bucket
 
     % The plan of a download from the bucket says which local files differ
@@ -92,12 +105,28 @@ function files = classifyAgainstListing(localFiles, remoteFiles, ignoreCase)
     remoteTime = NaT(nFiles, 1, 'TimeZone', 'UTC');
     remoteTime(isRemote) = remoteFiles.ModifiedTime(remoteIndex(isRemote));
 
-    state = repmat("downloaded", nFiles, 1);
-    state(plan.Reason == "size" | plan.Reason == "newer" | plan.Reason == "checksum") = "differs";
-    % The plan only finds an object later than its file. A file later than
-    % its object, by the time tolerance of planSync, was changed locally.
+    localHash = strings(nFiles, 1);
+    localHash(isLocal) = localFiles.Hash(localIndex(isLocal));
+    remoteHash = strings(nFiles, 1);
+    remoteHash(isRemote) = remoteFiles.Hash(remoteIndex(isRemote));
+
+    % Rule 4 of the file states, for a file on both sides: size, then
+    % times within the tolerance of planSync, then checksums, then times.
     timeTolerance = seconds(2);
-    state(localTime - remoteTime > timeTolerance) = "differs";
+    isBoth = isLocal & isRemote;
+    isTimeKnown = ~isnat(localTime) & ~isnat(remoteTime);
+    isSameTime = isTimeKnown & abs(localTime - remoteTime) <= timeTolerance;
+    isSizeDifferent = isBoth & localBytes ~= remoteBytes;
+    isByChecksum = isBoth & ~isSizeDifferent & ~isSameTime & remoteHash ~= "";
+    for i = reshape(find(isByChecksum & localHash == "" & ~isempty(localHashFcn)), 1, [])
+        localHash(i) = localHashFcn(localFiles.Path(localIndex(i)));
+    end
+    isChecksumDifferent = isByChecksum & localHash ~= "" & localHash ~= remoteHash;
+    isTimeDifferent = isBoth & ~isSizeDifferent & ~isSameTime & isTimeKnown ...
+        & ~(isByChecksum & localHash ~= "");
+
+    state = repmat("downloaded", nFiles, 1);
+    state(isSizeDifferent | isChecksumDifferent | isTimeDifferent) = "differs";
     % An empty local file of an object that is not empty is the placeholder
     % of a virtual bucket, not a copy that differs.
     state(localBytes == 0 & remoteBytes > 0) = "online_only";

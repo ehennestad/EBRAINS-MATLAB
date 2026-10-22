@@ -12,6 +12,20 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
         Folder string
     end
 
+    properties (TestParameter)
+        % Texts of a bucket.json that does not follow virtual-bucket.schema.json
+        BadBucketInfo = struct( ...
+            "NotJson", '{"format_version": 1,', ...
+            "NotAnObject", '[1, 2]', ...
+            "VersionNotWhole", '{"format_version": 1.5, "bucket": "b", "prefix": "", "listed_at": null}', ...
+            "VersionTrue", '{"format_version": true, "bucket": "b", "prefix": "", "listed_at": null}', ...
+            "EmptyBucket", '{"format_version": 1, "bucket": "", "prefix": "", "listed_at": null}', ...
+            "PrefixWithoutSlash", '{"format_version": 1, "bucket": "b", "prefix": "set", "listed_at": null}', ...
+            "PrefixThatLeaves", '{"format_version": 1, "bucket": "b", "prefix": "../set/", "listed_at": null}', ...
+            "NoListedAt", '{"format_version": 1, "bucket": "b", "prefix": ""}', ...
+            "ListedAtWithOffset", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-01-02T03:04:05+00:00"}')
+    end
+
     methods (TestMethodSetup)
         function setUp(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
@@ -26,7 +40,7 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             % The text is that of the paths-that-need-quotes fixture of the spec
             text = "path,bytes,modified_time,hash" + newline + ...
                 """a,b.txt"",1,," + newline + ...
-                "måling/data file.txt,3,2024-01-02T03:04:05Z,abc" + newline + ...
+                "måling/data file.txt,3,2024-01-02T03:04:05Z,900150983cd24fb0d6963f7d28e17f72" + newline + ...
                 """say """"hi"""".txt"",2,," + newline;
 
             files = ebrains.bucket.internal.metadata.parseManifest(text);
@@ -75,6 +89,50 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
 
             testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
                 'EBRAINS:Bucket:UnknownVirtualBucketFormat');
+        end
+
+        function testBucketInfoThatBreaksTheSchemaIsRefused(testCase, BadBucketInfo)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "bucket.json"), BadBucketInfo);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
+                'EBRAINS:Bucket:InvalidBucketInfo');
+        end
+
+        function testInvalidManifestErrorNamesFileAndLine(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            manifestFile = fullfile(testCase.Folder, ".ebrains", "manifest.csv");
+            writeFile(manifestFile, "path,bytes,modified_time,hash" + newline + "a.txt,1,," + newline + "../x.txt,1,," + newline);
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, sprintf('"%s", line 3: the path "../x.txt"', manifestFile));
+        end
+
+        function testManifestThatIsNotUtf8IsRefused(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            fileID = fopen(fullfile(testCase.Folder, ".ebrains", "manifest.csv"), "w");
+            fwrite(fileID, [unicode2native(char("path,bytes,modified_time,hash" + newline + "m"), "UTF-8"), ...
+                uint8(229), unicode2native(char("ling.txt,1,," + newline), "UTF-8")]); % "å" in Latin-1
+            fclose(fileID);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readManifest(testCase.Folder), ...
+                'EBRAINS:Bucket:NotUTF8Text');
+        end
+
+        function testManifestWithCarriageReturnsIsRead(testCase)
+            crlf = char([13 10]);
+            files = ebrains.bucket.internal.metadata.parseManifest( ...
+                "path,bytes,modified_time,hash" + crlf + "a.txt,1,2024-01-02T03:04:05Z," + crlf);
+
+            testCase.verifyEqual(files.Path, "a.txt");
+            testCase.verifyEqual(files.ModifiedTime, datetime(2024, 1, 2, 3, 4, 5, TimeZone="UTC"));
         end
 
         %% createVirtualBucket
@@ -230,6 +288,9 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(manifest.Bytes, [3; 4]);
             testCase.verifyTrue(isnat(manifest.ModifiedTime(2)), ...
                 'The time of an uploaded object is only known from a new listing.');
+            testCase.verifyEqual(manifest.Hash(2), ...
+                ebrains.bucket.sync.internal.computeMD5(fullfile(testCase.Folder, "new.txt")), ...
+                'The manifest records the checksum of an uploaded file.');
         end
 
         function testPullWritesListingAsManifest(testCase)

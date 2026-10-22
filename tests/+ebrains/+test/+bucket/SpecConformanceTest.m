@@ -91,6 +91,21 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
         function testManifestFixture(testCase, ManifestFixture)
             fixture = readFixture(ManifestFixture);
             text = string(fixture.text);
+
+            if isfield(fixture, "expected_error_line")
+                exception = MException.empty;
+                try
+                    ebrains.bucket.internal.metadata.parseManifest(text);
+                catch exception
+                end
+                testCase.assertNotEmpty(exception, "The text is refused. " + fixture.description);
+                testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest', fixture.description);
+                testCase.verifyTrue(startsWith(exception.message, ...
+                    sprintf("Line %d: ", fixture.expected_error_line)), ...
+                    sprintf('The error names line %d: "%s". %s', fixture.expected_error_line, ...
+                    exception.message, fixture.description));
+                return
+            end
             entries = toFileTable(fixture.entries);
 
             testCase.verifyEqual(ebrains.bucket.internal.metadata.parseManifest(text), entries, ...

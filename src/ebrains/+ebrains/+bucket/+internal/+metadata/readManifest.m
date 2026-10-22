@@ -7,6 +7,10 @@ function [files, isFound] = readManifest(rootFolder)
 %   paths relative to the prefix. A folder that was never listed has no
 %   manifest: files is then an empty table and isFound is false.
 %
+%   A manifest that is not UTF-8 text, or that breaks the layout (see
+%   ebrains.bucket.internal.metadata.parseManifest), is an error that
+%   names the file and the line.
+%
 %   See also ebrains.bucket.internal.metadata.writeManifest
 
     arguments
@@ -19,6 +23,15 @@ function [files, isFound] = readManifest(rootFolder)
         files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
         return
     end
-    files = ebrains.bucket.internal.metadata.parseManifest( ...
-        ebrains.bucket.internal.metadata.readTextFile(filePath));
+    text = ebrains.bucket.internal.metadata.readTextFile(filePath);
+    try
+        files = ebrains.bucket.internal.metadata.parseManifest(text);
+    catch exception
+        if exception.identifier ~= "EBRAINS:Bucket:InvalidManifest"
+            rethrow(exception)
+        end
+        error('EBRAINS:Bucket:InvalidManifest', ...
+            '"%s", %s The virtual bucket cannot be used until the line is corrected.', ...
+            filePath, regexprep(exception.message, '^Line', 'line'))
+    end
 end

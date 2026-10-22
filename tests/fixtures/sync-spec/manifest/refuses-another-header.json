@@ -1,0 +1,5 @@
+{
+  "description": "The first line is the header path,bytes,modified_time,hash.",
+  "text": "path,size,modified_time,hash\na.txt,1,,\n",
+  "expected_error_line": 1
+}

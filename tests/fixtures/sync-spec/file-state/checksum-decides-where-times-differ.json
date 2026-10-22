@@ -1,0 +1,104 @@
+{
+  "description": "Where the times differ or one is unknown, the MD5 checksums decide where the manifest entry has one. pushed.dat was uploaded and has an unknown time in the manifest; relisted.dat was uploaded and listed since, so its object is later than the local file; their edited twins were changed after. Times within 2 seconds decide before checksums, and without a checksum in the manifest a time difference means the file differs.",
+  "local": [
+    {
+      "path": "pushed.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-03T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "pushed-edited.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-03T00:00:00Z",
+      "hash": "92eb5ffee6ae2fec3ad71c777531578f"
+    },
+    {
+      "path": "relisted.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "relisted-edited.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": "92eb5ffee6ae2fec3ad71c777531578f"
+    },
+    {
+      "path": "within-tolerance.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-02T00:00:02Z",
+      "hash": "92eb5ffee6ae2fec3ad71c777531578f"
+    },
+    {
+      "path": "no-manifest-hash.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "pushed.dat",
+      "bytes": 1,
+      "modified_time": null,
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "pushed-edited.dat",
+      "bytes": 1,
+      "modified_time": null,
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "relisted.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "relisted-edited.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "within-tolerance.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "0cc175b9c0f1b6a831c399e269772661"
+    },
+    {
+      "path": "no-manifest-hash.dat",
+      "bytes": 1,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "expected": [
+    {
+      "path": "no-manifest-hash.dat",
+      "state": "differs"
+    },
+    {
+      "path": "pushed-edited.dat",
+      "state": "differs"
+    },
+    {
+      "path": "pushed.dat",
+      "state": "downloaded"
+    },
+    {
+      "path": "relisted-edited.dat",
+      "state": "differs"
+    },
+    {
+      "path": "relisted.dat",
+      "state": "downloaded"
+    },
+    {
+      "path": "within-tolerance.dat",
+      "state": "downloaded"
+    }
+  ]
+}

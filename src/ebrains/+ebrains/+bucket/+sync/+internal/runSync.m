@@ -320,7 +320,8 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
 % updateManifest - Record the listing of a sync as the manifest of a virtual bucket
 %
 %   A sync to the bucket changed it after the listing, so the files it
-%   uploaded and the objects it deleted are applied to the listing, and
+%   uploaded, with the MD5 checksum of each, and the objects it deleted
+%   are applied to the listing, and
 %   the placeholders of removed objects keep their entries. A failed
 %   transfer leaves the entry as the listing gave it.
     manifestFiles = listedFiles;
@@ -328,12 +329,28 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
         deletedPaths = actions.Path(isDone & actions.Action == "delete");
+        uploadedFiles = withChecksums(localFolder, localFiles(ismember(localFiles.Path, uploadedPaths), :));
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
-            localFiles(ismember(localFiles.Path, uploadedPaths), :), deletedPaths, ...
-            localFiles, oldManifestFiles);
+            uploadedFiles, deletedPaths, localFiles, oldManifestFiles);
     end
     ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
+end
+
+function files = withChecksums(localFolder, files)
+% withChecksums - Give each file the MD5 checksum of its content where it has none
+%
+%   The manifest records the checksum of each uploaded file, which the
+%   file states compare a local file with while the time of its object is
+%   unknown. A file that cannot be read keeps an unknown checksum.
+    for i = reshape(find(files.Hash == ""), 1, [])
+        try
+            files.Hash(i) = ebrains.bucket.sync.internal.computeMD5(fullfile(localFolder, files.Path(i)));
+        catch
+            % The file was uploaded; without a checksum, the file states
+            % judge it by its time.
+        end
+    end
 end
 
 function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel, ignoreCase)
