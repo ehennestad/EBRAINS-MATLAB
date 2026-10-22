@@ -5,7 +5,10 @@ function writeBucketInfo(rootFolder, bucketName, prefix, listedTime)
 %   bucketName, prefix, listedTime) writes .ebrains/bucket.json of the
 %   folder, creating .ebrains if needed. listedTime is when the manifest
 %   was made from a listing, or NaT if it never was. Fields of an existing
-%   file that this toolbox does not write are kept.
+%   file that this toolbox does not write are kept, but go through
+%   jsondecode and jsonencode, which can change their form: null becomes
+%   [], a list of one number becomes the number, and a name that is not a
+%   valid MATLAB name, such as "a-b", is renamed.
 %
 %   See also ebrains.bucket.internal.metadata.readBucketInfo
 

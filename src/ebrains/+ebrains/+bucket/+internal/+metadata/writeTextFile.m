@@ -28,14 +28,30 @@ function writeTextFile(filePath, text)
 end
 
 function writeBytes(temporaryFile, bytes, filePath)
-% writeBytes - Write bytes to a file that is closed again whether the write succeeds or fails
+% writeBytes - Write bytes to a file, and fail unless all of them reached it
 %
 %   The file must be closed before it is moved, and before it is deleted
-%   after a failed write, which Windows refuses for an open file.
+%   after a failed write, which Windows refuses for an open file. fwrite
+%   and fclose report a short write, such as on a full disk, by their
+%   return values rather than with an error, and a file that was cut short
+%   must not replace the old one.
     [fileID, errorMessage] = fopen(temporaryFile, "w");
     if fileID == -1
         error('EBRAINS:Bucket:CouldNotWriteFile', 'Could not write "%s": %s', filePath, errorMessage)
     end
-    closeFile = onCleanup(@() fclose(fileID));
-    fwrite(fileID, bytes);
+    try
+        nWritten = fwrite(fileID, bytes);
+    catch exception
+        fclose(fileID);
+        rethrow(exception)
+    end
+    closeStatus = fclose(fileID);
+    if nWritten ~= numel(bytes)
+        error('EBRAINS:Bucket:CouldNotWriteFile', ...
+            'Could not write "%s": %d of %d bytes were written.', filePath, nWritten, numel(bytes))
+    end
+    if closeStatus ~= 0
+        error('EBRAINS:Bucket:CouldNotWriteFile', ...
+            'Could not write "%s": the file could not be closed.', filePath)
+    end
 end
