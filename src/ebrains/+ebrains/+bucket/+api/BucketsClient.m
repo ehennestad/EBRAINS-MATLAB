@@ -24,6 +24,14 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         ErrorIdPrefix = "EBRAINS:Bucket"
     end
 
+    properties (Constant, Hidden)
+        % Seconds a request may go without receiving data before it fails.
+        % DataTimeout limits both the wait for the response header and a
+        % pause within the response body, whereas the HTTPOptions default
+        % of Inf waits forever for a server that has stopped answering.
+        DATA_TIMEOUT_SECONDS = 120
+    end
+
     methods
         function bucketStat = getBucketStat(obj, bucketName)
         % getBucketStat - Get the stat record of a bucket
@@ -164,6 +172,15 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 targetName (1,1) string {mustBeNonzeroLengthText}
             end
 
+            % The target travels in the body, where nothing changes it, but
+            % an object with such a name could not be reached afterwards,
+            % since buildApiUri refuses its path.
+            if hasDotSegment(split(targetName, "/"))
+                error('EBRAINS:Bucket:DotSegmentInName', ...
+                    ['The target name "%s" has a "." or ".." segment, so the renamed object could not ' ...
+                     'be reached by its name. Give a name without "." or ".." between slashes.'], targetName)
+            end
+
             payload = struct('rename', struct('target_name', targetName));
 
             request = obj.initializeRequestMessage("PATCH", JSONPayload=jsonencode(payload));
@@ -202,6 +219,13 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         end
     end
 
+    methods (Access = protected)
+        function httpOptions = getDefaultHttpOptions(obj)
+        % getDefaultHttpOptions - Options that end a request to a server that stopped answering
+            httpOptions = matlab.net.http.HTTPOptions(DataTimeout=obj.DATA_TIMEOUT_SECONDS);
+        end
+    end
+
     methods (Static, Access = private)
         function apiUri = buildApiUri(pathSegments, requiredParams, optionalParams)
         % buildApiUri - URI of an endpoint below the Data Proxy base URL
@@ -211,11 +235,26 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 optionalParams struct = struct.empty
             end
 
+            % The HTTP client removes a "." segment from the request path,
+            % and a ".." segment together with the segment before it, so
+            % such a path would reach another object, or another bucket.
+            if hasDotSegment(pathSegments)
+                error('EBRAINS:Bucket:DotSegmentInName', ...
+                    ['The request path "%s" has a "." or ".." segment, so it would reach another ' ...
+                     'object or bucket than the one named. Give names without "." or ".." between slashes.'], ...
+                    join(pathSegments, "/"))
+            end
+
             apiUri = ebrains.common.internal.buildApiUri(...
                 ebrains.common.constant.DataProxyApiBaseUrl(), ...
                 pathSegments, requiredParams, optionalParams);
         end
     end
+end
+
+function tf = hasDotSegment(segments)
+% hasDotSegment - Whether any of the path segments is "." or ".."
+    tf = any(segments == "." | segments == "..");
 end
 
 function segments = objectPathSegments(objectName)

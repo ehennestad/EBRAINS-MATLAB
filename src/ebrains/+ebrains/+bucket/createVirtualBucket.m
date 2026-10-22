@@ -38,9 +38,30 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     % "README" and "Snakefile" are files.
     isFolder = ebrains.bucket.internal.isFolderObject(S);
 
+    % Object names become paths below the root, so only plain relative
+    % names are created. A name with a "." or ".." segment, an empty
+    % segment (a leading or doubled "/") or a backslash is left out: it
+    % could point outside the root, onto the path of another object, or to
+    % a different path on Windows. Folder names end with "/", which the
+    % check would read as an empty segment, hence the strip.
+    objectNames = strings(1, 0);
+    if ~isempty(S)
+        objectNames = string({S.name});
+    end
+    isSafe = ebrains.bucket.internal.isSafeRelativePath(regexprep(objectNames, "/$", ""));
+    if ~all(isSafe)
+        warning('EBRAINS:Bucket:UnsafeObjectName', ...
+            ['%d object(s) of bucket "%s" were not created because their names are not plain ' ...
+             'relative paths (a ".", ".." or empty segment, or a backslash), for example "%s".'], ...
+            sum(~isSafe), bucketName, objectNames(find(~isSafe, 1)));
+    end
+
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
     for i = 1:numel(S)
+        if ~isSafe(i)
+            continue
+        end
         objectName = string(S(i).name);
         filePath = fullfile(virtualBucketRootPath, objectName);
 

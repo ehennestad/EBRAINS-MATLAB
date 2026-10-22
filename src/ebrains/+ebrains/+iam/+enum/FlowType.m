@@ -7,7 +7,7 @@ classdef FlowType
 %       DeviceFlow            - Interactive login in the browser
 %       ClientCredentialsFlow - Service login with a client id and secret
 %
-%   See also ebrains.authenticate, ebrains.iam.DeviceFlowTokenClient,
+%   See also ebrains.login, ebrains.iam.DeviceFlowTokenClient,
 %   ebrains.iam.ClientCredentialsFlowTokenClient
 
     enumeration

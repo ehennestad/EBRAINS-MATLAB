@@ -34,16 +34,18 @@ savepath  % optional
 
 ## Quick start
 
-### 1) Authenticate
+### 1) Log in
 ```matlab
-ebrains.authenticate()
+ebrains.login()
 ```
 This opens a browser window that redirects to the EBRAINS login page. Scripts and CI jobs can use the client credentials flow instead. Read the secret from an environment variable of your choice rather than typing it in: MATLAB keeps what is typed in the Command Window in its command history.
 
 ```matlab
-ebrains.authenticate(OAuthFlow="ClientCredentialsFlow", ...
+ebrains.login(OAuthFlow="ClientCredentialsFlow", ...
     OIDCClientID="my-client", OIDCClientSecret=getenv("EBRAINS_CLIENT_SECRET"))
 ```
+`ebrains.logout()` removes the tokens held in the MATLAB session.
+
 > [!TIP]
 > You can also provide an access token via the environment variable `EBRAINS_TOKEN`. See [Running without a display](#running-without-a-display) for how it is used.
 
@@ -109,3 +111,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run the tests.
 
 ## License
 Released under the [MIT License](LICENSE). The bundled transfer package in [`src/ebrains/external/+ebrains/+external/+webprogress`](src/ebrains/external/+ebrains/+external/+webprogress) is distributed under its own MIT License, in the `LICENSE` file beside it, whose notice has to be kept with any copy of that package.
+
+## Acknowledgements
+The Device Flow authentication was inspired by and modified from:
+https://github.com/xgui3783/ebrains-iam-util/tree/main

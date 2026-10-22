@@ -7,6 +7,28 @@ classdef BucketsClientTest < matlab.unittest.TestCase
         Client ebrains.mocks.MockBucketsClient
     end
 
+    properties (TestParameter)
+        % Names that the request path would resolve to another object or
+        % bucket: the HTTP client drops "." and resolves ".." on the way
+        dotSegmentName = struct( ...
+            "ParentInMiddle", "a/../b.txt", ...
+            "ParentFirst", "../other-bucket/x.txt", ...
+            "ParentLast", "a/..", ...
+            "CurrentFirst", "./b.txt", ...
+            "CurrentInMiddle", "a/./b.txt")
+        % Names whose dots are part of a segment rather than the whole of one
+        dottedName = struct( ...
+            "HiddenFile", ".hidden", ...
+            "DoubleDotInName", "a..b/c.txt", ...
+            "TrailingDots", "data../x.", ...
+            "HiddenFolder", ".config/settings.json")
+        objectMethod = struct( ...
+            "getDownloadUrl", @(client, bucket, name) client.getDownloadUrl(bucket, name), ...
+            "getUploadUrl", @(client, bucket, name) client.getUploadUrl(bucket, name), ...
+            "renameObject", @(client, bucket, name) client.renameObject(bucket, name, "new.txt"), ...
+            "deleteObject", @(client, bucket, name) client.deleteObject(bucket, name))
+    end
+
     methods (TestMethodSetup)
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
@@ -198,6 +220,55 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
             testCase.verifyError(@() testCase.Client.deleteObject("my-bucket", "old.txt"), ...
                 'EBRAINS:Bucket:deleteObject:NotFound');
+        end
+
+        %% Names with "." or ".." segments
+        function testObjectNameWithDotSegmentIsRefusedBeforeARequest(testCase, objectMethod, dotSegmentName)
+            testCase.verifyError(@() objectMethod(testCase.Client, "my-bucket", dotSegmentName), ...
+                'EBRAINS:Bucket:DotSegmentInName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testBucketNameThatIsADotSegmentIsRefused(testCase, objectMethod)
+            testCase.verifyError(@() objectMethod(testCase.Client, "..", "x.txt"), ...
+                'EBRAINS:Bucket:DotSegmentInName');
+            testCase.verifyError(@() testCase.Client.getBucketStat("."), ...
+                'EBRAINS:Bucket:DotSegmentInName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testRenameTargetWithDotSegmentIsRefused(testCase, dotSegmentName)
+            testCase.verifyError( ...
+                @() testCase.Client.renameObject("my-bucket", "old.txt", dotSegmentName), ...
+                'EBRAINS:Bucket:DotSegmentInName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testObjectNameWithDotsWithinSegmentsIsSent(testCase, dottedName)
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.deleteObject("my-bucket", dottedName);
+
+            request = testCase.Client.getRequest(1);
+            testCase.verifyTrue(endsWith(strjoin(request.URL.Path, "/"), "/my-bucket/" + dottedName));
+        end 
+        
+        %% Timeouts
+        function testRequestsFailWhenNoDataArrivesForTheTimeout(testCase)
+            % Without a DataTimeout, a request to a server that has stopped
+            % answering waits forever.
+            testCase.Client.addResponse('OK', struct('objects_count', 3, 'bytes', 1024));
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.getBucketStat("my-bucket");
+            testCase.Client.deleteObject("my-bucket", "old.txt");
+
+            expectedTimeout = ebrains.bucket.api.BucketsClient.DATA_TIMEOUT_SECONDS;
+            testCase.verifyLessThan(expectedTimeout, Inf);
+            for index = 1:2
+                options = testCase.Client.getRequest(index).Options;
+                testCase.verifyEqual(options.DataTimeout, expectedTimeout);
+            end
         end
     end
 end
