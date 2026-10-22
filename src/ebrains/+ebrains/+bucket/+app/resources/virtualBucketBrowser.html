@@ -1205,6 +1205,7 @@ window.virtualBucketBrowser = { receive: (name, text) => host.dispatch(name, tex
 
 // pywebview exposes the Python host as window.pywebview.api, which can
 // appear after the page has loaded; pywebviewready says when it has.
+// window.pywebview can exist before its api does, so the api is checked.
 function attachPywebview() {
   host.attach({
     send: (name, text) => window.pywebview.api.request(name, text)
@@ -1219,7 +1220,7 @@ host.on("alert", dialogs.alert);
 host.on("progress", dialogs.progress);
 host.on("progressClose", (data) => dialogs.closeProgress(data.id));
 wireEvents();
-if (window.pywebview) attachPywebview();
+if (window.pywebview?.api?.request) attachPywebview();
 else window.addEventListener("pywebviewready", attachPywebview, { once: true });
 </script>
 </body>
