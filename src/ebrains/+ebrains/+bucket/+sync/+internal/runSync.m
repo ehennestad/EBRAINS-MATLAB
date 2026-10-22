@@ -372,6 +372,18 @@ function note = downloadAndReplace(bucketName, objectName, localFile, sourceFile
 %   rename on the same file system. The file is then given the time of
 %   its object; note is "" or says why that failed.
 
+    % movefile puts a file inside a folder of the target name rather than
+    % replace it, so an object whose local path is a folder is refused
+    % before the download. The empty folder marker of a bucket migrated
+    % from the old object storage is listed as a file when no object below
+    % it is listed, since only those objects tell it apart from a file.
+    if isfolder(localFile)
+        error('EBRAINS:Bucket:Sync:LocalPathIsFolder', ...
+            ['The object "%s" was not downloaded, since its local path "%s" is a folder. ' ...
+             'Rename or remove the folder, or leave the object out with Exclude.'], ...
+            objectName, localFile)
+    end
+
     targetFolder = fileparts(localFile);
     if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
         mkdir(targetFolder)

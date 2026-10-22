@@ -676,6 +676,27 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(listFileNames(testCase.Folder), "a.txt");
         end
 
+        function testSyncFromBucketRefusesObjectWhoseLocalPathIsAFolder(testCase)
+            % The object "results" is not recognised as a folder, since no
+            % object below it is listed. Downloading it would put the file
+            % inside the local folder of that name, so the row fails before
+            % any request, and the failure holds back the deletion of the
+            % file in that folder.
+            writeFile(fullfile(testCase.Folder, "results", "keep.txt"), "abc");
+            addListing(testCase.Client, makeObjects("results", 3, "2000-01-01T00:00:00"));
+            addDownloadUrls(testCase.Client, 1);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Delete=true, Downloader=@writeAbc, Client=testCase.Client, ...
+                Verbose=false), 'EBRAINS:Bucket:Sync:Incomplete');
+
+            testCase.verifyEqual(actions.Path, ["results"; "results/keep.txt"]);
+            testCase.verifyEqual(actions.Status, ["failed"; "skipped"]);
+            testCase.verifySubstring(char(actions.Message(1)), 'is a folder');
+            testCase.verifyEqual(listFileNames(fullfile(testCase.Folder, "results")), "keep.txt");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
         function testSyncFromBucketRefusesToDeleteANameWithWildcards(testCase)
             % delete expands "*" and "?" to other files, so such a file is
             % left and reported rather than risk the others.
