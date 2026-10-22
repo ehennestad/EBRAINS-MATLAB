@@ -3,7 +3,7 @@ coverage:
     # The project total is informational: with target auto it only has to
     # hold the line, so a pull request is not failed for gaps it did not
     # introduce. The breakdown of a run is in the "reports" artifact of the
-    # "Test code" workflow; docs/reports is generated, not committed.
+    # "Run tests" workflow; docs/reports is generated, not committed.
     project:
       default:
         target: auto
