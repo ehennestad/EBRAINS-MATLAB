@@ -1,5 +1,6 @@
 {
   "description": "A placeholder is not uploaded, whether its object changed size or was removed since the manifest was made. An edited file and an object that was empty at the listing are planned as the plan gives them.",
+  "direction": "to_bucket",
   "plan": [
     {
       "path": "edited.dat",

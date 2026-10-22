@@ -89,7 +89,7 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
             end
 
             expected = toCell(fixture.expected);
-            expectedStates = table(fieldColumn(expected, "path", ""), fieldColumn(expected, "state", ""), ...
+            expectedStates = table(fieldColumn(expected, "path"), fieldColumn(expected, "state"), ...
                 'VariableNames', ["Path", "State"]);
             testCase.verifyEqual(files(:, ["Path", "State"]), expectedStates, fixture.description);
         end
@@ -100,8 +100,15 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
             % A virtual bucket that was never listed (manifest null) has an
             % empty manifest, as ebrains.bucket.internal.metadata.readManifest
             % returns it, so null and an empty list are one case here.
-            plan = ebrains.bucket.sync.internal.protectPlaceholders( ...
-                toPlanTable(fixture.plan), toFileTable(fixture.local), ...
+            switch fixture.direction
+                case "to_bucket"
+                    placeholderRule = @ebrains.bucket.sync.internal.protectPlaceholders;
+                case "from_bucket"
+                    placeholderRule = @ebrains.bucket.sync.internal.deleteRemovedPlaceholders;
+                otherwise
+                    error('EBRAINS:Test:UnknownDirection', 'The direction "%s" is unknown.', fixture.direction)
+            end
+            plan = placeholderRule(toPlanTable(fixture.plan), toFileTable(fixture.local), ...
                 toFileTable(fixture.listing), toFileTable(fixture.manifest));
 
             testCase.verifyEqual(plan, toPlanTable(fixture.expected), fixture.description);
@@ -112,7 +119,8 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
 
             manifest = ebrains.bucket.sync.internal.manifestAfterPush( ...
                 toFileTable(fixture.listing), toFileTable(fixture.uploaded), ...
-                toStringColumn(fixture.deleted));
+                toStringColumn(fixture.deleted), toFileTable(fixture.local), ...
+                toFileTable(fixture.manifest));
 
             testCase.verifyEqual(manifest, toFileTable(fixture.expected), fixture.description);
         end
@@ -165,10 +173,25 @@ end
 
 function values = fieldColumn(items, fieldName, default)
 % fieldColumn - Column with one field of each object, or the default where it is missing or null
-    values = repmat(default, numel(items), 1);
+%
+%   Without a default the field is required, as the Python runner requires
+%   it, so that a misspelled key fails rather than compare as a default.
+    arguments
+        items cell
+        fieldName (1,1) string
+        default = missing
+    end
+    isRequired = ismissing(default);
+    if isRequired
+        values = strings(numel(items), 1);
+    else
+        values = repmat(default, numel(items), 1);
+    end
     for i = 1:numel(items)
         if isfield(items{i}, fieldName) && ~isempty(items{i}.(fieldName))
             values(i) = items{i}.(fieldName);
+        elseif isRequired
+            error('EBRAINS:Test:MissingFixtureField', 'An entry of the fixture has no "%s".', fieldName)
         end
     end
 end
@@ -182,27 +205,46 @@ function files = toFileTable(items)
 % toFileTable - File table of the file entries of a fixture
     items = toCell(items);
     files = ebrains.bucket.sync.internal.makeFileTable( ...
-        fieldColumn(items, "path", ""), fieldColumn(items, "bytes", 0), ...
+        fieldColumn(items, "path"), double(fieldColumn(items, "bytes")), ...
         parseTimes(fieldColumn(items, "modified_time", "")), fieldColumn(items, "hash", ""));
 end
 
 function plan = toPlanTable(items)
 % toPlanTable - Plan table of the plan rows of a fixture
     items = toCell(items);
-    plan = table(fieldColumn(items, "path", ""), fieldColumn(items, "action", ""), ...
-        fieldColumn(items, "reason", ""), fieldColumn(items, "bytes", 0), ...
+    plan = table(fieldColumn(items, "path"), fieldColumn(items, "action"), ...
+        fieldColumn(items, "reason"), double(fieldColumn(items, "bytes")), ...
         'VariableNames', ["Path", "Action", "Reason", "Bytes"]);
 end
 
 function times = parseTimes(texts)
 % parseTimes - Times of the fixtures, such as "2024-01-02T03:04:05Z", as datetimes in UTC
 %
-%   An empty text, which stands for null, gives NaT. The test reads the
-%   times itself, so that the expected tables do not depend on the parser
-%   of the toolbox that the manifest fixtures test.
+%   A time may have a fraction of a second, and an offset such as
+%   "+02:00" in place of "Z", as the Python runner reads them. An empty
+%   text, which stands for null, gives NaT. The test reads the times
+%   itself, so that the expected tables do not depend on the parser of the
+%   toolbox that the manifest fixtures test.
+    pattern = "^(?<time>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?<fraction>(\.\d+)?)" + ...
+        "(?<zone>Z|[+-]\d{2}:\d{2})$";
     times = NaT(size(texts), TimeZone="UTC");
-    isGiven = texts ~= "";
-    if any(isGiven)
-        times(isGiven) = datetime(texts(isGiven), InputFormat="yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone="UTC");
+    for i = reshape(find(texts ~= ""), 1, [])
+        parts = regexp(texts(i), pattern, "names", "once");
+        if isempty(parts)
+            error('EBRAINS:Test:InvalidFixtureTime', 'The time "%s" of a fixture is not ISO 8601.', texts(i))
+        end
+        time = datetime(parts.time, InputFormat="yyyy-MM-dd'T'HH:mm:ss", TimeZone="UTC");
+        if parts.fraction ~= ""
+            time = time + seconds(str2double("0" + parts.fraction));
+        end
+        if parts.zone ~= "Z"
+            offset = hours(str2double(extractBetween(parts.zone, 2, 3))) + ...
+                minutes(str2double(extractBetween(parts.zone, 5, 6)));
+            if startsWith(parts.zone, "-")
+                offset = -offset;
+            end
+            time = time - offset;
+        end
+        times(i) = time;
     end
 end

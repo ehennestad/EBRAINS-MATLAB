@@ -1,5 +1,6 @@
 {
   "description": "The manifest has the object at 0 bytes, so the empty local file was not a placeholder when it was made; the object has content now, which the listing shows, and the file must not replace it.",
+  "direction": "to_bucket",
   "plan": [
     {
       "path": "grew.dat",

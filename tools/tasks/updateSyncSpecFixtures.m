@@ -19,7 +19,7 @@ function updateSyncSpecFixtures()
     % The fixtures of virtual buckets are on the virtual-bucket-spec branch
     % of the package (its pull request 16) until it is merged, so the pin
     % is a commit of that branch rather than a release tag.
-    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@c8d47de22684415c34486c050543d97821282554";
+    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@9831e918ddbfaabc9c936c5a0e19534fc2d2564d";
     sourceFolder = "spec/fixtures";
     targetFolder = "tests/fixtures/sync-spec";
 

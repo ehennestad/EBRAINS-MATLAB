@@ -1,5 +1,6 @@
 {
   "description": "Without a manifest, an empty local file whose object is not empty in the listing is a placeholder. An object the listing does not have is not protected, since no manifest says it existed.",
+  "direction": "to_bucket",
   "plan": [
     {
       "path": "a.dat",

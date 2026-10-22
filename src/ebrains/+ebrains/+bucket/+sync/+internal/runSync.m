@@ -397,7 +397,6 @@ function keys = matchKeys(paths, ignoreCase)
     end
 end
 
-
 function printPlanSummary(actions, isCopy, isDelete, copyAction)
     isExtraneousKept = actions.Reason == "extraneous" & ~isDelete;
     fprintf('%d file(s) to %s (%s), %d to delete, %d unchanged.\n', ...

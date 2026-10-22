@@ -1,5 +1,5 @@
 {
-  "description": "Each rule of the file states, with the manifest entry as source and the local file as target.",
+  "description": "Each rule of the file states, comparing each file with its manifest entry in both directions. A downloaded file has the time of its object; edited.dat was changed after it was downloaded, and outdated.dat before its object was replaced.",
   "local": [
     {
       "path": "placeholder.dat",
@@ -8,6 +8,11 @@
     },
     {
       "path": "downloaded.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "edited.dat",
       "bytes": 3,
       "modified_time": "2024-01-03T00:00:00Z"
     },
@@ -29,7 +34,7 @@
     {
       "path": "empty.dat",
       "bytes": 0,
-      "modified_time": "2024-01-03T00:00:00Z"
+      "modified_time": "2024-01-02T00:00:00Z"
     },
     {
       "path": "uploaded.dat",
@@ -45,6 +50,11 @@
     },
     {
       "path": "downloaded.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "edited.dat",
       "bytes": 3,
       "modified_time": "2024-01-02T00:00:00Z"
     },
@@ -78,6 +88,10 @@
     {
       "path": "downloaded.dat",
       "state": "downloaded"
+    },
+    {
+      "path": "edited.dat",
+      "state": "differs"
     },
     {
       "path": "empty.dat",
