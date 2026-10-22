@@ -67,8 +67,11 @@ end
 
 function relativePaths = toRelativePaths(absolutePaths, absoluteRoot)
 % toRelativePaths - Paths below a root, relative to it and with "/" separators
+%
+%   Only the separator of the platform is replaced: on Linux and macOS a
+%   backslash is an ordinary character of a name and stays.
     relativePaths = extractAfter(absolutePaths, strlength(absoluteRoot));
-    relativePaths = replace(relativePaths, "\", "/");
+    relativePaths = replace(relativePaths, string(filesep), "/");
     relativePaths = regexprep(relativePaths, "^/+", "");
 end
 

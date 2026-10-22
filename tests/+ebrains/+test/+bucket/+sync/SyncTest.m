@@ -132,6 +132,36 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(kept.Path, ["other/raw/scratch/y.dat"; "keep.txt"]);
         end
 
+        function testExcludeDoubleStarMatchesAnyNumberOfFolders(testCase)
+            % As in a .gitignore file, "**/" and "/**/" also match no
+            % folder at all, and "/**" everything below a folder.
+            files = makeFiles(["cache/big.dat", "x/cache/y.dat", "a/b", "a/x/b", "a/x/y/b", ...
+                "logs/1.log", "logs/sub/2.log", "keep.txt"], ones(1, 8));
+
+            kept = ebrains.bucket.sync.internal.excludeFiles(files, ["**/cache", "a/**/b", "logs/**"]);
+
+            testCase.verifyEqual(kept.Path, "keep.txt");
+        end
+
+        function testExcludeLeadingSlashAnchorsToTheRoot(testCase)
+            files = makeFiles(["build/a.o", "sub/build/b.o", "build"], ones(1, 3));
+
+            kept = ebrains.bucket.sync.internal.excludeFiles(files, "/build");
+
+            testCase.verifyEqual(kept.Path, "sub/build/b.o");
+        end
+
+        function testExcludeIgnoresCaseWhenAsked(testCase)
+            files = makeFiles(["cache.TMP", "Cache/a.dat", "keep.txt"], ones(1, 3));
+
+            keptWithCase = ebrains.bucket.sync.internal.excludeFiles(files, ["*.tmp", "cache"]);
+            keptWithoutCase = ebrains.bucket.sync.internal.excludeFiles(files, ["*.tmp", "cache"], ...
+                IgnoreCase=true);
+
+            testCase.verifyEqual(keptWithCase.Path, ["cache.TMP"; "Cache/a.dat"; "keep.txt"]);
+            testCase.verifyEqual(keptWithoutCase.Path, "keep.txt");
+        end
+
         function testExcludeEscapesRegularExpressionCharacters(testCase)
             files = makeFiles(["a(1).txt", "a1.txt", "sub/x.y", "sub/xzy"], ones(1, 4));
 
@@ -237,7 +267,9 @@ classdef SyncTest < matlab.unittest.TestCase
 
             files = ebrains.bucket.sync.internal.listRemoteFiles("my-bucket", "set/", testCase.Client);
 
-            testCase.Client.verifyRequestURL(2, 'prefix=set');
+            testCase.Client.verifyRequestURL(1, 'prefix=set');
+            % The page after the last is requested, to see that it is empty
+            testCase.Client.verifyRequestURL(2, 'marker=set');
             testCase.verifyEqual(files.Path, ["a.txt"; "sub/b.txt"]);
             testCase.verifyEqual(files.Bytes, [3; 5]);
             testCase.verifyEqual(files.ModifiedTime, ...
@@ -716,6 +748,61 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "notes*.md")));
         end
 
+        function testSyncFromBucketExcludesWithoutCaseWhereNamesAreMatchedWithout(testCase)
+            % On a folder that ignores case, an object whose name differs
+            % only in case from an excluded local file must not be
+            % downloaded over it.
+            assumeCaseInsensitive(testCase)
+            writeFile(fullfile(testCase.Folder, "cache.tmp"), "local");
+            addListing(testCase.Client, makeObjects("cache.TMP", 6, "2100-01-01T00:00:00"));
+
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Exclude="*.tmp", Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEmpty(actions);
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "cache.tmp")), 'local');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testSyncFromBucketRefusesToDeleteBelowAFolderWithWildcards(testCase)
+            % delete expands "*" in a folder name as well as in a file name.
+            testCase.assumeFalse(ispc, 'Windows does not allow "*" in a folder name.');
+            writeFile(fullfile(testCase.Folder, "run*", "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "keep.txt"), "abc");
+            addListing(testCase.Client, makeObjects("keep.txt", 3, "2000-01-01T00:00:00"));
+            warningState = warning('off', 'EBRAINS:Bucket:Sync:Incomplete');
+            testCase.addTeardown(@() warning(warningState));
+
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Delete=true, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, ["keep.txt"; "run*/a.txt"]);
+            testCase.verifyEqual(actions.Status(2), "failed");
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "run*", "a.txt")));
+        end
+
+        function testSyncToBucketChecksumLeavesOutAFileItCannotRead(testCase)
+            % One unreadable file must not stop the sync: it is judged by
+            % size and time, with a warning, like a file without a checksum.
+            unreadableFile = fullfile(testCase.Folder, "locked.txt");
+            writeFile(unreadableFile, "abc");
+            writeFile(fullfile(testCase.Folder, "same.txt"), "abc");
+            makeFileUnreadable(testCase, unreadableFile)
+            md5OfAbc = "900150983cd24fb0d6963f7d28e17f72";
+            past = "2000-01-01T00:00:00";
+            addListing(testCase.Client, makeObjects(["locked.txt", "same.txt"], [3, 3], ...
+                [past, past], [md5OfAbc, md5OfAbc]));
+            addUploadUrls(testCase.Client, 1);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Comparison="Checksum", Uploader=recordingUploader(), ...
+                Client=testCase.Client, Verbose=false), 'EBRAINS:Bucket:Sync:ChecksumUnavailable');
+
+            testCase.verifyEqual(actions.Path, ["locked.txt"; "same.txt"]);
+            testCase.verifyEqual(actions.Reason, ["newer"; "unchanged"]);
+            testCase.verifyEqual(actions.Status, ["done"; ""]);
+        end
+
         function testSyncFromBucketRefusesToEmptyFolderFromEmptyPrefix(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             addListing(testCase.Client, makeObjects(string.empty));
@@ -774,10 +861,12 @@ function page = makeObjects(names, bytes, lastModified, hashes)
 end
 
 function addListing(client, page)
-% addListing - Queue the stat and the single page of a listing
-    client.addResponse('OK', struct('name', 'my-bucket', ...
-        'objects_count', numel(page.objects), 'bytes', 0));
+% addListing - Queue the single page of a listing, and the empty page that ends it
+%
+%   The sync lists until an empty page comes back rather than stop at the
+%   object count of the bucket stat, so no stat is requested.
     client.addResponse('OK', page);
+    client.addResponse('OK', struct('objects', []));
 end
 
 function addUploadUrls(client, count)
@@ -834,6 +923,21 @@ function makeUnreadable(testCase, folder)
     testCase.assertEqual(status, 0, output);
     testCase.addTeardown(@() system("chmod 755 '" + folder + "'"));
     testCase.assumeEmpty(dir(folder), 'This user can read a folder without read permission.');
+end
+
+function makeFileUnreadable(testCase, filePath)
+% makeFileUnreadable - Take away the permission to read a file until the test ends
+%
+%   Filtered where that has no effect, as makeUnreadable is.
+    testCase.assumeFalse(ispc, 'File permissions are set with chmod, which Windows does not have.');
+    [status, output] = system("chmod 000 '" + filePath + "'");
+    testCase.assertEqual(status, 0, output);
+    testCase.addTeardown(@() system("chmod 644 '" + filePath + "'"));
+    fileID = fopen(filePath, "r");
+    if fileID ~= -1
+        fclose(fileID);
+    end
+    testCase.assumeEqual(fileID, -1, 'This user can read a file without read permission.');
 end
 
 function assumeCaseInsensitive(testCase)

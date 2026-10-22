@@ -108,6 +108,21 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
         end
 
+        function testListBucketObjectsCompleteListsUntilAnEmptyPageWithoutStat(testCase)
+            % The object count of the stat can lag behind, so a caller
+            % that must not miss an object lists until a page is empty.
+            testCase.Client.addResponse('OK', makePage(["a.txt", "b.txt"]));
+            testCase.Client.addResponse('OK', makePage("c.txt"));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            objects = ebrains.bucket.listBucketObjects("my-bucket", Complete=true, Client=testCase.Client);
+
+            testCase.verifyEqual({objects.name}, {'a.txt', 'b.txt', 'c.txt'});
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
+            testCase.verifyFalse(contains(char(testCase.Client.getRequest(1).URL.EncodedURI), '/stat'));
+            testCase.Client.verifyRequestURL(3, 'marker=c.txt');
+        end
+
         function testListBucketObjectsEmptyBucket(testCase)
             testCase.Client.addResponse('OK', makeStat(0, 0));
             testCase.Client.addResponse('OK', makePage(string.empty));

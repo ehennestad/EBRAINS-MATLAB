@@ -42,8 +42,23 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % 1. List both sides
     [localFiles, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
-    localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, excludePatterns);
-    remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, excludePatterns);
+
+    % On a file system that ignores case, such as the default ones of
+    % macOS and Windows, a local file and an object whose names differ
+    % only in case are one file: a download writes into the local file
+    % and keeps its name. Matching them exactly would plan that file for
+    % deletion as well. An upload compares names exactly, since the bucket
+    % tells them apart.
+    ignoreCase = ~isToBucket && isCaseInsensitive(localFolder, localFiles.Path);
+
+    % The exclude patterns are matched the way names are: where names are
+    % matched without regard to case, so are the patterns, or an object
+    % whose name differs only in case from an excluded local file would
+    % be downloaded over it.
+    localFiles = ebrains.bucket.sync.internal.excludeFiles(localFiles, excludePatterns, ...
+        IgnoreCase=ignoreCase);
+    remoteFiles = ebrains.bucket.sync.internal.excludeFiles(remoteFiles, excludePatterns, ...
+        IgnoreCase=ignoreCase);
 
     % The files of a local folder that could not be read are missing from
     % the listing, so the plan would take them for deleted or extraneous.
@@ -51,7 +66,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % error while listing. A folder that is excluded does not count.
     unreadableFolderTable = ebrains.bucket.sync.internal.excludeFiles( ...
         ebrains.bucket.sync.internal.makeFileTable(unreadableFolders, zeros(size(unreadableFolders))), ...
-        excludePatterns);
+        excludePatterns, IgnoreCase=ignoreCase);
     unreadableFolders = unreadableFolderTable.Path;
     deletionHoldBack = "";
     if ~isempty(unreadableFolders)
@@ -62,13 +77,6 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         deletionHoldBack = "Not deleted, since a local folder could not be read.";
     end
 
-    % On a file system that ignores case, such as the default ones of
-    % macOS and Windows, a local file and an object whose names differ
-    % only in case are one file: a download writes into the local file
-    % and keeps its name. Matching them exactly would plan that file for
-    % deletion as well. An upload compares names exactly, since the bucket
-    % tells them apart.
-    ignoreCase = ~isToBucket && isCaseInsensitive(localFolder, localFiles.Path);
     if ignoreCase
         remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel);
     end
@@ -264,16 +272,31 @@ function localFiles = addLocalChecksums(localFiles, remoteFiles, localFolder, ig
 %
 %   Only a local file whose remote counterpart has the same size and a
 %   known checksum is read: for any other file the size or the time
-%   decides, and reading every file of a large folder would take long.
+%   decides, and reading every file of a large folder would take long. A
+%   file that cannot be read (locked, without permission, or gone since
+%   the listing) keeps an unknown checksum and is judged by size and time
+%   like the others, with a warning, rather than stop the sync.
 
     [isInRemote, remoteIndex] = ismember(matchKeys(localFiles.Path, ignoreCase), ...
         matchKeys(remoteFiles.Path, ignoreCase));
+    unreadablePaths = strings(0, 1);
     for i = reshape(find(isInRemote), 1, [])
         j = remoteIndex(i);
         if remoteFiles.Hash(j) ~= "" && remoteFiles.Bytes(j) == localFiles.Bytes(i)
-            localFiles.Hash(i) = ebrains.bucket.sync.internal.computeMD5( ...
-                fullfile(localFolder, localFiles.Path(i)));
+            try
+                localFiles.Hash(i) = ebrains.bucket.sync.internal.computeMD5( ...
+                    fullfile(localFolder, localFiles.Path(i)));
+            catch
+                unreadablePaths(end+1, 1) = localFiles.Path(i); %#ok<AGROW>
+            end
         end
+    end
+
+    if ~isempty(unreadablePaths)
+        warning('EBRAINS:Bucket:Sync:ChecksumUnavailable', ...
+            ['%d local file(s) could not be read for a checksum, for example ' ...
+             '"%s". They are judged by size and time instead.'], ...
+            numel(unreadablePaths), unreadablePaths(1));
     end
 end
 
@@ -448,14 +471,13 @@ function deleteLocalFile(filePath)
 % deleteLocalFile - Delete one file, and fail with an error when it stays
 %
 %   delete reports a file it cannot remove with a warning rather than an
-%   error, and expands "*" and "?" in the name to other files, so a name
-%   with either is refused and the file is checked afterwards. The warning
-%   is left to show, since it says why the file stayed.
+%   error, and expands "*" and "?" anywhere in the path to other files,
+%   so a path with either is refused and the file is checked afterwards.
+%   The warning is left to show, since it says why the file stayed.
 
-    [~, name, extension] = fileparts(filePath);
-    if contains(name + extension, ["*", "?"])
+    if contains(filePath, ["*", "?"])
         error('EBRAINS:Bucket:Sync:WildcardInName', ...
-            ['The file "%s" was not deleted: its name holds a wildcard ' ...
+            ['The file "%s" was not deleted: its path holds a wildcard ' ...
              'character, which delete would expand to other files.'], filePath)
     end
 

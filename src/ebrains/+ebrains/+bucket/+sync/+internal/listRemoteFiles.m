@@ -30,7 +30,11 @@ function files = listRemoteFiles(bucketName, prefix, client)
         client (1,1) ebrains.bucket.api.BucketsClient
     end
 
-    objects = ebrains.bucket.listBucketObjects(bucketName, Prefix=prefix, Client=client);
+    % The object count of the bucket stat can lag behind objects added
+    % since, and a sync that deletes must not take an unlisted object for
+    % gone, so pages are requested until one comes back empty.
+    objects = ebrains.bucket.listBucketObjects(bucketName, ...
+        Prefix=prefix, Complete=true, Client=client);
 
     if isempty(objects)
         files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
