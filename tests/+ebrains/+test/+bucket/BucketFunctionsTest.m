@@ -9,6 +9,22 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         Client ebrains.mocks.MockBucketsClient
     end
 
+    properties (TestParameter)
+        % Object names that could place the downloaded file outside the
+        % target folder of getBucketObject
+        UnsafeObjectName = struct( ...
+            "ParentSegment", "../x.txt", ...
+            "ParentSegmentWithFolder", "../newdir/x.txt", ...
+            "ParentSegmentsBelowFolder", "a/../../x.txt", ...
+            "BackslashParentSegments", "a\..\..\x.txt")
+
+        % Object names that place the file at a/b.txt below the target
+        % folder; a leading "/" is ignored, as everywhere in the namespace
+        NestedObjectName = struct( ...
+            "NestedName", "a/b.txt", ...
+            "LeadingSlash", "/a/b.txt")
+    end
+
     methods (TestMethodSetup)
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
@@ -163,6 +179,42 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyError(...
                 @() ebrains.bucket.getBucketObject("my-bucket", "file.txt", Client=testCase.Client), ...
                 'EBRAINS:Bucket:getDownloadUrl:NotFound');
+        end
+
+        function testGetBucketObjectRefusesNameThatLeavesTargetFolder(testCase, UnsafeObjectName)
+            % The target folder sits in its own folder, so that a folder or
+            % file created next to it would show up there.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFolder = fullfile(folderFixture.Folder, "target");
+            mkdir(targetFolder)
+
+            testCase.verifyError(...
+                @() ebrains.bucket.getBucketObject("my-bucket", UnsafeObjectName, ...
+                    TargetFolder=targetFolder, Client=testCase.Client), ...
+                'EBRAINS:Bucket:UnsafeObjectName');
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+            testCase.verifyEqual(listEntryNames(folderFixture.Folder), "target", ...
+                'Nothing may be created next to the target folder.');
+            testCase.verifyEmpty(listEntryNames(targetFolder));
+        end
+
+        function testGetBucketObjectAcceptsNestedNameBelowTargetFolder(testCase, NestedObjectName)
+            % A missing object ends the call after downloadFile has created
+            % the folders of the name, before any transfer starts.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFolder = fullfile(folderFixture.Folder, "target");
+            mkdir(targetFolder)
+            testCase.Client.addResponse('NotFound', 'Object not found');
+
+            testCase.verifyError(...
+                @() ebrains.bucket.getBucketObject("my-bucket", NestedObjectName, ...
+                    TargetFolder=targetFolder, Client=testCase.Client), ...
+                'EBRAINS:Bucket:getDownloadUrl:NotFound');
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/a/b.txt');
+            testCase.verifyTrue(isfolder(fullfile(targetFolder, "a")));
+            testCase.verifyEqual(listEntryNames(folderFixture.Folder), "target");
         end
 
         %% getFileSize
@@ -583,6 +635,12 @@ function fileNames = listFileNames(folder)
 % listFileNames - Names of the files directly in a folder, as a string row
     listing = dir(folder);
     fileNames = string({listing(~[listing.isdir]).name});
+end
+
+function entryNames = listEntryNames(folder)
+% listEntryNames - Names of the files and folders directly in a folder, as a string row
+    listing = dir(folder);
+    entryNames = setdiff(string({listing.name}), [".", ".."], "stable");
 end
 
 function [wasSuccess, response] = failLikeHttpClient(url) %#ok<STOUT> the outputs of an uploader

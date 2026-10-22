@@ -29,6 +29,17 @@ function filePath = getBucketObject(bucketName, objectName, options)
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
+    objectName = ebrains.bucket.internal.removeLeadingSlash(objectName);
+
+    % The name decides where the file is written below the target folder,
+    % and downloadFile creates the folders of that path before it asks for
+    % the object, so a name that could leave the folder is refused first.
+    if ~ebrains.bucket.internal.isSafeRelativePath(objectName)
+        error('EBRAINS:Bucket:UnsafeObjectName', ...
+            ['The object name "%s" could lead outside the target folder. Give a name without ' ...
+             '"." or ".." segments, doubled or trailing slashes, or backslashes.'], objectName)
+    end
+
     filePath = fullfile(options.TargetFolder, objectName);
 
     % downloadFile creates the folders that are part of the object name and
