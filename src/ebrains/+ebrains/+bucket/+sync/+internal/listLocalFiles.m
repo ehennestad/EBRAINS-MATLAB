@@ -1,4 +1,4 @@
-function [files, unreadableFolders] = listLocalFiles(rootFolder)
+function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 % listLocalFiles - List the files below a local folder for a sync
 %
 %   files = ebrains.bucket.sync.internal.listLocalFiles(rootFolder) returns a
@@ -16,6 +16,13 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
 %   without an error, so the table lacks them, and a caller that deletes
 %   what the table lacks must check this output first.
 %
+%   [files, unreadableFolders, linkedFolders] = ebrains.bucket.sync.internal.listLocalFiles(rootFolder)
+%   also returns the subfolders that are symbolic links, in the same form.
+%   Their content is not listed: it is stored outside rootFolder, where a
+%   sync must not delete files, and a caller that deletes what the table
+%   lacks must check this output too. Links are found with Java; without
+%   it, linked folders are listed as ordinary folders.
+%
 %   A folder that does not exist has no files, so the table is empty. A
 %   root folder that cannot be read is an error.
 %
@@ -28,6 +35,7 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
     if ~isfolder(rootFolder)
         files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
         unreadableFolders = strings(0, 1);
+        linkedFolders = strings(0, 1);
         return
     end
 
@@ -49,12 +57,27 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
     folders = reshape(string({listing.folder}), [], 1);
     isFolderEntry = reshape([listing.isdir], [], 1);
 
+    % dir follows a linked folder, so the entries below one are dropped
+    isSubfolder = isFolderEntry & names ~= "." & names ~= "..";
+    subfolders = fullfile(folders(isSubfolder), names(isSubfolder));
+    linkedAbsolute = subfolders(isSymbolicLink(subfolders));
+    isBelowLink = false(size(folders));
+    for linkedFolder = reshape(linkedAbsolute, 1, [])
+        isBelowLink = isBelowLink | folders == linkedFolder | startsWith(folders, linkedFolder + filesep);
+    end
+    listing = listing(~isBelowLink);
+    names = names(~isBelowLink);
+    folders = folders(~isBelowLink);
+    isFolderEntry = isFolderEntry(~isBelowLink);
+    linkedFolders = toRelativePaths(linkedAbsolute, absoluteRoot);
+
     % Every folder whose content dir could read has a "." entry in the
     % listing. A subfolder without one could not be read.
     readFolders = folders(names == ".");
     isSubfolder = isFolderEntry & names ~= "." & names ~= "..";
     subfolders = fullfile(folders(isSubfolder), names(isSubfolder));
-    unreadableFolders = toRelativePaths(subfolders(~ismember(subfolders, readFolders)), absoluteRoot);
+    isUnread = ~ismember(subfolders, readFolders) & ~ismember(subfolders, linkedAbsolute);
+    unreadableFolders = toRelativePaths(subfolders(isUnread), absoluteRoot);
 
     isFile = ~isFolderEntry;
     absolutePaths = fullfile(folders(isFile), names(isFile));
@@ -63,6 +86,17 @@ function [files, unreadableFolders] = listLocalFiles(rootFolder)
     modifiedTimes = fileModifiedTimes(absolutePaths, reshape([listing(isFile).datenum], [], 1));
 
     files = ebrains.bucket.sync.internal.makeFileTable(paths, [listing(isFile).bytes], modifiedTimes);
+end
+
+function tf = isSymbolicLink(absolutePaths)
+% isSymbolicLink - Whether each path is a symbolic link, false for all without Java
+    tf = false(size(absolutePaths));
+    if ~usejava('jvm')
+        return
+    end
+    for i = 1:numel(absolutePaths)
+        tf(i) = java.nio.file.Files.isSymbolicLink(java.io.File(char(absolutePaths(i))).toPath());
+    end
 end
 
 function relativePaths = toRelativePaths(absolutePaths, absoluteRoot)

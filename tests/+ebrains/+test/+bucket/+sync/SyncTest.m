@@ -258,6 +258,20 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(unreadableFolders, "sub/locked");
         end
 
+        function testListLocalFilesDoesNotFollowLinkedFolders(testCase)
+            outside = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            writeFile(fullfile(outside, "elsewhere.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
+            makeFolderLink(testCase, outside, fullfile(testCase.Folder, "sub", "link"));
+
+            [files, unreadableFolders, linkedFolders] = ...
+                ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+
+            testCase.verifyEqual(files.Path, "top.txt");
+            testCase.verifyEmpty(unreadableFolders);
+            testCase.verifyEqual(linkedFolders, "sub/link");
+        end
+
         %% listRemoteFiles
         function testListRemoteFilesStripsPrefixAndLeavesOutFolders(testCase)
             addListing(testCase.Client, makeObjects( ...
@@ -634,6 +648,25 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
         end
 
+        function testSyncFromBucketLinkedFolderHoldsBackDeletions(testCase)
+            % A deletion below the link would delete the file it points to
+            outside = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            writeFile(fullfile(outside, "elsewhere.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "extra.txt"), "abc");
+            makeFolderLink(testCase, outside, fullfile(testCase.Folder, "link"));
+            addListing(testCase.Client, makeObjects("a.txt", 3, "2000-01-01T00:00:00"));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Delete=true, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:LinkedFolder');
+
+            testCase.verifyEqual(actions.Path, ["a.txt"; "extra.txt"]);
+            testCase.verifyEqual(actions.Status, [""; "skipped"]);
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "extra.txt")));
+            testCase.verifyTrue(isfile(fullfile(outside, "elsewhere.txt")));
+        end
+
         function testSyncFromBucketGivesDownloadsTheTimeOfTheirObject(testCase)
             % With the time of its object, the file is unchanged to a sync
             % back to the bucket
@@ -748,7 +781,7 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "notes*.md")));
         end
 
-        function testSyncFromBucketExcludesWithoutCaseWhereNamesAreMatchedWithout(testCase)
+        function testSyncFromBucketMatchesExcludesWithoutCaseLikeNames(testCase)
             % On a folder that ignores case, an object whose name differs
             % only in case from an excluded local file must not be
             % downloaded over it.
@@ -923,6 +956,18 @@ function makeUnreadable(testCase, folder)
     testCase.assertEqual(status, 0, output);
     testCase.addTeardown(@() system("chmod 755 '" + folder + "'"));
     testCase.assumeEmpty(dir(folder), 'This user can read a folder without read permission.');
+end
+
+function makeFolderLink(testCase, target, linkPath)
+% makeFolderLink - Create a symbolic link to a folder, which the sync finds through Java
+    testCase.assumeFalse(ispc, 'Symbolic links are created with ln, which Windows does not have.');
+    testCase.assumeTrue(usejava('jvm'), 'Linked folders are found through Java.');
+    folder = fileparts(linkPath);
+    if ~isfolder(folder)
+        mkdir(folder)
+    end
+    [status, output] = system("ln -s '" + target + "' '" + linkPath + "'");
+    testCase.assertEqual(status, 0, output);
 end
 
 function makeFileUnreadable(testCase, filePath)

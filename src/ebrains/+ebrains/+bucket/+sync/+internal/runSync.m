@@ -40,7 +40,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     % 1. List both sides
-    [localFiles, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    [localFiles, unreadableFolders, linkedFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
 
     % On a file system that ignores case, such as the default ones of
@@ -64,10 +64,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % the listing, so the plan would take them for deleted or extraneous.
     % Nothing is deleted then, the way rsync holds back deletions after an
     % error while listing. A folder that is excluded does not count.
-    unreadableFolderTable = ebrains.bucket.sync.internal.excludeFiles( ...
-        ebrains.bucket.sync.internal.makeFileTable(unreadableFolders, zeros(size(unreadableFolders))), ...
-        excludePatterns, IgnoreCase=ignoreCase);
-    unreadableFolders = unreadableFolderTable.Path;
+    unreadableFolders = excludePaths(unreadableFolders, excludePatterns, ignoreCase);
     deletionHoldBack = "";
     if ~isempty(unreadableFolders)
         warning('EBRAINS:Bucket:Sync:UnreadableFolder', ...
@@ -75,6 +72,20 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
              'Their files could not be listed, so nothing is deleted.'], ...
             numel(unreadableFolders), localFolder, unreadableFolders(1));
         deletionHoldBack = "Not deleted, since a local folder could not be read.";
+    end
+
+    % The files of a linked folder are stored elsewhere, so they are not
+    % synced, and are missing from the listing in the same way.
+    linkedFolders = excludePaths(linkedFolders, excludePatterns, ignoreCase);
+    if ~isempty(linkedFolders)
+        warning('EBRAINS:Bucket:Sync:LinkedFolder', ...
+            ['%d folder(s) below "%s" are symbolic links, for example "%s". ' ...
+             'Their files are not synced, so nothing is deleted. Exclude the ' ...
+             'links to sync the rest with deletions.'], ...
+            numel(linkedFolders), localFolder, linkedFolders(1));
+        if deletionHoldBack == ""
+            deletionHoldBack = "Not deleted, since a local folder is a symbolic link.";
+        end
     end
 
     if ignoreCase
@@ -245,6 +256,14 @@ function prefix = normalizePrefix(prefix)
     if prefix ~= "" && ~endsWith(prefix, "/")
         prefix = prefix + "/";
     end
+end
+
+function paths = excludePaths(paths, excludePatterns, ignoreCase)
+% excludePaths - Paths that the exclude patterns leave in
+    pathTable = ebrains.bucket.sync.internal.excludeFiles( ...
+        ebrains.bucket.sync.internal.makeFileTable(paths, zeros(size(paths))), ...
+        excludePatterns, IgnoreCase=ignoreCase);
+    paths = pathTable.Path;
 end
 
 function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel, ignoreCase)
