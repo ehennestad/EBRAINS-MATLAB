@@ -255,7 +255,7 @@ function files = makeFiles(paths, bytes)
 end
 
 function addListing(client, names, bytes, lastModified)
-% addListing - Queue the stat and the single page of a listing
+% addListing - Queue the single page of a listing, and the empty page that ends it
     arguments
         client
         names string
@@ -268,8 +268,8 @@ function addListing(client, names, bytes, lastModified)
         'last_modified', char(lastModified), ...
         'hash', '', ...
         'content_type', 'application/octet-stream');
-    client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0));
     client.addResponse('OK', struct('objects', objects));
+    client.addResponse('OK', struct('objects', []));
 end
 
 function [wasSuccess, response] = acceptUpload(varargin)

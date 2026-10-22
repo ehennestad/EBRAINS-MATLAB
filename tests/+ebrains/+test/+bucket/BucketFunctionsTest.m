@@ -458,8 +458,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         function testCreateVirtualBucketCreatesEmptyFilesAndFolders(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
-            testCase.Client.addResponse('OK', makeStat(3, 0));
             testCase.Client.addResponse('OK', makePage(["a.txt", "sub/b.txt", "emptydir/"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -482,8 +482,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 "cost $5.txt", ...
                 "o'brien.txt", ...
                 "nested folder/deeper $dir/it's here.txt"];
-            testCase.Client.addResponse('OK', makeStat(numel(objectNames), 0));
             testCase.Client.addResponse('OK', makePage(objectNames));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -507,8 +507,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             fileID = fopen(fullfile(rootPath, "a.txt"), "w");
             fprintf(fileID, "downloaded");
             fclose(fileID);
-            testCase.Client.addResponse('OK', makeStat(2, 0));
             testCase.Client.addResponse('OK', makePage(["a.txt", "b.txt"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -521,8 +521,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             % names, so a name without an extension is still a file.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
-            testCase.Client.addResponse('OK', makeStat(2, 0));
             testCase.Client.addResponse('OK', makePage(["README", "sub/LICENSE"]));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -541,8 +541,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'name', {'markedFolder'; 'markedFolder/notes.txt'}, ...
                 'bytes', {0; 0}, ...
                 'content_type', {'application/directory'; 'text/plain'}));
-            testCase.Client.addResponse('OK', makeStat(2, 0));
             testCase.Client.addResponse('OK', page);
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -561,8 +561,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'name', {'Sbj001'; 'Sbj001/A160216'; 'Sbj001/A160216/trace.ibw'; 'notes'}, ...
                 'bytes', {0; 0; 0; 0}, ...
                 'content_type', {'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'; 'binary/octet-stream'}));
-            testCase.Client.addResponse('OK', makeStat(4, 0));
             testCase.Client.addResponse('OK', page);
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client);
 
@@ -579,7 +579,6 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             % prefix itself is the root.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
-            testCase.Client.addResponse('OK', makeStat(4, 0));
             testCase.Client.addResponse('OK', makePage(["set-a/", "set-a/x.txt", "set-a/sub/y.txt"]));
             testCase.Client.addResponse('OK', makePage(string.empty));
 
@@ -595,8 +594,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket"); %#ok<NASGU> read by evalc below
-            testCase.Client.addResponse('OK', makeStat(1, 0));
             testCase.Client.addResponse('OK', makePage("a.txt"));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             output = evalc(...
                 'ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client, Verbose=true)');
@@ -612,8 +611,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
             objectNames = ["../escape.txt", "sub/../../escape.sh", "a//b.txt", "ok.txt", "sub/ok.txt"];
-            testCase.Client.addResponse('OK', makeStat(numel(objectNames), 0));
             testCase.Client.addResponse('OK', makePage(objectNames));
+            testCase.Client.addResponse('OK', makePage(string.empty));
 
             testCase.verifyWarning( ...
                 @() ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client), ...
@@ -633,7 +632,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
             testCase.verifyError(...
                 @() ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client), ...
-                'EBRAINS:Bucket:getBucketStat:NotFound');
+                'EBRAINS:Bucket:listObjects:NotFound');
         end
     end
 end
