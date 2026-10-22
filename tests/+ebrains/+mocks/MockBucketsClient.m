@@ -9,8 +9,15 @@ classdef MockBucketsClient < ebrains.bucket.api.BucketsClient & ebrains.mocks.Mo
     %   mockClient.addResponse('OK', struct('objects_count', 3, 'bytes', 1024));
     %   bucketStat = mockClient.getBucketStat('my-bucket');
 
+    properties (SetAccess = private)
+        % Number of calls to getDefaultHeader, where the real client asks
+        % the token manager for a token
+        DefaultHeaderCallCount (1,1) double = 0
+    end
+
     methods (Access = protected)
         function headers = getDefaultHeader(obj)
+            obj.DefaultHeaderCallCount = obj.DefaultHeaderCallCount + 1;
             headers = obj.getMockHeaders();
         end
 

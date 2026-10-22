@@ -47,8 +47,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 bucketName (1,1) string {mustBeNonzeroLengthText}
             end
 
-            request = obj.initializeRequestMessage("GET");
             apiUri = obj.buildApiUri(["buckets", bucketName, "stat"]);
+            request = obj.initializeRequestMessage("GET");
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
@@ -81,8 +81,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 optionalParams.limit (1,1) int32
             end
 
-            request = obj.initializeRequestMessage("GET");
             apiUri = obj.buildApiUri(["buckets", bucketName], struct.empty, optionalParams);
+            request = obj.initializeRequestMessage("GET");
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
@@ -115,9 +115,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             % itself instead of answering with the temporary URL.
             requiredParams = struct('redirect', false);
 
-            request = obj.initializeRequestMessage("GET");
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)], ...
                 requiredParams, optionalParams);
+            request = obj.initializeRequestMessage("GET");
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
@@ -147,8 +147,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
             warningCleanup = onCleanup(@() warning(warnState));
 
-            request = obj.initializeRequestMessage("PUT");
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
+            request = obj.initializeRequestMessage("PUT");
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode == "OK"
@@ -183,8 +183,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 
             payload = struct('rename', struct('target_name', targetName));
 
-            request = obj.initializeRequestMessage("PATCH", JSONPayload=jsonencode(payload));
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
+            request = obj.initializeRequestMessage("PATCH", JSONPayload=jsonencode(payload));
             response = obj.sendRequest(request, apiUri);
 
             if response.StatusCode ~= "OK"
@@ -206,8 +206,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 objectName (1,1) string {mustBeNonzeroLengthText}
             end
 
-            request = obj.initializeRequestMessage("DELETE");
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
+            request = obj.initializeRequestMessage("DELETE");
             response = obj.sendRequest(request, apiUri);
 
             % A single object is deleted at once (200); a folder deletion is
