@@ -98,6 +98,14 @@ classdef VirtualBucketBrowser < handle
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
             end
 
+            % The page and MATLAB talk through events of the uihtml
+            % component, which R2023a added. The check comes before the
+            % folder is created, so an older release changes nothing.
+            if isMATLABReleaseOlderThan("R2023a")
+                error('EBRAINS:Bucket:UnsupportedRelease', ...
+                    'The virtual bucket browser requires MATLAB R2023a or later.')
+            end
+
             isNewFolder = ~isfolder(localFolder);
             if isNewFolder
                 mkdir(localFolder)
@@ -209,8 +217,15 @@ classdef VirtualBucketBrowser < handle
                 end
             end
 
+            % A file that cannot be downloaded does not stop the others: an
+            % empty file is taken for a placeholder until the bucket is
+            % listed, and it may not stand for any object. Only Cancel in
+            % the progress dialog stops the batch.
             restoreControls = app.setBusy();  %#ok<NASGU>
             nFiles = height(files);
+            failureMessages = strings(nFiles, 1);
+            isFailed = false(nFiles, 1);
+            isCancelled = false;
             for i = 1:nFiles
                 path = files.Path(i);
                 try
@@ -218,16 +233,27 @@ classdef VirtualBucketBrowser < handle
                         DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
                         Downloader=app.Downloader);
                 catch exception
-                    app.Message = sprintf("%d of %d files were downloaded.", i - 1, nFiles);
-                    app.refresh()
-                    message = sprintf("%d of %d files were downloaded. ""%s"" could not be downloaded:\n\n%s", ...
-                        i - 1, nFiles, path, exception.message);
-                    uialert(app.UIFigure, message, "Download stopped")
-                    return
+                    isFailed(i) = true;
+                    failureMessages(i) = exception.message;
+                    if exception.identifier == "webprogress:download:Cancelled"
+                        isCancelled = true;
+                        break
+                    end
                 end
             end
-            app.Message = "Downloaded " + countText(nFiles, "file") + ".";
+
+            nDownloaded = sum(~isFailed(1:i));
+            app.Message = "Downloaded " + countText(nDownloaded, "file") + ".";
+            if nDownloaded < nFiles
+                app.Message = sprintf("%d of %d files were downloaded.", nDownloaded, nFiles);
+            end
             app.refresh()
+            if isCancelled
+                uialert(app.UIFigure, app.Message, "Download cancelled", Icon="info")
+            elseif any(isFailed)
+                uialert(app.UIFigure, failureReport(files.Path(isFailed), failureMessages(isFailed), nFiles), ...
+                    "Some files were not downloaded")
+            end
         end
 
         function makePathsOnlineOnly(app, paths)
@@ -439,6 +465,21 @@ function text = formatBytes(bytes)
         text = sprintf("%d B", bytes);
     else
         text = sprintf("%.1f %s", bytes / 1024^exponent, units(exponent + 1));
+    end
+end
+
+function message = failureReport(failedPaths, failureMessages, nFiles)
+% failureReport - Say which files of a batch could not be downloaded, and why
+%
+%   Only the first few are named, so that the alert stays readable.
+    maxNamed = 5;
+    nFailed = numel(failedPaths);
+    nNamed = min(nFailed, maxNamed);
+    lines = compose("""%s"": %s", failedPaths(1:nNamed), failureMessages(1:nNamed));
+    message = sprintf("%d of %d files could not be downloaded:", nFailed, nFiles) + newline + newline + ...
+        join(lines, newline + newline);
+    if nFailed > nNamed
+        message = message + newline + newline + sprintf("and %d more.", nFailed - nNamed);
     end
 end
 

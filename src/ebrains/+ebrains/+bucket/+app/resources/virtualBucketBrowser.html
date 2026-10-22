@@ -807,6 +807,8 @@ function wireEvents() {
     if (!event.target.closest("#menu")) hideMenu();
   });
   document.addEventListener("keydown", (event) => {
+    // The host takes no requests while it is busy, as with pointer events
+    if (document.body.classList.contains("busy")) return;
     const isTyping = event.target.tagName === "INPUT" && event.target.type === "text";
     if (event.key === "Escape") {
       hideMenu();

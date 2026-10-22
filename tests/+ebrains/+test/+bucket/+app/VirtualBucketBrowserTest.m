@@ -93,6 +93,21 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/sub/b.txt');
         end
 
+        function testDownloadGoesOnPastAFileThatFails(testCase)
+            % Before a listing, an empty file that is no object counts as
+            % a placeholder, and its failed download must not stop the rest
+            writeFile(fullfile(testCase.Folder, "pkg", "__init__.py"), "");
+            writeFile(fullfile(testCase.Folder, "pkg", "data.bin"), "");
+            testCase.openApp(testCase.Folder);
+            testCase.Client.addResponse('NotFound', "Object not found");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", ["pkg/__init__.py", "pkg/data.bin"])
+
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "pkg", "data.bin")), 'abc');
+            testCase.verifyEqual(testCase.App.Files.State, ["OnlineOnly"; "Downloaded"]);
+        end
+
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             testCase.openApp(testCase.Folder);
@@ -132,15 +147,15 @@ function sendPageEvent(name, paths)
 end
 
 function addListing(client, names, bytes)
-% addListing - Queue the stat and the single page of a listing
+% addListing - Queue the single page of a listing, and the empty page that ends it
     objects = struct( ...
         'name', cellstr(reshape(names, [], 1)), ...
         'bytes', num2cell(reshape(bytes, [], 1)), ...
         'last_modified', '2000-01-01T00:00:00', ...
         'hash', '', ...
         'content_type', 'application/octet-stream');
-    client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0));
     client.addResponse('OK', struct('objects', objects));
+    client.addResponse('OK', struct('objects', []));
 end
 
 function writeAbc(target, varargin)
