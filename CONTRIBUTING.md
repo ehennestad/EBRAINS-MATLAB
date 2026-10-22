@@ -25,4 +25,4 @@ testToolbox()
 - **`Graphical`** tests open figure windows, and are meant to be run locally.
 
 ## Checks on a pull request
-The "Test code" workflow runs code analysis and the unit tests with coverage. "Run Codespell" checks spelling, with the settings in `tools/.codespellrc`.
+The "Run tests" workflow runs code analysis and the unit tests with coverage. "Run Codespell" checks spelling, with the settings in `tools/.codespellrc`.
