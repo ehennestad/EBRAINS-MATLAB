@@ -16,8 +16,11 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %       part that is missing, and the manifest is removed once the object
 %       has been assembled. The upload starts over when the size or the
 %       modification time of the file, or the part size, differs from
-%       the one recorded. When the manifest cannot be written, the upload
-%       goes on without it and cannot be resumed, and a warning says so.
+%       the one recorded, or when the Data Proxy no longer knows the
+%       recorded upload. Any other error of a resumed upload keeps the
+%       manifest, and names it and Resume=false as the ways to start
+%       over. When the manifest cannot be written, the upload goes on
+%       without it and cannot be resumed, and a warning says so.
 %
 %       A part that the store refuses is sent again through a new
 %       temporary URL, three attempts in all, before the upload is given
@@ -69,8 +72,6 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
         options.Uploader (1,1) function_handle = @ebrains.external.webprogress.upload
     end
 
-    maxAttemptsPerPart = 3;
-
     % A relative path would be resolved by Java against a folder other
     % than the current folder of MATLAB.
     if isMATLABReleaseOlderThan("R2025a")
@@ -81,10 +82,7 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
     end
 
     fileInfo = dir(sourceFile);
-    fileSizeBytes = fileInfo.bytes;
-    numParts = ceil(fileSizeBytes / options.PartSize);
-
-    manifest = newManifest(bucketName, objectName, sourceFile, fileSizeBytes, options.PartSize);
+    manifest = newManifest(bucketName, objectName, sourceFile, fileInfo.bytes, options.PartSize);
     manifestFile = "";
     if options.Resume
         manifestFile = getManifestFile(options.ResumeFolder, manifest);
@@ -94,10 +92,79 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
     end
 
     if manifest.UploadId == ""
+        uploadFromManifest(manifest, manifestFile, options)
+    else
+        resumeUpload(manifest, manifestFile, options)
+    end
+end
+
+function resumeUpload(manifest, manifestFile, options)
+% resumeUpload - Continue the upload of the manifest, or start over when the Data Proxy no longer knows it
+%
+%   The API of the Data Proxy states no lifetime for an upload that is
+%   not completed, and no answer of its own for an upload id the proxy
+%   does not know. A 404 from the part-URL request or the completion of
+%   a resumed upload is taken as the only sign that the recorded upload
+%   is gone: the manifest is removed and a new upload sends every part.
+%   Any other error keeps the manifest, so that the next call resumes
+%   again, and names the manifest and Resume=false as the ways to start
+%   over instead.
+
+    try
+        uploadFromManifest(manifest, manifestFile, options)
+    catch exception
+        if ~isUnknownUploadError(exception)
+            throw(addStartOverHint(exception, manifestFile))
+        end
+        delete(manifestFile)
+        manifest.UploadId = "";
+        manifest.PartETags = strings(1, 0);
+        uploadFromManifest(manifest, manifestFile, options)
+    end
+end
+
+function tf = isUnknownUploadError(exception)
+% isUnknownUploadError - Whether the Data Proxy answered a request about the upload id with 404
+%
+%   The identifiers are the ones ebrains.bucket.api.BucketsClient gives
+%   a refused part-URL request and a refused completion.
+
+    unknownUploadIds = "EBRAINS:Bucket:" + ["getMultipartUploadUrl", "completeMultipartUpload"] + ":NotFound";
+    tf = any(string(exception.identifier) == unknownUploadIds);
+end
+
+function exception = addStartOverHint(exception, manifestFile)
+% addStartOverHint - Name the manifest of a resumed upload, and Resume=false, in an error
+%
+%   Returns an MException with the identifier and the causes of the one
+%   given, whose message ends with how to start the upload over.
+
+    message = sprintf(['%s\nThe upload was resumed from the manifest "%s". ' ...
+        'To start over instead, delete the manifest or pass Resume=false.'], ...
+        exception.message, manifestFile);
+    hintedException = MException(exception.identifier, "%s", message);
+    for i = 1:numel(exception.cause)
+        hintedException = hintedException.addCause(exception.cause{i});
+    end
+    exception = hintedException;
+end
+
+function uploadFromManifest(manifest, manifestFile, options)
+% uploadFromManifest - Send the parts the manifest lacks and complete the upload
+%
+%   An upload whose manifest has no id is started first. The manifest
+%   file is updated after each accepted part and removed once the object
+%   has been assembled; it is "" when progress is not recorded.
+
+    maxAttemptsPerPart = 3;
+    fileSizeBytes = manifest.FileSizeBytes;
+    numParts = ceil(fileSizeBytes / options.PartSize);
+
+    if manifest.UploadId == ""
         % Written before the upload is started, so that an upload that
         % cannot be resumed is known before the Data Proxy holds parts of it.
         manifestFile = tryWriteManifest(manifestFile, manifest);
-        manifest.UploadId = options.Client.initiateMultipartUpload(bucketName, objectName);
+        manifest.UploadId = options.Client.initiateMultipartUpload(manifest.BucketName, manifest.ObjectName);
         manifestFile = tryWriteManifest(manifestFile, manifest);
     end
 
@@ -105,15 +172,15 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
     % out, so an error leaves no dialog open. The parts of a resumed
     % upload count as done before the first request.
     monitor = ebrains.external.webprogress.MultipartProgressMonitor(fileSizeBytes, ...
-        DisplayMode=options.DisplayMode, Figure=options.Figure, Filename=objectName);
+        DisplayMode=options.DisplayMode, Figure=options.Figure, Filename=manifest.ObjectName);
     monitorCleanup = onCleanup(@() delete(monitor));
     numCompletedParts = numel(manifest.PartETags);
     monitor.addCompletedBytes(min(numCompletedParts*options.PartSize, fileSizeBytes))
 
     transfer = struct( ...
-        "BucketName", bucketName, ...
-        "ObjectName", objectName, ...
-        "SourceFile", sourceFile, ...
+        "BucketName", manifest.BucketName, ...
+        "ObjectName", manifest.ObjectName, ...
+        "SourceFile", manifest.SourceFile, ...
         "UploadId", manifest.UploadId, ...
         "NumParts", numParts, ...
         "Client", options.Client, ...
@@ -135,7 +202,8 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
         manifestFile = tryWriteManifest(manifestFile, manifest);
     end
 
-    options.Client.completeMultipartUpload(bucketName, objectName, manifest.UploadId, partETags);
+    options.Client.completeMultipartUpload(manifest.BucketName, manifest.ObjectName, ...
+        manifest.UploadId, partETags);
 
     if manifestFile ~= "" && isfile(manifestFile)
         delete(manifestFile)

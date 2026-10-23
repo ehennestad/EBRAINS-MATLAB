@@ -14,8 +14,10 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       multipart upload is recorded in a manifest file in ResumeFolder,
 %       and a later call with the same source file and object sends only
 %       the parts that are still missing, provided the size and the
-%       modification time of the file are unchanged. The manifest is
-%       removed once the object has been assembled.
+%       modification time of the file are unchanged and the Data Proxy
+%       still knows the upload. The manifest is removed once the object
+%       has been assembled. An error of a resumed upload names the
+%       manifest; deleting it, or Resume=false, starts the upload over.
 %
 %       ebrains.bucket.uploadFile(..., Name=Value) sets the options below.
 %

@@ -587,6 +587,90 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyNumElements(listFileNames(testCase.ResumeFolder), 1);
         end
 
+        function testUploadFileStartsOverWhenTheProxyNoLongerKnowsTheUpload(testCase)
+            % A 404 from the part-URL request for the recorded upload id
+            % is the one sign that the upload is gone from the Data Proxy.
+            sourceFile = makeSourceFile(testCase, 25);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            queueMultipartResponses(testCase.Client, 3, "upload-2");
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            % The refused request for part 2 of the recorded upload, then
+            % a new upload that sends every part
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 6);
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            request = testCase.Client.getRequest(2);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart'));
+            testCase.Client.verifyRequestURL(3, '/data/big.bin/multipart/upload-2/1');
+            testCase.Client.verifyRequestURL(5, '/data/big.bin/multipart/upload-2/3');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 10, 20]);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(6), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileStartsOverWhenTheResumedCompletionIsNotFound(testCase)
+            % With every part recorded, the completion is the first
+            % request of the resumed upload, and its 404 says the
+            % upload is gone.
+            sourceFile = makeSourceFile(testCase, 25);
+            interruptUploadAtCompletion(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            queueMultipartResponses(testCase.Client, 3, "upload-2");
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 6);
+            request = testCase.Client.getRequest(1);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart/upload-1'));
+            request = testCase.Client.getRequest(2);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart'));
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 10, 20]);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(6), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileKeepsTheManifestWhenAResumedUploadFailsOtherwise(testCase)
+            % Any refusal but a 404 may pass, so the recorded upload is
+            % kept for the next call, and the error says how to start
+            % over instead.
+            sourceFile = makeSourceFile(testCase, 25);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            manifestFile = fullfile(testCase.ResumeFolder, listFileNames(testCase.ResumeFolder));
+            testCase.Client.reset();
+            testCase.Client.addResponse('InternalServerError', struct('detail', 'Internal Server Error'));
+            spy = ebrains.mocks.SpyUploader();
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+                    DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()));
+
+            testCase.assertNotEmpty(exception, "Expected uploadFile to throw.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:getMultipartUploadUrl:InternalServerError');
+            testCase.verifySubstring(exception.message, 'Internal Server Error');
+            testCase.verifySubstring(exception.message, char(manifestFile));
+            testCase.verifySubstring(exception.message, 'Resume=false');
+            % No new upload is started, and the manifest still holds the
+            % recorded upload
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.verifyEmpty(spy.Calls);
+            manifest = jsondecode(fileread(manifestFile));
+            testCase.verifyEqual(manifest.UploadId, 'upload-1');
+            testCase.verifyEqual(string(manifest.PartETags), """first-etag""");
+        end
+
         function testUploadFileFromAReadOnlyFolder(testCase)
             sourceFile = makeSourceFile(testCase, 25);
             makeReadOnly(testCase, fileparts(sourceFile));
@@ -996,11 +1080,17 @@ function sourceFile = makeSourceFile(testCase, numBytes)
     fclose(fileId);
 end
 
-function queueMultipartResponses(client, numPartUrls)
+function queueMultipartResponses(client, numPartUrls, uploadId)
 % queueMultipartResponses - Responses of a multipart upload the Data Proxy accepts
 %
 %   The upload id, one temporary URL per part request, and the completion.
-    client.addResponse('OK', struct('uploadId', 'upload-1'));
+    arguments
+        client (1,1) ebrains.mocks.MockBucketsClient
+        numPartUrls (1,1) double
+        uploadId (1,1) string = "upload-1"
+    end
+
+    client.addResponse('OK', struct('uploadId', uploadId));
     for partRequest = 1:numPartUrls
         client.addResponse('OK', struct('url', "https://store.example.org/part/" + partRequest));
     end
@@ -1021,6 +1111,24 @@ function interruptUploadAfterFirstPart(testCase, sourceFile, objectName)
         MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
         DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
         'EBRAINS:Bucket:UploadFailed');
+end
+
+function interruptUploadAtCompletion(testCase, sourceFile, objectName)
+% interruptUploadAtCompletion - Leave a manifest with every part accepted, as a failed completion does
+%
+%   The store accepts the three parts of the upload with id "upload-1"
+%   and the Data Proxy refuses the completion with 500.
+    testCase.Client.addResponse('OK', struct('uploadId', 'upload-1'));
+    for partRequest = 1:3
+        testCase.Client.addResponse('OK', struct('url', "https://store.example.org/part/" + partRequest));
+    end
+    testCase.Client.addResponse('InternalServerError', struct('detail', 'Internal Server Error'));
+    spy = ebrains.mocks.SpyUploader();
+
+    testCase.assertError(@() ebrains.bucket.uploadFile("my-bucket", objectName, sourceFile, ...
+        MultipartThreshold=20, PartSize=10, ResumeFolder=testCase.ResumeFolder, ...
+        DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+        'EBRAINS:Bucket:completeMultipartUpload:InternalServerError');
 end
 
 function shiftModificationTime(filePath, offsetSeconds)
