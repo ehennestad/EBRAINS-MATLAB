@@ -12,8 +12,10 @@ function tf = isTimeText(texts)
 
     tf = matches(texts, regexpPattern("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"));
     if any(tf, "all")
-        % datetime rolls a day that does not exist over into the next
-        % month, so the time must give the text back.
+        % A day that does not exist, such as February 30, must not pass.
+        % Whether datetime refuses it (NaT, written back as "") or reads
+        % it as a day of the next month, the time does not give the text
+        % back.
         times = ebrains.bucket.internal.metadata.parseTimes(texts(tf));
         tf(tf) = ebrains.bucket.internal.metadata.formatTimes(times) == texts(tf);
     end

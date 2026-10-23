@@ -23,7 +23,16 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             "PrefixWithoutSlash", '{"format_version": 1, "bucket": "b", "prefix": "set", "listed_at": null}', ...
             "PrefixThatLeaves", '{"format_version": 1, "bucket": "b", "prefix": "../set/", "listed_at": null}', ...
             "NoListedAt", '{"format_version": 1, "bucket": "b", "prefix": ""}', ...
-            "ListedAtWithOffset", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-01-02T03:04:05+00:00"}')
+            "ListedAtWithOffset", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-01-02T03:04:05+00:00"}', ...
+            "ListedAtOnFebruary30", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-02-30T00:00:00Z"}')
+
+        % Texts of a manifest whose only times are of a day that does not exist
+        ManifestOfImpossibleDates = struct( ...
+            "OneRow", "path,bytes,modified_time,hash" + newline + ...
+                "a.txt,1,2024-02-30T00:00:00Z," + newline, ...
+            "TwoRows", "path,bytes,modified_time,hash" + newline + ...
+                "a.txt,1,2024-02-30T00:00:00Z," + newline + ...
+                "b.txt,1,2024-02-30T00:00:00Z," + newline)
     end
 
     methods (TestMethodSetup)
@@ -54,6 +63,19 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
         function testManifestWithoutHeaderIsRejected(testCase)
             testCase.verifyError(@() ebrains.bucket.internal.metadata.parseManifest("a.txt,1,,"), ...
                 'EBRAINS:Bucket:InvalidManifest');
+        end
+
+        function testManifestOfImpossibleDatesIsRefusedAtItsLine(testCase, ManifestOfImpossibleDates)
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(ManifestOfImpossibleDates);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifyThat(exception.message, ...
+                matlab.unittest.constraints.StartsWithSubstring("Line 2: "));
         end
 
         function testBucketInfoRoundTripKeepsUnknownFields(testCase)
