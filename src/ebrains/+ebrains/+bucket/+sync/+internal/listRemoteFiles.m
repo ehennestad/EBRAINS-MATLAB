@@ -1,4 +1,4 @@
-function files = listRemoteFiles(bucketName, prefix, client)
+function [files, listing] = listRemoteFiles(bucketName, prefix, client, options)
 % listRemoteFiles - List the files of a bucket, or of a folder in it, for a sync
 %
 %   files = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix,
@@ -7,7 +7,9 @@ function files = listRemoteFiles(bucketName, prefix, client)
 %   ebrains.bucket.sync.internal.makeFileTable. Paths are relative to prefix,
 %   which is "" for the whole bucket or a folder name that ends with "/".
 %   Objects that mark folders are left out (see
-%   ebrains.bucket.internal.isFolderObject).
+%   ebrains.bucket.internal.isFolderObject), and so are objects below a
+%   folder ".ebrains" of the prefix, the name of the folder that describes
+%   a virtual bucket.
 %
 %   Objects whose names could not be used as paths below a folder (a ".."
 %   segment, say) are left out with a warning; see
@@ -22,19 +24,32 @@ function files = listRemoteFiles(bucketName, prefix, client)
 %   segment checksums. A smaller object uploaded in segments reports such
 %   a checksum too, and cannot be told apart in the listing.
 %
+%   [files, listing] = ebrains.bucket.sync.internal.listRemoteFiles(...)
+%   also returns the listing as ebrains.bucket.listBucketObjects returns
+%   it, folder objects included.
+%
+%   ebrains.bucket.sync.internal.listRemoteFiles(..., Name=Value) passes
+%   the options Verbose, PageSize and ProgressFcn to
+%   ebrains.bucket.listBucketObjects.
+%
 %   See also ebrains.bucket.sync.internal.listLocalFiles, ebrains.bucket.listBucketObjects
 
     arguments
         bucketName (1,1) string
         prefix (1,1) string
         client (1,1) ebrains.bucket.api.BucketsClient
+        options.Verbose (1,1) logical = false
+        options.PageSize (1,1) double = 10000
+        options.ProgressFcn = []
     end
 
     % The object count of the bucket stat can lag behind objects added
     % since, and a sync that deletes must not take an unlisted object for
     % gone, so pages are requested until one comes back empty.
-    objects = ebrains.bucket.listBucketObjects(bucketName, ...
-        Prefix=prefix, Complete=true, Client=client);
+    listing = ebrains.bucket.listBucketObjects(bucketName, Prefix=prefix, Complete=true, ...
+        Client=client, Verbose=options.Verbose, PageSize=options.PageSize, ...
+        ProgressFcn=options.ProgressFcn);
+    objects = listing;
 
     if isempty(objects)
         files = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
@@ -52,11 +67,18 @@ function files = listRemoteFiles(bucketName, prefix, client)
 
     paths = extractAfter(names, strlength(prefix));
 
+    % An object named like the .ebrains folder of a virtual bucket would
+    % replace the description of the local folder, so it is not synced.
+    isMetadata = ebrains.bucket.internal.metadata.isMetadataPath(paths);
+    objects = objects(~isMetadata);
+    paths = paths(~isMetadata);
+    names = names(~isMetadata);
+
     isSafe = ebrains.bucket.internal.isSafeRelativePath(paths);
     if ~all(isSafe)
         warning('EBRAINS:Bucket:UnsafeObjectName', ...
-            ['%d object(s) of bucket "%s" have names that do not stay below ' ...
-             'the synced folder, for example "%s", and are left out of the sync.'], ...
+            ['%d object(s) of bucket "%s" are left out because their names below the prefix are not ' ...
+             'plain relative paths (a ".", ".." or empty segment, or a backslash), for example "%s".'], ...
             sum(~isSafe), bucketName, names(find(~isSafe, 1)));
         objects = objects(isSafe);
         paths = paths(isSafe);

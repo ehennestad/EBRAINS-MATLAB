@@ -24,7 +24,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             files = ebrains.bucket.app.internal.classifyFiles(localFiles);
 
             testCase.verifyEqual(files.Path, ["a.txt"; "b.txt"]);
-            testCase.verifyEqual(files.State, ["Downloaded"; "OnlineOnly"]);
+            testCase.verifyEqual(files.State, ["downloaded"; "online_only"]);
             testCase.verifyEqual(files.RemoteBytes, [NaN; NaN]);
         end
 
@@ -32,35 +32,61 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             uploaded = datetime(2026, 1, 1, TimeZone="UTC");
             before = uploaded - days(1);
             after = uploaded + days(1);
+            % A download has the time of its object, so "edited" was
+            % changed after it was downloaded
             localFiles = makeFiles( ...
-                ["placeholder", "downloaded", "resized", "outdated", "extra"], ...
-                [0, 3, 4, 3, 7], [after, after, after, before, after]);
+                ["placeholder", "downloaded", "edited", "resized", "outdated", "extra"], ...
+                [0, 3, 3, 4, 3, 7], [after, uploaded, after, after, before, after]);
             remoteFiles = makeFiles( ...
-                ["placeholder", "downloaded", "resized", "outdated", "new"], ...
-                [3, 3, 3, 3, 3], repmat(uploaded, 1, 5));
+                ["placeholder", "downloaded", "edited", "resized", "outdated", "new"], ...
+                [3, 3, 3, 3, 3, 3], repmat(uploaded, 1, 6));
 
             files = ebrains.bucket.app.internal.classifyFiles(localFiles, remoteFiles);
 
             expected = dictionary( ...
-                ["placeholder", "downloaded", "resized", "outdated", "extra", "new"], ...
-                ["OnlineOnly", "Downloaded", "Differs", "Differs", "LocalOnly", "OnlineOnly"]);
+                ["placeholder", "downloaded", "edited", "resized", "outdated", "extra", "new"], ...
+                ["online_only", "downloaded", "differs", "differs", "differs", "local_only", "online_only"]);
             testCase.verifyEqual(files.State, expected(files.Path));
             testCase.verifyEqual(files.LocalBytes(files.Path == "new"), NaN);
             testCase.verifyEqual(files.RemoteBytes(files.Path == "extra"), NaN);
+            testCase.verifyEqual(files.RemoteTime(files.Path == "new"), uploaded);
+        end
+
+        function testUnknownTimeOfObjectLeavesFileDownloaded(testCase)
+            % A sync to the bucket records an uploaded file with no time
+            localFiles = makeFiles("uploaded.txt", 3, datetime(2026, 1, 2, TimeZone="UTC"));
+            remoteFiles = makeFiles("uploaded.txt", 3, NaT(TimeZone="UTC"));
+
+            files = ebrains.bucket.app.internal.classifyFiles(localFiles, remoteFiles);
+
+            testCase.verifyEqual(files.State, "downloaded");
+            testCase.verifyTrue(isnat(files.RemoteTime));
+        end
+
+        function testIgnoringCaseMatchesLocalFileToItsObject(testCase)
+            uploaded = datetime(2024, 1, 1, TimeZone="UTC");
+            localFiles = makeFiles("data.txt", 3, uploaded);
+            remoteFiles = makeFiles("Data.txt", 3, uploaded);
+
+            files = ebrains.bucket.app.internal.classifyFiles(localFiles, remoteFiles, IgnoreCase=true);
+
+            testCase.verifyEqual(files.Path, "Data.txt");
+            testCase.verifyEqual(files.State, "downloaded");
+            testCase.verifyEqual(files.LocalBytes, 3);
         end
 
         function testEmptyObjectWithEmptyFileIsDownloaded(testCase)
             files = ebrains.bucket.app.internal.classifyFiles( ...
                 makeFiles("empty.txt", 0), makeFiles("empty.txt", 0));
 
-            testCase.verifyEqual(files.State, "Downloaded");
+            testCase.verifyEqual(files.State, "downloaded");
         end
 
         function testEmptyListingMarksEveryFileLocalOnly(testCase)
             files = ebrains.bucket.app.internal.classifyFiles( ...
                 makeFiles("a.txt", 3), makeFiles(strings(0, 1), zeros(0, 1)));
 
-            testCase.verifyEqual(files.State, "LocalOnly");
+            testCase.verifyEqual(files.State, "local_only");
         end
 
         %% Placeholders

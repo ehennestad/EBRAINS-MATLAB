@@ -13,8 +13,8 @@ function createPlaceholderFiles(rootFolder, paths)
         paths string
     end
 
-    for path = reshape(paths, 1, [])
-        filePath = fullfile(rootFolder, path);
+    for relativePath = reshape(paths, 1, [])
+        filePath = fullfile(rootFolder, relativePath);
         if isfile(filePath)
             continue
         end

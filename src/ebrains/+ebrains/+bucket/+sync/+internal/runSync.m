@@ -12,6 +12,11 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %       2. Plan what to copy and delete (ebrains.bucket.sync.internal.planSync).
 %       3. Copy the new and changed files.
 %       4. Delete the extraneous files, if asked to and no copy failed.
+%   When localFolder is a virtual bucket (see
+%   ebrains.bucket.internal.metadata.readBucketInfo), the sync must be of
+%   its bucket and prefix, a sync to the bucket leaves its placeholders
+%   alone, a sync from the bucket deletes the placeholders of removed
+%   objects, and its manifest is updated from the listing the sync made.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -39,9 +44,21 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         remoteLabel = remoteLabel + ", folder """ + prefix + """";
     end
 
+    % A virtual bucket of another bucket or folder would end up holding the
+    % objects of two. A dry run changes nothing, so it shows the plan with
+    % the refusal instead of stopping.
+    bucketInfo = ebrains.bucket.internal.metadata.readBucketInfo(localFolder);
+    otherBucket = ebrains.bucket.internal.metadata.otherBucketRefusal(bucketInfo, bucketName, prefix);
+    if otherBucket ~= "" && ~syncOptions.DryRun
+        error('EBRAINS:Bucket:Sync:OtherBucket', '%s', otherBucket)
+    end
+    isVirtualBucket = ~isempty(bucketInfo) && otherBucket == "";
+
     % 1. List both sides
     [localFiles, unreadableFolders, linkedFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    listedTime = datetime("now", TimeZone="UTC");
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
+    listedFiles = remoteFiles;
 
     % On a file system that ignores case, such as the default ones of
     % macOS and Windows, a local file and an object whose names differ
@@ -49,7 +66,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % and keeps its name. Matching them exactly would plan that file for
     % deletion as well. An upload compares names exactly, since the bucket
     % tells them apart.
-    ignoreCase = ~isToBucket && isCaseInsensitive(localFolder, localFiles.Path);
+    ignoreCase = ~isToBucket && ebrains.bucket.sync.internal.isCaseInsensitive(localFolder, localFiles.Path);
 
     % The exclude patterns are matched the way names are: where names are
     % matched without regard to case, so are the patterns, or an object
@@ -89,7 +106,14 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     if ignoreCase
-        remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel);
+        [remoteFiles, droppedPaths] = ebrains.bucket.sync.internal.dropCaseCollisions(remoteFiles);
+        if ~isempty(droppedPaths)
+            warning('EBRAINS:Bucket:Sync:CaseCollision', ...
+                ['%d object(s) of %s have a name that differs from another only in ' ...
+                 'case, which the local folder cannot hold apart, for example "%s". ' ...
+                 'They are left out of the sync.'], ...
+                numel(droppedPaths), remoteLabel, droppedPaths(1));
+        end
     end
 
     warnIfRemoteTimesUnknown(localFiles, remoteFiles, syncOptions.Comparison, remoteLabel, ignoreCase)
@@ -109,6 +133,23 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     actions = ebrains.bucket.sync.internal.planSync(sourceFiles, targetFiles, ...
         Comparison=syncOptions.Comparison, Delete=syncOptions.Delete, IgnoreCase=ignoreCase);
+    manifestFiles = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
+    if isVirtualBucket
+        manifestFiles = ebrains.bucket.internal.metadata.readManifest(localFolder);
+    end
+    if isToBucket && isVirtualBucket
+        % The listing just made says which objects are not empty now, and
+        % the manifest which were not empty when the placeholders were
+        % made, so that a placeholder of an object removed since is not
+        % uploaded as a new empty object.
+        actions = ebrains.bucket.sync.internal.protectPlaceholders( ...
+            actions, localFiles, listedFiles, manifestFiles);
+    elseif isVirtualBucket
+        % The folder stands for the bucket, so the placeholder of an object
+        % removed since the manifest stands for nothing and holds no data
+        actions = ebrains.bucket.sync.internal.deleteRemovedPlaceholders( ...
+            actions, localFiles, listedFiles, manifestFiles, IgnoreCase=ignoreCase);
+    end
     actions.Action(actions.Action == "copy") = copyAction;
 
     % The status of each file is kept in plain arrays while the sync runs,
@@ -121,6 +162,9 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     isCopy = actions.Action == copyAction;
     isDelete = actions.Action == "delete";
     [refusalId, refusal] = deletionRefusal(actions, isDelete, height(sourceFiles), syncOptions.MaxDelete);
+    if otherBucket ~= ""
+        refusal = otherBucket;
+    end
 
     if syncOptions.Verbose
         if isToBucket
@@ -134,6 +178,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     if syncOptions.DryRun
         % A dry run shows the plan, a refusal included, rather than stop
         status(isCopy) = "planned";
+        if otherBucket ~= ""
+            status(isCopy) = "skipped";
+            message(isCopy) = otherBucket;
+        end
         skipReason = refusal;
         if skipReason == ""
             skipReason = deletionHoldBack;
@@ -181,8 +229,12 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
                     DisplayMode=syncOptions.DisplayMode, Client=client, ...
                     Uploader=syncOptions.Uploader);
             else
-                message(i) = downloadAndReplace(bucketName, objectName, localFile, ...
-                    sourceFiles(sourceIndices(i), :), syncOptions, client);
+                message(i) = ebrains.bucket.sync.internal.downloadAndReplace( ...
+                    bucketName, objectName, localFile, ...
+                    ExpectedBytes=sourceFiles.Bytes(sourceIndices(i)), ...
+                    ModifiedTime=sourceFiles.ModifiedTime(sourceIndices(i)), ...
+                    DisplayMode=syncOptions.DisplayMode, Client=client, ...
+                    Downloader=syncOptions.Downloader);
             end
             status(i) = "done";
         catch ME
@@ -217,7 +269,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
                     Client=client);
             else
-                deleteLocalFile(fullfile(localFolder, relativePath))
+                ebrains.bucket.sync.internal.deleteLocalFile(fullfile(localFolder, relativePath))
             end
             status(i) = "done";
         catch ME
@@ -231,6 +283,11 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     actions.Status = status;
     actions.Message = message;
+
+    if isVirtualBucket
+        updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...
+            localFiles, manifestFiles, actions, isToBucket)
+    end
 
     if syncOptions.Verbose
         fprintf('Done: %d copied, %d deleted, %d failed.\n', ...
@@ -256,6 +313,26 @@ function paths = excludePaths(paths, excludePatterns, ignoreCase)
         ebrains.bucket.sync.internal.makeFileTable(paths, zeros(size(paths))), ...
         excludePatterns, IgnoreCase=ignoreCase);
     paths = pathTable.Path;
+end
+
+function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, oldManifestFiles, actions, isToBucket)
+% updateManifest - Record the listing of a sync as the manifest of a virtual bucket
+%
+%   A sync to the bucket changed it after the listing, so the files it
+%   uploaded and the objects it deleted are applied to the listing, and
+%   the placeholders of removed objects keep their entries. A failed
+%   transfer leaves the entry as the listing gave it.
+    manifestFiles = listedFiles;
+    if isToBucket
+        isDone = actions.Status == "done";
+        uploadedPaths = actions.Path(isDone & actions.Action == "upload");
+        deletedPaths = actions.Path(isDone & actions.Action == "delete");
+        manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
+            localFiles(ismember(localFiles.Path, uploadedPaths), :), deletedPaths, ...
+            localFiles, oldManifestFiles);
+    end
+    ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
+    ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
 end
 
 function warnIfRemoteTimesUnknown(localFiles, remoteFiles, comparison, remoteLabel, ignoreCase)
@@ -319,51 +396,6 @@ function keys = matchKeys(paths, ignoreCase)
     end
 end
 
-function tf = isCaseInsensitive(localFolder, localPaths)
-% isCaseInsensitive - Whether the file system of a local folder ignores the case of names
-%
-%   A listed file whose path has letters is looked up with their case
-%   changed. A file system that ignores case finds it under that path,
-%   and the listing has no file of that path. Without such a file there is
-%   nothing to look up, and the default file systems of macOS and Windows
-%   are taken to ignore case and those of other platforms not to.
-
-    hasLetters = upper(localPaths) ~= lower(localPaths);
-    index = find(hasLetters, 1);
-    if isempty(index)
-        tf = ismac || ispc;
-        return
-    end
-
-    probePath = upper(localPaths(index));
-    if probePath == localPaths(index)
-        probePath = lower(localPaths(index));
-    end
-    tf = ~ismember(probePath, localPaths) && isfile(fullfile(localFolder, probePath));
-end
-
-function remoteFiles = dropCaseCollisions(remoteFiles, remoteLabel)
-% dropCaseCollisions - Leave out objects a folder that ignores case cannot hold apart
-%
-%   Of the objects whose paths differ only in case, the first in the
-%   listing is kept and the others are left out with a warning: all of
-%   them would be downloaded into the same local file.
-
-    [~, firstIndices] = unique(lower(remoteFiles.Path), "stable");
-    if numel(firstIndices) == height(remoteFiles)
-        return
-    end
-    isKept = false(height(remoteFiles), 1);
-    isKept(firstIndices) = true;
-    droppedPaths = remoteFiles.Path(~isKept);
-    warning('EBRAINS:Bucket:Sync:CaseCollision', ...
-        ['%d object(s) of %s have a name that differs from another only in ' ...
-         'case, which the local folder cannot hold apart, for example "%s". ' ...
-         'They are left out of the sync.'], ...
-        numel(droppedPaths), remoteLabel, droppedPaths(1));
-    remoteFiles = remoteFiles(isKept, :);
-end
-
 function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles, maxDelete)
 % deletionRefusal - Why the planned deletions look like a mistake, or ""
 %
@@ -393,110 +425,6 @@ function [identifier, reason] = deletionRefusal(actions, isDelete, nSourceFiles,
         reason = sprintf(['The sync would delete %d file(s), more than ' ...
             'MaxDelete (%d), for example "%s".'], ...
             nDelete, maxDelete, actions.Path(find(isDelete, 1)));
-    end
-end
-
-function note = downloadAndReplace(bucketName, objectName, localFile, sourceFile, syncOptions, client)
-% downloadAndReplace - Download to a temporary file, check it, and put it in place
-%
-%   The file at localFile is replaced only once the download is complete
-%   and has the size the listing reports (sourceFile is the row of the
-%   object in the remote file table), so a failed download leaves it as
-%   it was. The temporary file sits next to it, so that the move is a
-%   rename on the same file system. The file is then given the time of
-%   its object; note is "" or says why that failed.
-
-    % movefile puts a file inside a folder of the target name rather than
-    % replace it, so an object whose local path is a folder is refused
-    % before the download. The empty folder marker of a bucket migrated
-    % from the old object storage is listed as a file when no object below
-    % it is listed, since only those objects tell it apart from a file.
-    if isfolder(localFile)
-        error('EBRAINS:Bucket:Sync:LocalPathIsFolder', ...
-            ['The object "%s" was not downloaded, since its local path "%s" is a folder. ' ...
-             'Rename or remove the folder, or leave the object out with Exclude.'], ...
-            objectName, localFile)
-    end
-
-    targetFolder = fileparts(localFile);
-    if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
-        mkdir(targetFolder)
-    end
-    temporaryFile = string(tempname(char(targetFolder))) + ".sync-part";
-    temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
-
-    ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
-        DisplayMode=syncOptions.DisplayMode, Client=client, ...
-        Downloader=syncOptions.Downloader);
-
-    fileInfo = dir(temporaryFile);
-    if isempty(fileInfo)
-        error('EBRAINS:Bucket:Sync:DownloadMissing', ...
-            'The download of "%s" produced no file.', objectName)
-    end
-    if fileInfo(1).bytes ~= sourceFile.Bytes
-        error('EBRAINS:Bucket:Sync:SizeMismatch', ...
-            'The downloaded file "%s" has %d bytes, where the object has %d.', ...
-            objectName, fileInfo(1).bytes, sourceFile.Bytes)
-    end
-
-    movefile(temporaryFile, localFile, "f")
-
-    note = setModifiedTime(localFile, sourceFile.ModifiedTime);
-end
-
-function note = setModifiedTime(filePath, modifiedTime)
-% setModifiedTime - Give a downloaded file the modification time of its object
-%
-%   A file with the time of its object is unchanged to the time
-%   comparison of a later sync in either direction. With the time of its
-%   download it would be newer than its object, and
-%   ebrains.bucket.sync.toBucket would upload it again. MATLAB has no
-%   function that sets the time of a file, so Java does it. Without Java,
-%   or without a known time, the file keeps the time of its download.
-%   note is "" or says why the time could not be set.
-
-    note = "";
-    if isnat(modifiedTime) || ~usejava('jvm')
-        return
-    end
-
-    % Java resolves a relative path against its own working directory,
-    % which need not be MATLAB's, so the path is made absolute.
-    fileInfo = dir(filePath);
-    absolutePath = fullfile(fileInfo(1).folder, fileInfo(1).name);
-    epochMilliseconds = round(posixtime(modifiedTime) * 1000);
-    if ~java.io.File(char(absolutePath)).setLastModified(epochMilliseconds)
-        note = "Downloaded, but the file kept the time of the download, " + ...
-            "so a sync to the bucket would upload it again.";
-    end
-end
-
-function deleteIfFile(filePath)
-    if isfile(filePath)
-        delete(filePath)
-    end
-end
-
-function deleteLocalFile(filePath)
-% deleteLocalFile - Delete one file, and fail with an error when it stays
-%
-%   delete reports a file it cannot remove with a warning rather than an
-%   error, and expands "*" and "?" anywhere in the path to other files,
-%   so a path with either is refused and the file is checked afterwards.
-%   The warning is left to show, since it says why the file stayed.
-
-    if contains(filePath, ["*", "?"])
-        error('EBRAINS:Bucket:Sync:WildcardInName', ...
-            ['The file "%s" was not deleted: its path holds a wildcard ' ...
-             'character, which delete would expand to other files.'], filePath)
-    end
-
-    delete(filePath)
-
-    if isfile(filePath)
-        error('EBRAINS:Bucket:Sync:NotDeleted', ...
-            'The file "%s" could not be deleted.', filePath)
     end
 end
 

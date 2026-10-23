@@ -15,25 +15,40 @@ function completeObjectList = listBucketObjects(bucketName, options)
 %       bucketName : Name of the bucket to get object information from
 %
 %   Name-Value Arguments
-%       Prefix   : Only list objects whose name starts with this text.
-%                  Default is "", which lists every object.
-%       Complete : Request pages until one comes back empty, rather than
-%                  stop at the object count of the bucket stat. The count
-%                  can lag behind objects added since it was taken, in
-%                  which case the last objects of a listing of several
-%                  pages are left out. Costs one request more, and the
-%                  stat is not requested. Default is false. A caller that
-%                  deletes what the listing lacks should set it.
-%       Verbose  : Print progress while the pages of the listing arrive.
-%       Client   : ebrains.bucket.api.BucketsClient that sends the requests.
-%                  Meant for tests and custom clients; a default client is
-%                  created otherwise.
+%       Prefix      : Only list objects whose name starts with this text.
+%                     Default is "", which lists every object.
+%       Complete    : Request pages until one comes back empty, rather than
+%                     stop at the object count of the bucket stat. The
+%                     count can lag behind objects added since it was
+%                     taken, in which case the last objects of a listing
+%                     of several pages are left out. Costs one request
+%                     more, and the stat is not requested. Default is
+%                     false. A caller that deletes what the listing lacks
+%                     should set it.
+%       Verbose     : Print progress while the pages of the listing arrive.
+%       PageSize    : Most objects to ask for in one request. Default is
+%                     10000. The time of a listing grows with the objects
+%                     it returns, not with the requests, so smaller pages
+%                     report progress more often at little cost.
+%       ProgressFcn : Function called after each page as
+%                     ProgressFcn(nListed, nObjects), where nListed is the
+%                     number of objects listed so far and nObjects the
+%                     number the bucket reports, which is approximate and
+%                     covers the whole bucket also when Prefix is given.
+%                     nObjects is Inf when Complete is true, since the
+%                     stat is not requested then. An error it throws
+%                     stops the listing.
+%       Client      : ebrains.bucket.api.BucketsClient that sends the
+%                     requests. Meant for tests and custom clients; a
+%                     default client is created otherwise.
 
     arguments
         bucketName (1,1) string
         options.Prefix (1,1) string = ""
         options.Complete (1,1) logical = false
         options.Verbose (1,1) logical = false
+        options.PageSize (1,1) double {mustBeInteger, mustBePositive} = 10000
+        options.ProgressFcn {mustBeFunctionHandleOrEmpty} = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
@@ -50,7 +65,7 @@ function completeObjectList = listBucketObjects(bucketName, options)
         nTotalObjects = bucketStat.objects_count;
     end
 
-    pageSize = 10000;
+    pageSize = options.PageSize;
     marker = "";
 
     finished = false;
@@ -87,6 +102,9 @@ function completeObjectList = listBucketObjects(bucketName, options)
         elseif options.Verbose
             fprintf('Retrieved %d objects.\n', numel(completeObjectList))
         end
+        if ~isempty(options.ProgressFcn)
+            options.ProgressFcn(numel(completeObjectList), nTotalObjects)
+        end
 
         % The data proxy returns fewer objects per page than requested, so
         % a short page does not mean the last one. The listing is complete
@@ -104,5 +122,12 @@ function completeObjectList = listBucketObjects(bucketName, options)
     if options.Verbose
         fprintf('Retrieved %d objects in %.2f seconds.\n', ...
             numel(completeObjectList), tElapsed )
+    end
+end
+
+function mustBeFunctionHandleOrEmpty(value)
+% mustBeFunctionHandleOrEmpty - Validate that a value is a function handle or empty
+    if ~isempty(value) && ~isa(value, 'function_handle')
+        error('EBRAINS:Bucket:InvalidProgressFcn', 'ProgressFcn must be a function handle.')
     end
 end

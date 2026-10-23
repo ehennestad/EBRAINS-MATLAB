@@ -103,8 +103,17 @@
   .content { flex: 1; display: flex; min-height: 0; }
   aside {
     width: 260px; flex: none; overflow: auto; padding: 8px 6px;
-    border-right: 1px solid var(--border); background: var(--bg-subtle);
+    background: var(--bg-subtle);
   }
+  .splitter {
+    flex: none; width: 5px; margin-left: -2px; margin-right: -2px; z-index: 2;
+    cursor: col-resize; position: relative;
+  }
+  .splitter::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 2px; width: 1px; background: var(--border);
+  }
+  .splitter:hover::after, body.resizing .splitter::after { width: 3px; left: 1px; background: var(--accent); }
+  body.resizing { cursor: col-resize; }
   .tree-row {
     display: flex; align-items: center; gap: 4px; height: 28px; padding-right: 8px;
     border-radius: 6px; cursor: pointer; white-space: nowrap;
@@ -161,10 +170,10 @@
     border-radius: 999px; font-size: 12px; font-weight: 500;
   }
   .pill svg { width: 13px; height: 13px; }
-  .pill.OnlineOnly { color: var(--online); background: var(--online-bg); }
-  .pill.Downloaded { color: var(--downloaded); background: var(--downloaded-bg); }
-  .pill.Differs { color: var(--differs); background: var(--differs-bg); }
-  .pill.LocalOnly { color: var(--local); background: var(--local-bg); }
+  .pill.online_only { color: var(--online); background: var(--online-bg); }
+  .pill.downloaded { color: var(--downloaded); background: var(--downloaded-bg); }
+  .pill.differs { color: var(--differs); background: var(--differs-bg); }
+  .pill.local_only { color: var(--local); background: var(--local-bg); }
   .pill.Partial { color: var(--text-muted); background: var(--bg-hover); }
   .meter { width: 48px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
   .meter div { height: 100%; background: var(--downloaded); }
@@ -216,6 +225,7 @@
 
   <div class="content">
     <aside id="tree"></aside>
+    <div class="splitter" id="splitter" title="Drag to resize. Double-click to reset."></div>
     <main>
       <div class="breadcrumb" id="breadcrumb"></div>
       <div class="table-wrap" id="tableWrap">
@@ -274,14 +284,14 @@
 const MAX_ROWS = 2000;
 
 const STATE_INFO = {
-  OnlineOnly: { label: "Online only", icon: "i-cloud", order: 0 },
-  Differs: { label: "Differs from bucket", icon: "i-alert", order: 1 },
-  Downloaded: { label: "Downloaded", icon: "i-check", order: 2 },
-  LocalOnly: { label: "Not in bucket", icon: "i-disk", order: 3 },
+  online_only: { label: "Online only", icon: "i-cloud", order: 0 },
+  differs: { label: "Differs from bucket", icon: "i-alert", order: 1 },
+  downloaded: { label: "Downloaded", icon: "i-check", order: 2 },
+  local_only: { label: "Not in bucket", icon: "i-disk", order: 3 },
 };
 
 let htmlComponent = null;
-let meta = { bucketName: "", localFolder: "", prefix: "", isListed: false, message: "" };
+let meta = { bucketName: "", localFolder: "", prefix: "", isListed: false, listedAt: "", message: "" };
 let files = [];
 let folders = new Map();
 const view = {
@@ -374,11 +384,11 @@ function buildFolders() {
     for (;;) {
       const folder = folders.get(path);
       folder.total += 1;
-      if (file.state === "OnlineOnly") folder.online += 1;
-      if (file.state === "Differs") folder.differs += 1;
+      if (file.state === "online_only") folder.online += 1;
+      if (file.state === "differs") folder.differs += 1;
       folder.localBytes += file.localBytes || 0;
       folder.remoteBytes += file.remoteBytes || 0;
-      if (file.state !== "OnlineOnly" && file.modified > folder.latest) folder.latest = file.modified;
+      if (file.state !== "online_only" && file.modified > folder.latest) folder.latest = file.modified;
       if (path === "") break;
       path = parentOf(path);
     }
@@ -430,7 +440,7 @@ function rowSortValue(row, key) {
   switch (key) {
     case "status": return STATE_INFO[file.state].order;
     case "size": return fileSize(file) ?? -1;
-    case "modified": return file.state === "OnlineOnly" ? "" : file.modified;
+    case "modified": return file.state === "online_only" ? "" : file.modified;
     default: return displayName(file).toLowerCase();
   }
 }
@@ -530,9 +540,9 @@ function statusPill(state) {
 
 function folderStatus(folder) {
   if (folder.total === 0) return "";
-  if (folder.differs > 0) return `<span class="pill Differs">${icon("i-alert")}${folder.differs} differ</span>`;
-  if (folder.online === folder.total) return statusPill("OnlineOnly");
-  if (folder.online === 0) return statusPill("Downloaded");
+  if (folder.differs > 0) return `<span class="pill differs">${icon("i-alert")}${folder.differs} differ</span>`;
+  if (folder.online === folder.total) return statusPill("online_only");
+  if (folder.online === 0) return statusPill("downloaded");
   const downloaded = folder.total - folder.online;
   const percent = Math.round((100 * downloaded) / folder.total);
   return `<span class="pill Partial"><span class="meter"><div style="width:${percent}%"></div></span>${downloaded} of ${folder.total}</span>`;
@@ -563,7 +573,7 @@ function renderTable() {
       `<td><div class="name-cell" title="${escapeHtml(file.path)}">${icon("i-file", "file-icon")}<span>${folderPart}${escapeHtml(file.name)}</span></div></td>` +
       `<td>${statusPill(file.state)}</td>` +
       `<td class="size">${formatBytes(fileSize(file))}</td>` +
-      `<td class="modified">${file.state === "OnlineOnly" ? "" : escapeHtml(file.modified)}</td></tr>`;
+      `<td class="modified">${file.state === "online_only" ? "" : escapeHtml(file.modified)}</td></tr>`;
   });
   $("rows").innerHTML = html.join("");
 
@@ -589,14 +599,14 @@ function renderTable() {
 function renderFooter() {
   const selection = selectedFiles();
   const states = new Set(selection.map((file) => file.state));
-  $("download").disabled = !(states.has("OnlineOnly") || states.has("Differs"));
-  $("onlineOnly").disabled = !(states.has("Downloaded") || states.has("Differs"));
+  $("download").disabled = !(states.has("online_only") || states.has("differs"));
+  $("onlineOnly").disabled = !(states.has("downloaded") || states.has("differs"));
   $("open").disabled = view.selected.size !== 1;
 
   let summary;
   if (view.selected.size > 0) {
     const bytes = selection.reduce((sum, file) => sum + (fileSize(file) || 0), 0);
-    const nOnline = selection.filter((file) => file.state === "OnlineOnly").length;
+    const nOnline = selection.filter((file) => file.state === "online_only").length;
     summary = `<b>${countText(selection.length, "file")} selected</b> · ${formatBytes(bytes)}` +
       (nOnline > 0 ? ` · ${nOnline} online only` : "");
   } else {
@@ -607,9 +617,17 @@ function renderFooter() {
   }
   $("summary").innerHTML = summary;
 
-  $("message").textContent = meta.message ||
-    (meta.isListed ? "" : "Status is judged from the local files: empty files are online only. " +
-      "Update from the bucket to find new objects and files that differ.");
+  let listingNote;
+  if (!meta.isListed) {
+    listingNote = "Status is judged from the local files: empty files are online only. " +
+      "Update from the bucket to find new objects and files that differ.";
+  } else if (meta.listedAt) {
+    listingNote = `Compared with the bucket as listed on ${meta.listedAt}. ` +
+      "Update from the bucket to see what changed since.";
+  } else {
+    listingNote = "Compared with the last listing of the bucket.";
+  }
+  $("message").textContent = meta.message ? `${meta.message} ${listingNote}` : listingNote;
 }
 
 // ---------------------------------------------------------------- Interaction
@@ -685,9 +703,9 @@ function fileMenuItems() {
   const states = new Set(selectedFiles().map((file) => file.state));
   const single = view.selected.size === 1 ? [...view.selected][0] : null;
   return [
-    { label: "Download", icon: "i-download", disabled: !(states.has("OnlineOnly") || states.has("Differs")),
+    { label: "Download", icon: "i-download", disabled: !(states.has("online_only") || states.has("differs")),
       run: () => send("download", { paths: selectedPaths() }) },
-    { label: "Make online only", icon: "i-cloud", disabled: !(states.has("Downloaded") || states.has("Differs")),
+    { label: "Make online only", icon: "i-cloud", disabled: !(states.has("downloaded") || states.has("differs")),
       run: () => send("onlineOnly", { paths: selectedPaths() }) },
     "-",
     { label: "Open", icon: "i-open", disabled: !single, run: () => openRow(single) },
@@ -699,9 +717,9 @@ function fileMenuItems() {
 function folderMenuItems(path) {
   const states = new Set(filesBelow(path).map((file) => file.state));
   return [
-    { label: "Download folder", icon: "i-download", disabled: !(states.has("OnlineOnly") || states.has("Differs")),
+    { label: "Download folder", icon: "i-download", disabled: !(states.has("online_only") || states.has("differs")),
       run: () => send("download", { paths: filesBelow(path).map((file) => file.path) }) },
-    { label: "Make folder online only", icon: "i-cloud", disabled: !(states.has("Downloaded") || states.has("Differs")),
+    { label: "Make folder online only", icon: "i-cloud", disabled: !(states.has("downloaded") || states.has("differs")),
       run: () => send("onlineOnly", { paths: filesBelow(path).map((file) => file.path) }) },
     "-",
     { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", run: () => send("reveal", { paths: [path] }) },
@@ -713,7 +731,49 @@ function setBusy(isBusy) {
   if (isBusy) hideMenu();
 }
 
+// The width of the folder panel is kept between sessions where the page
+// can store it. Storage can be unavailable, in which case the default is used.
+const DEFAULT_TREE_WIDTH = 260;
+const WIDTH_KEY = "virtualBucketBrowser.treeWidth";
+
+function setTreeWidth(width) {
+  const clamped = Math.round(Math.min(Math.max(width, 160), window.innerWidth * 0.6));
+  $("tree").style.width = clamped + "px";
+  return clamped;
+}
+
+function wireSplitter() {
+  try {
+    const stored = Number(window.localStorage.getItem(WIDTH_KEY));
+    if (stored > 0) setTreeWidth(stored);
+  } catch (error) { /* storage unavailable: keep the default width */ }
+
+  const splitter = $("splitter");
+  splitter.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = $("tree").getBoundingClientRect().width;
+    document.body.classList.add("resizing");
+    const onMove = (moveEvent) => setTreeWidth(startWidth + moveEvent.clientX - startX);
+    const onUp = () => {
+      document.body.classList.remove("resizing");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      try {
+        window.localStorage.setItem(WIDTH_KEY, String(Math.round($("tree").getBoundingClientRect().width)));
+      } catch (error) { /* storage unavailable: the width lasts for this session */ }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+  splitter.addEventListener("dblclick", () => {
+    setTreeWidth(DEFAULT_TREE_WIDTH);
+    try { window.localStorage.removeItem(WIDTH_KEY); } catch (error) { /* nothing stored */ }
+  });
+}
+
 function wireEvents() {
+  wireSplitter();
   $("tree").addEventListener("click", (event) => {
     const row = event.target.closest(".tree-row");
     if (!row) return;
