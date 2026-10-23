@@ -9,7 +9,7 @@ name: Live test (reusable job)
 # as a service account through the OIDC Client Credentials flow. Called by
 # run-live-tests.yml (scheduled, and on demand) and by prepare-release.yml
 # (so a release is only prepared once a fresh run against the exact commit
-# being released has passed). These tests are excluded from the "Test code"
+# being released has passed). These tests are excluded from the "Run tests"
 # workflow; see tools/tasks/testToolbox.m.
 
 on:
