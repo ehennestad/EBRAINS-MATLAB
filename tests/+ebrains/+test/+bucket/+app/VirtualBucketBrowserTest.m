@@ -323,6 +323,34 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
                 'A refused confirmation requests no download.');
         end
+
+        function testDownloadReadsAFileStoredUnderAnotherCase(testCase)
+            % The file is stored as data.txt and listed as Data.txt, so its
+            % row carries the path of the object. Edited after the last
+            % scan, it differs, and downloading it must ask, rather than
+            % take it for a placeholder because the stored name has
+            % another case.
+            assumeCaseInsensitive(testCase);
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "Data.txt", 3);
+            testCase.openApp(target);
+            delete(fullfile(target, "Data.txt"))
+            writeFile(fullfile(target, "data.txt"), "abc");
+            giveTimeOfListedObjects(fullfile(target, "data.txt"));
+            sendPageEvent("refresh")
+            testCase.assertEqual(testCase.App.Files.Path, "Data.txt");
+            testCase.assertEqual(testCase.App.Files.State, "downloaded");
+            writeFile(fullfile(target, "data.txt"), "xyz");
+            nRequests = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", "Data.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "data.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Replace local copies?");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
+                'A refused confirmation requests no download.');
+        end
     end
 
     methods (Test) % The page of the bucket

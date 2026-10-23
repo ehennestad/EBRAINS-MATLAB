@@ -11,6 +11,11 @@ function files = listLocalFile(rootFolder, relativePath)
 %   without walking the folder, which may stand for a bucket of many
 %   objects.
 %
+%   Path is relativePath as given. On a file system that ignores case the
+%   file may be stored under another case, as a local file matched to an
+%   object of the same name in another case is, and it is read all the
+%   same.
+%
 %   See also ebrains.bucket.sync.internal.listLocalFiles
 
     arguments
@@ -24,10 +29,18 @@ function files = listLocalFile(rootFolder, relativePath)
         return
     end
 
-    % dir expands wildcards in a name, so only the entry of this name counts
+    % dir expands wildcards in a name, so only the entry of this name
+    % counts. Where the file system ignores case, dir reports the name as
+    % stored, which may differ in case from the one asked for, so an entry
+    % of the same name in another case is taken when none matches exactly.
     listing = dir(filePath);
     [~, name, extension] = fileparts(filePath);
-    listing = listing(~[listing.isdir] & string({listing.name}) == name + extension);
+    names = string({listing.name});
+    isEntry = ~[listing.isdir] & names == name + extension;
+    if ~any(isEntry)
+        isEntry = ~[listing.isdir] & strcmpi(names, name + extension);
+    end
+    listing = listing(isEntry);
     if isempty(listing)
         return
     end

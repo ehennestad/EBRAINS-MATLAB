@@ -294,6 +294,18 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(string(folder.Properties.VariableNames), ["Path", "Bytes", "ModifiedTime", "Hash"]);
         end
 
+        function testListLocalFileReadsFileUnderAnotherCaseWhereCaseIsIgnored(testCase)
+            % A local file matched to an object of the same name in another
+            % case carries the path of the object, and is read under it.
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "data.txt"), "abc");
+
+            file = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "Data.txt");
+
+            testCase.verifyEqual(file.Path, "Data.txt");
+            testCase.verifyEqual(file.Bytes, 3);
+        end
+
         %% listRemoteFiles
         function testListRemoteFilesStripsPrefixAndLeavesOutFolders(testCase)
             addListing(testCase.Client, makeObjects( ...
