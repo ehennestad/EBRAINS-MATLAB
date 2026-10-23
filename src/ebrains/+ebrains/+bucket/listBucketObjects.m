@@ -15,16 +15,24 @@ function completeObjectList = listBucketObjects(bucketName, options)
 %       bucketName : Name of the bucket to get object information from
 %
 %   Name-Value Arguments
-%       Prefix  : Only list objects whose name starts with this text.
-%                 Default is "", which lists every object.
-%       Verbose : Print progress while the pages of the listing arrive.
-%       Client  : ebrains.bucket.api.BucketsClient that sends the requests.
-%                 Meant for tests and custom clients; a default client is
-%                 created otherwise.
+%       Prefix   : Only list objects whose name starts with this text.
+%                  Default is "", which lists every object.
+%       Complete : Request pages until one comes back empty, rather than
+%                  stop at the object count of the bucket stat. The count
+%                  can lag behind objects added since it was taken, in
+%                  which case the last objects of a listing of several
+%                  pages are left out. Costs one request more, and the
+%                  stat is not requested. Default is false. A caller that
+%                  deletes what the listing lacks should set it.
+%       Verbose  : Print progress while the pages of the listing arrive.
+%       Client   : ebrains.bucket.api.BucketsClient that sends the requests.
+%                  Meant for tests and custom clients; a default client is
+%                  created otherwise.
 
     arguments
         bucketName (1,1) string
         options.Prefix (1,1) string = ""
+        options.Complete (1,1) logical = false
         options.Verbose (1,1) logical = false
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
@@ -35,8 +43,12 @@ function completeObjectList = listBucketObjects(bucketName, options)
     % what tells the paging loop below when the listing is complete. With a
     % prefix the count is an upper bound, because it covers the whole
     % bucket, and the listing ends on the first empty page instead.
-    bucketStat = client.getBucketStat(bucketName);
-    nTotalObjects = bucketStat.objects_count;
+    if options.Complete
+        nTotalObjects = Inf;
+    else
+        bucketStat = client.getBucketStat(bucketName);
+        nTotalObjects = bucketStat.objects_count;
+    end
 
     pageSize = 10000;
     marker = "";
@@ -70,8 +82,10 @@ function completeObjectList = listBucketObjects(bucketName, options)
             completeObjectList = cat(1, completeObjectList, objectList);
         end
 
-        if options.Verbose
+        if options.Verbose && isfinite(nTotalObjects)
             fprintf('Retrieved %d/%d objects.\n', numel(completeObjectList), nTotalObjects)
+        elseif options.Verbose
+            fprintf('Retrieved %d objects.\n', numel(completeObjectList))
         end
 
         % The data proxy returns fewer objects per page than requested, so

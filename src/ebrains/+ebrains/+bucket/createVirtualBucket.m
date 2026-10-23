@@ -32,24 +32,27 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     S = ebrains.bucket.listBucketObjects(bucketName, "Prefix", options.Prefix, ...
         "Verbose", options.Verbose, "Client", options.Client);
 
-    % A name that another object lives below is a folder, whatever the
-    % entry itself says. Buckets migrated from the old object storage mark
-    % their folders with empty objects that have neither a trailing "/"
-    % nor a directory content type.
+    % The listing returns the objects of the bucket rather than the folders
+    % implied by their names, so an entry stands for a folder only where the
+    % bucket says so. Whether the name has an extension says nothing:
+    % "README" and "Snakefile" are files.
+    isFolder = ebrains.bucket.internal.isFolderObject(S);
+
+    % Object names become paths below the root, so only plain relative
+    % names are created. A name with a "." or ".." segment, an empty
+    % segment (a leading or doubled "/") or a backslash is left out: it
+    % could point outside the root, onto the path of another object, or to
+    % a different path on Windows. Folder names end with "/", which the
+    % check would read as an empty segment, hence the strip.
     objectNames = strings(1, 0);
     if ~isempty(S)
         objectNames = string({S.name});
     end
-    parentPaths = unique(getParentPaths(objectNames));
-
-    % An object named with a ".." segment would be created outside the
-    % root, so such names are left out. Folder names end with "/", which
-    % the check would read as an empty segment, hence the strip.
     isSafe = ebrains.bucket.internal.isSafeRelativePath(regexprep(objectNames, "/$", ""));
     if ~all(isSafe)
         warning('EBRAINS:Bucket:UnsafeObjectName', ...
-            ['%d object(s) of bucket "%s" have names that do not stay below ' ...
-             'the root folder, for example "%s", and were not created.'], ...
+            ['%d object(s) of bucket "%s" were not created because their names are not plain ' ...
+             'relative paths (a ".", ".." or empty segment, or a backslash), for example "%s".'], ...
             sum(~isSafe), bucketName, objectNames(find(~isSafe, 1)));
     end
 
@@ -62,11 +65,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         objectName = string(S(i).name);
         filePath = fullfile(virtualBucketRootPath, objectName);
 
-        % The listing returns the objects of the bucket rather than the
-        % folders implied by their names, so an entry stands for a folder
-        % only where the bucket says so. Whether the name has an extension
-        % says nothing: "README" and "Snakefile" are files.
-        if isFolderEntry(S(i)) || ismember(objectName, parentPaths)
+        if isFolder(i)
             if ~isfolder(filePath); mkdir(filePath); end
             continue
         end
@@ -100,35 +99,5 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
                 fprintf("Created %d/%d virtual files\n", i, numel(S))
             end
         end
-    end
-end
-
-function parentPaths = getParentPaths(objectNames)
-% getParentPaths - Every folder path implied by a list of object names
-%
-%   For "a/b/c.txt" the implied folders are "a" and "a/b".
-
-    parentPaths = strings(1, 0);
-    for objectName = objectNames
-        separatorIndices = strfind(objectName, "/");
-        % A trailing "/" names the object itself as a folder, not a parent
-        separatorIndices(separatorIndices == strlength(objectName)) = [];
-        for separatorIndex = separatorIndices
-            parentPaths(end+1) = extractBefore(objectName, separatorIndex); %#ok<AGROW>
-        end
-    end
-end
-
-function tf = isFolderEntry(object)
-% isFolderEntry - Whether a listing entry stands for a folder
-%
-%   A name that ends with "/" is how the Data Proxy names a folder, and
-%   the object store marks the placeholder object of a folder with a
-%   directory content type. Everything else is a file.
-
-    tf = endsWith(string(object.name), "/");
-
-    if ~tf && isfield(object, 'content_type')
-        tf = startsWith(string(object.content_type), "application/directory");
     end
 end
