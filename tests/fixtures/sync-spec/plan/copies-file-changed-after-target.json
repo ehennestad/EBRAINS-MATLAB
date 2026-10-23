@@ -1,0 +1,19 @@
+{
+  "description": "A source file changed after the target was written is copied. A difference within 2 seconds, or a target newer than the source, is unchanged.",
+  "policy": { "comparison": "SizeAndTime", "delete": false },
+  "source": [
+    { "path": "edited.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z" },
+    { "path": "within-tolerance.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:01Z" },
+    { "path": "target-newer.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z" }
+  ],
+  "target": [
+    { "path": "edited.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z" },
+    { "path": "within-tolerance.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z" },
+    { "path": "target-newer.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z" }
+  ],
+  "expected": [
+    { "path": "edited.txt", "action": "copy", "reason": "newer", "bytes": 1 },
+    { "path": "target-newer.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "within-tolerance.txt", "action": "none", "reason": "unchanged", "bytes": 1 }
+  ]
+}

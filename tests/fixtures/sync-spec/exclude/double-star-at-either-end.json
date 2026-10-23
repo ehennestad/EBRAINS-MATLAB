@@ -1,0 +1,21 @@
+{
+  "description": "\"**/\" at the start matches any number of folders, none included, so \"**/cache\" leaves out the cache folder at the root as well as deeper ones. \"/**\" at the end leaves out everything below a folder.",
+  "patterns": [
+    "**/cache",
+    "data/**"
+  ],
+  "paths": [
+    "cache/big.dat",
+    "a/cache/x",
+    "a/cached/y",
+    "data/a",
+    "data/b/c",
+    "database/d",
+    "keep.txt"
+  ],
+  "expected_kept": [
+    "a/cached/y",
+    "database/d",
+    "keep.txt"
+  ]
+}

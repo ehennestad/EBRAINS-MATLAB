@@ -1,0 +1,7 @@
+{
+  "description": "With the Size comparison, a newer source file of the same size is unchanged.",
+  "policy": { "comparison": "Size", "delete": false },
+  "source": [{ "path": "a.txt", "bytes": 1, "modified_time": "2024-01-02T00:00:00Z" }],
+  "target": [{ "path": "a.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z" }],
+  "expected": [{ "path": "a.txt", "action": "none", "reason": "unchanged", "bytes": 1 }]
+}

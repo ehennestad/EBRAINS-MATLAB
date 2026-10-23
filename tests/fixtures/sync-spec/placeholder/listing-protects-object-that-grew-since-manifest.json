@@ -1,0 +1,41 @@
+{
+  "description": "The manifest has the object at 0 bytes, so the empty local file was not a placeholder when it was made; the object has content now, which the listing shows, and the file must not replace it.",
+  "direction": "to_bucket",
+  "plan": [
+    {
+      "path": "grew.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 0
+    }
+  ],
+  "local": [
+    {
+      "path": "grew.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "listing": [
+    {
+      "path": "grew.dat",
+      "bytes": 5,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "grew.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "expected": [
+    {
+      "path": "grew.dat",
+      "action": "none",
+      "reason": "placeholder",
+      "bytes": 0
+    }
+  ]
+}

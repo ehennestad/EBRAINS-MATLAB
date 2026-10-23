@@ -1,0 +1,139 @@
+{
+  "description": "A placeholder is not uploaded, whether its object changed size or was removed since the manifest was made. An edited file and an object that was empty at the listing are planned as the plan gives them.",
+  "direction": "to_bucket",
+  "plan": [
+    {
+      "path": "edited.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 4
+    },
+    {
+      "path": "empty.dat",
+      "action": "none",
+      "reason": "unchanged",
+      "bytes": 0
+    },
+    {
+      "path": "gone.dat",
+      "action": "delete",
+      "reason": "extraneous",
+      "bytes": 3
+    },
+    {
+      "path": "placeholder.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 0
+    },
+    {
+      "path": "removed.dat",
+      "action": "copy",
+      "reason": "new",
+      "bytes": 0
+    }
+  ],
+  "local": [
+    {
+      "path": "edited.dat",
+      "bytes": 4,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "placeholder.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "listing": [
+    {
+      "path": "edited.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "gone.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "placeholder.dat",
+      "bytes": 4,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "edited.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "gone.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "placeholder.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "expected": [
+    {
+      "path": "edited.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 4
+    },
+    {
+      "path": "empty.dat",
+      "action": "none",
+      "reason": "unchanged",
+      "bytes": 0
+    },
+    {
+      "path": "gone.dat",
+      "action": "delete",
+      "reason": "extraneous",
+      "bytes": 3
+    },
+    {
+      "path": "placeholder.dat",
+      "action": "none",
+      "reason": "placeholder",
+      "bytes": 0
+    },
+    {
+      "path": "removed.dat",
+      "action": "none",
+      "reason": "placeholder",
+      "bytes": 0
+    }
+  ]
+}

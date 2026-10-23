@@ -1,0 +1,16 @@
+{
+  "description": "A file whose time is unknown on either side is left as it is.",
+  "policy": { "comparison": "SizeAndTime", "delete": false },
+  "source": [
+    { "path": "a.txt", "bytes": 1, "modified_time": "2024-01-01T00:00:00Z" },
+    { "path": "b.txt", "bytes": 1, "modified_time": null }
+  ],
+  "target": [
+    { "path": "a.txt", "bytes": 1, "modified_time": null },
+    { "path": "b.txt", "bytes": 1, "modified_time": "2000-01-01T00:00:00Z" }
+  ],
+  "expected": [
+    { "path": "a.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "b.txt", "action": "none", "reason": "unchanged", "bytes": 1 }
+  ]
+}

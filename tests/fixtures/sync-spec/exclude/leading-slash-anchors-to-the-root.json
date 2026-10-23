@@ -1,0 +1,15 @@
+{
+  "description": "A leading slash matches a pattern from the root, as in a .gitignore file, so \"/build\" leaves out the build folder at the root but not one in a subfolder.",
+  "patterns": [
+    "/build"
+  ],
+  "paths": [
+    "build/a.o",
+    "sub/build/b.o",
+    "keep.txt"
+  ],
+  "expected_kept": [
+    "sub/build/b.o",
+    "keep.txt"
+  ]
+}

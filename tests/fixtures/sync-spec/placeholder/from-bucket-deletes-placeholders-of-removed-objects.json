@@ -1,0 +1,124 @@
+{
+  "description": "In a sync from the bucket that does not delete extraneous files, the placeholder of an object that is gone is deleted all the same. A file with data, an empty file the manifest does not have, and an empty file whose object was empty are kept, and a placeholder the listing still has is downloaded as the plan gives it.",
+  "direction": "from_bucket",
+  "plan": [
+    {
+      "path": "a.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 3
+    },
+    {
+      "path": "data.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 3
+    },
+    {
+      "path": "removed.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 0
+    },
+    {
+      "path": "unknown.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 0
+    },
+    {
+      "path": "was-empty.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 0
+    }
+  ],
+  "local": [
+    {
+      "path": "a.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "data.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "unknown.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "was-empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "listing": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "data.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "was-empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "expected": [
+    {
+      "path": "a.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 3
+    },
+    {
+      "path": "data.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 3
+    },
+    {
+      "path": "removed.dat",
+      "action": "delete",
+      "reason": "placeholder",
+      "bytes": 0
+    },
+    {
+      "path": "unknown.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 0
+    },
+    {
+      "path": "was-empty.dat",
+      "action": "none",
+      "reason": "extraneous",
+      "bytes": 0
+    }
+  ]
+}

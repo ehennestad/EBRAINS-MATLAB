@@ -1,0 +1,9 @@
+{
+  "description": "Spaces and tabs around a line and a byte order mark at the start of the file are not part of a pattern. Lines end with LF, CRLF or CR.",
+  "text": "\ufeff*.tmp  \r\n\t.DS_Store\r__pycache__/\n",
+  "expected_patterns": [
+    "*.tmp",
+    ".DS_Store",
+    "__pycache__/"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Blank lines and lines that start with \"#\", after the whitespace around them is removed, hold no pattern.",
+  "text": "# Version control\n.git/\n\n   \n  # indented comment\n*.tmp\n",
+  "expected_patterns": [
+    ".git/",
+    "*.tmp"
+  ]
+}

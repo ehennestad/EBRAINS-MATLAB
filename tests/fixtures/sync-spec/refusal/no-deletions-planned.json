@@ -1,0 +1,7 @@
+{
+  "description": "Without deletions there is nothing to refuse, even for an empty source.",
+  "plan": [{ "path": "extra.txt", "action": "none", "reason": "extraneous", "bytes": 1 }],
+  "n_source_files": 0,
+  "max_delete": null,
+  "expected_code": null
+}

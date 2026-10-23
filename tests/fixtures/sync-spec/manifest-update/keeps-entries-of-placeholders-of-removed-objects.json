@@ -1,0 +1,69 @@
+{
+  "description": "A placeholder whose object is gone keeps its entry from the manifest before the sync, so that the next sync to the bucket still protects it. An object that was empty, and an empty file the manifest does not have, get no entry.",
+  "listing": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "aaa"
+    }
+  ],
+  "uploaded": [],
+  "deleted": [],
+  "local": [
+    {
+      "path": "a.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "unknown.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "was-empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "manifest": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "aaa"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": "rrr"
+    },
+    {
+      "path": "was-empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": ""
+    }
+  ],
+  "expected": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z",
+      "hash": "aaa"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-01T00:00:00Z",
+      "hash": "rrr"
+    }
+  ]
+}

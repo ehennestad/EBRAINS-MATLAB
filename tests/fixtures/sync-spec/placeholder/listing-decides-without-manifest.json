@@ -1,0 +1,96 @@
+{
+  "description": "Without a manifest, an empty local file whose object is not empty in the listing is a placeholder. An object the listing does not have is not protected, since no manifest says it existed.",
+  "direction": "to_bucket",
+  "plan": [
+    {
+      "path": "a.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 0
+    },
+    {
+      "path": "empty.dat",
+      "action": "none",
+      "reason": "unchanged",
+      "bytes": 0
+    },
+    {
+      "path": "grew.dat",
+      "action": "copy",
+      "reason": "size",
+      "bytes": 0
+    },
+    {
+      "path": "removed.dat",
+      "action": "copy",
+      "reason": "new",
+      "bytes": 0
+    }
+  ],
+  "local": [
+    {
+      "path": "a.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "grew.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    },
+    {
+      "path": "removed.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "listing": [
+    {
+      "path": "a.dat",
+      "bytes": 3,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "empty.dat",
+      "bytes": 0,
+      "modified_time": "2024-01-02T00:00:00Z"
+    },
+    {
+      "path": "grew.dat",
+      "bytes": 5,
+      "modified_time": "2024-01-02T00:00:00Z"
+    }
+  ],
+  "manifest": null,
+  "expected": [
+    {
+      "path": "a.dat",
+      "action": "none",
+      "reason": "placeholder",
+      "bytes": 0
+    },
+    {
+      "path": "empty.dat",
+      "action": "none",
+      "reason": "unchanged",
+      "bytes": 0
+    },
+    {
+      "path": "grew.dat",
+      "action": "none",
+      "reason": "placeholder",
+      "bytes": 0
+    },
+    {
+      "path": "removed.dat",
+      "action": "copy",
+      "reason": "new",
+      "bytes": 0
+    }
+  ]
+}

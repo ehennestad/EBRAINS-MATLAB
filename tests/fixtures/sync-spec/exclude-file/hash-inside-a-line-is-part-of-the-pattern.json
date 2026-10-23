@@ -1,0 +1,8 @@
+{
+  "description": "Only a \"#\" at the start of a line makes a comment, as in a .gitignore file.",
+  "text": "notes#1.txt\n*.log # not a comment\n",
+  "expected_patterns": [
+    "notes#1.txt",
+    "*.log # not a comment"
+  ]
+}
