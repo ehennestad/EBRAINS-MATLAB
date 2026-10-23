@@ -4,8 +4,8 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % The browser runs with a MockBucketsClient and a stand-in for the
     % downloader, so no request reaches the Data Proxy. The requests of
     % the page are sent to the callback of its uihtml component, as the
-    % page sends them. Only actions that need no confirmation are tested,
-    % since a confirmation dialog waits for a user.
+    % page sends them. A confirmation dialog waits for a user, so the
+    % browser is given a Confirmer that records the question and refuses.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -14,6 +14,9 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % OpenedURL - Addresses the browser asked its opener to show
         OpenedURL (1,:) string = string.empty(1, 0)
+
+        % Confirmations - Titles and messages of the confirmations the browser asked for, one row each
+        Confirmations (:,2) string = strings(0, 2)
     end
 
     methods (TestClassSetup)
@@ -284,17 +287,41 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         function testOnlineOnlyOfEditedFileIsNotSilent(testCase)
             % A file changed in place after its download keeps its size, and
             % is later than its object. It differs, so emptying it asks first.
-            target = fullfile(testCase.Folder, "virtual");
-            addListing(testCase.Client, "a.txt", 3);
-            testCase.openApp(target);
-            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
-            sendPageEvent("download", "a.txt")
-            testCase.assertEqual(testCase.App.Files.State, "downloaded");
+            target = testCase.openWithDownloadedFile();
             writeFile(fullfile(target, "a.txt"), "xyz");
 
             testCase.App.refresh()
 
             testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testOnlineOnlyReadsAFileAgainBeforeJudgingIt(testCase)
+            % The file is edited after the last scan, so the table of the
+            % browser still says that it is downloaded
+            target = testCase.openWithDownloadedFile();
+            writeFile(fullfile(target, "a.txt"), "xyz");
+
+            sendPageEvent("onlineOnly", "a.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "a.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Make online only?");
+            testCase.verifySubstring(testCase.Confirmations(1, 2), "1 of the 1 files differ from the bucket");
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testDownloadReadsAFileAgainBeforeJudgingIt(testCase)
+            target = testCase.openWithDownloadedFile();
+            nRequests = testCase.Client.getRequestCount();
+            writeFile(fullfile(target, "a.txt"), "xyz");
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "a.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Replace local copies?");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
+                'A refused confirmation requests no download.');
         end
     end
 
@@ -365,7 +392,22 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     methods (Access = private)
         function openApp(testCase, folder)
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@writeAbc);
+                Client=testCase.Client, Downloader=@writeAbc, ...
+                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+        end
+
+        function target = openWithDownloadedFile(testCase)
+        % openWithDownloadedFile - Open a new virtual bucket of one object and download it
+        %
+        %   The file a.txt holds "abc" and has the time of its object, as
+        %   a download gives it, so it is downloaded. The bucket was listed
+        %   since the browser opened.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.openApp(target);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            sendPageEvent("download", "a.txt")
+            testCase.assertEqual(testCase.App.Files.State, "downloaded");
         end
     end
 end
@@ -424,6 +466,12 @@ end
 function recordURL(testCase, url)
 % recordURL - Opener that records the address instead of showing it
     testCase.OpenedURL(end+1) = url;
+end
+
+function tf = refuseConfirmation(testCase, message, title)
+% refuseConfirmation - Confirmer that records the question and answers Cancel
+    testCase.Confirmations(end+1, :) = [title, message];
+    tf = false;
 end
 
 function writeAbc(target, varargin)

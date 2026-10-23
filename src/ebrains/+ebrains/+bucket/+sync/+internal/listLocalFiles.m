@@ -27,7 +27,8 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 %   A folder that does not exist has no files, so the table is empty. A
 %   root folder that cannot be read is an error.
 %
-%   See also ebrains.bucket.sync.internal.listRemoteFiles, ebrains.bucket.sync.internal.computeMD5
+%   See also ebrains.bucket.sync.internal.listLocalFile, ebrains.bucket.sync.internal.listRemoteFiles,
+%   ebrains.bucket.sync.internal.computeMD5
 
     arguments
         rootFolder (1,1) string
@@ -84,7 +85,8 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
     absolutePaths = fullfile(folders(isFile), names(isFile));
     paths = toRelativePaths(absolutePaths, absoluteRoot);
 
-    modifiedTimes = fileModifiedTimes(absolutePaths, reshape([listing(isFile).datenum], [], 1));
+    modifiedTimes = ebrains.bucket.sync.internal.fileModifiedTimes( ...
+        absolutePaths, reshape([listing(isFile).datenum], [], 1));
 
     files = ebrains.bucket.sync.internal.makeFileTable(paths, [listing(isFile).bytes], modifiedTimes);
 
@@ -113,28 +115,4 @@ function relativePaths = toRelativePaths(absolutePaths, absoluteRoot)
     relativePaths = extractAfter(absolutePaths, strlength(absoluteRoot));
     relativePaths = replace(relativePaths, string(filesep), "/");
     relativePaths = regexprep(relativePaths, "^/+", "");
-end
-
-function modifiedTimes = fileModifiedTimes(absolutePaths, datenums)
-% fileModifiedTimes - Modification time of each file, in UTC
-%
-%   dir reports the time as a datenum in local wall-clock time, which is
-%   ambiguous for the hour that repeats when daylight saving time ends.
-%   The file system holds the time as an instant, which Java reads as
-%   milliseconds since the epoch, so that is used where Java is available.
-%   The paths are absolute: Java resolves a relative path against its own
-%   working directory, which need not be MATLAB's.
-
-    if usejava('jvm')
-        epochMilliseconds = zeros(numel(absolutePaths), 1);
-        for i = 1:numel(absolutePaths)
-            epochMilliseconds(i) = java.io.File(char(absolutePaths(i))).lastModified();
-        end
-        modifiedTimes = datetime(epochMilliseconds / 1000, ...
-            'ConvertFrom', 'posixtime', 'TimeZone', 'UTC');
-        % lastModified gives 0 for a file that vanished since the listing
-        modifiedTimes(epochMilliseconds == 0) = NaT;
-    else
-        modifiedTimes = datetime(datenums, 'ConvertFrom', 'datenum', 'TimeZone', 'local');
-    end
 end
