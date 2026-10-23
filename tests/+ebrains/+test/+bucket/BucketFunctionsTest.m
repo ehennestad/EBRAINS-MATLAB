@@ -560,19 +560,23 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'An empty object with nothing below it stays a file.')
         end
 
-        function testCreateVirtualBucketCreatesOnlyObjectsUnderPrefix(testCase)
+        function testCreateVirtualBucketCreatesFolderOfPrefixAsRoot(testCase)
+            % Paths are relative to the folder of the prefix, as for
+            % ebrains.bucket.sync.fromBucket. The folder object of the
+            % prefix itself is the root.
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
             testCase.Client.addResponse('OK', makeStat(4, 0));
-            testCase.Client.addResponse('OK', makePage(["set-a/x.txt", "set-a/sub/y.txt"]));
+            testCase.Client.addResponse('OK', makePage(["set-a/", "set-a/x.txt", "set-a/sub/y.txt"]));
             testCase.Client.addResponse('OK', makePage(string.empty));
 
             ebrains.bucket.createVirtualBucket("my-bucket", rootPath, ...
-                Prefix="set-a/", Client=testCase.Client);
+                Prefix="set-a", Client=testCase.Client);
 
-            testCase.Client.verifyRequestURL(2, 'prefix=set-a');
-            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "x.txt")));
-            testCase.verifyTrue(isfile(fullfile(rootPath, "set-a", "sub", "y.txt")));
+            testCase.Client.verifyRequestURL(2, 'prefix=set-a/&');
+            testCase.verifyTrue(isfile(fullfile(rootPath, "x.txt")));
+            testCase.verifyTrue(isfile(fullfile(rootPath, "sub", "y.txt")));
+            testCase.verifyFalse(isfolder(fullfile(rootPath, "set-a")));
         end
 
         function testCreateVirtualBucketReportsProgressWhenVerbose(testCase)

@@ -120,9 +120,21 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.App.Files.State, "OnlineOnly");
         end
 
-        function testPrefixMustNameAFolder(testCase)
-            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser("my-bucket", ...
-                testCase.Folder, Prefix="results", Client=testCase.Client), 'EBRAINS:Bucket:InvalidPrefix');
+        function testPathsAreRelativeToPrefix(testCase)
+            % The folder holds the objects of the prefix folder, as for
+            % ebrains.bucket.sync.fromBucket, and a download asks for the
+            % object by its full name.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, ["set/a.txt", "set/sub/b.txt"], [3, 3]);
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser("my-bucket", target, ...
+                Prefix="set", Client=testCase.Client, Downloader=@writeAbc);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", "sub/b.txt")
+
+            testCase.verifyEqual(testCase.App.Files.Path, ["a.txt"; "sub/b.txt"]);
+            testCase.verifyEqual(testCase.App.Files.State, ["OnlineOnly"; "Downloaded"]);
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/set/sub/b.txt');
         end
     end
 

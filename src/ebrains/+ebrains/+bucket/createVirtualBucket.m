@@ -9,13 +9,16 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %           creates the virtual dataset for a bucket in the folder
 %           specified by virtualBucketRootPath
 %
-%       ebrains.bucket.createVirtualBucket(..., Prefix=PREFIX) creates only
-%           the objects whose name starts with PREFIX. Their paths below
-%           virtualBucketRootPath keep the prefix.
+%       ebrains.bucket.createVirtualBucket(..., Prefix=FOLDER) creates only
+%           the objects in a folder of the bucket. Paths below
+%           virtualBucketRootPath are relative to that folder, as for
+%           ebrains.bucket.sync.fromBucket: the object "results/a.txt" of
+%           Prefix "results/" becomes the file "a.txt".
 %
 %   Name-Value Arguments
-%       Prefix  : Only create objects whose name starts with this text.
-%                 Default is "", which creates every object.
+%       Prefix  : Folder of the bucket to create, such as "results/". A
+%                 missing trailing "/" is added. Default is "", the whole
+%                 bucket.
 %       Verbose : Print progress while the pages of the listing arrive.
 %       Client  : ebrains.bucket.api.BucketsClient that sends the requests.
 %                 Meant for tests and custom clients; a default client is
@@ -29,7 +32,8 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
     end
 
-    S = ebrains.bucket.listBucketObjects(bucketName, "Prefix", options.Prefix, ...
+    prefix = ebrains.bucket.internal.normalizePrefix(options.Prefix);
+    S = ebrains.bucket.listBucketObjects(bucketName, "Prefix", prefix, ...
         "Verbose", options.Verbose, "Client", options.Client);
 
     % The listing returns the objects of the bucket rather than the folders
@@ -63,7 +67,13 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
             continue
         end
         objectName = string(S(i).name);
-        filePath = fullfile(virtualBucketRootPath, objectName);
+
+        % The listing is narrowed to the prefix already. The folder object
+        % of the prefix itself is the root, which is in place.
+        if ~startsWith(objectName, prefix) || strlength(objectName) == strlength(prefix)
+            continue
+        end
+        filePath = fullfile(virtualBucketRootPath, extractAfter(objectName, strlength(prefix)));
 
         if isFolder(i)
             if ~isfolder(filePath); mkdir(filePath); end

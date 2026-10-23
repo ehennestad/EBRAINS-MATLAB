@@ -33,7 +33,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     end
 
     isToBucket = direction == "ToBucket";
-    prefix = normalizePrefix(syncOptions.Prefix);
+    prefix = ebrains.bucket.internal.normalizePrefix(syncOptions.Prefix);
     remoteLabel = "bucket """ + bucketName + """";
     if prefix ~= ""
         remoteLabel = remoteLabel + ", folder """ + prefix + """";
@@ -247,14 +247,6 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
              'The Status and Message variables of the returned table say ' ...
              'which and why. Run the sync again to retry them.'], ...
             numel(failedPaths), failedPaths(1));
-    end
-end
-
-function prefix = normalizePrefix(prefix)
-% normalizePrefix - Folder name in the bucket, without a leading "/" and with a trailing one
-    prefix = ebrains.bucket.internal.removeLeadingSlash(prefix);
-    if prefix ~= "" && ~endsWith(prefix, "/")
-        prefix = prefix + "/";
     end
 end
 

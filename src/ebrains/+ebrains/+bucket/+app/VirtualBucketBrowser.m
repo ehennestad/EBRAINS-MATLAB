@@ -35,8 +35,8 @@ classdef VirtualBucketBrowser < handle
 %   Name-Value Arguments
 %       Prefix     : Folder of the bucket that the virtual bucket holds,
 %                    such as "results/", as given to createVirtualBucket.
-%                    Paths below localFolder keep the prefix. Default is
-%                    "", the whole bucket.
+%                    Paths below localFolder are relative to it. Default
+%                    is "", the whole bucket.
 %       Client     : ebrains.bucket.api.BucketsClient that sends the
 %                    requests. Meant for tests and custom clients; a
 %                    default client is created otherwise.
@@ -93,7 +93,7 @@ classdef VirtualBucketBrowser < handle
             arguments
                 bucketName (1,1) string {mustBeNonzeroLengthText}
                 localFolder (1,1) string {mustBeNonzeroLengthText}
-                options.Prefix (1,1) string {mustBeFolderPrefix} = ""
+                options.Prefix (1,1) string = ""
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
             end
@@ -113,7 +113,7 @@ classdef VirtualBucketBrowser < handle
 
             app.BucketName = bucketName;
             app.LocalFolder = getAbsolutePath(localFolder);
-            app.Prefix = options.Prefix;
+            app.Prefix = ebrains.bucket.internal.normalizePrefix(options.Prefix);
             app.Client = options.Client;
             app.Downloader = options.Downloader;
 
@@ -160,7 +160,6 @@ classdef VirtualBucketBrowser < handle
                 uialert(app.UIFigure, exception.message, "Could not list the bucket")
                 return
             end
-            remoteFiles.Path = app.Prefix + remoteFiles.Path;
 
             progressDialog.Message = "Creating placeholders for new objects...";
             isNew = ~ismember(remoteFiles.Path, app.LocalFiles.Path);
@@ -184,13 +183,7 @@ classdef VirtualBucketBrowser < handle
             app.LocalFiles = localFiles(~isFinderFile, :);
 
             if app.IsListed
-                % Only the files below the prefix were listed, so only
-                % those can be compared with the bucket.
-                isBelowPrefix = startsWith(app.LocalFiles.Path, app.Prefix);
-                files = [ ...
-                    ebrains.bucket.app.internal.classifyFiles(app.LocalFiles(isBelowPrefix, :), app.RemoteFiles); ...
-                    ebrains.bucket.app.internal.classifyFiles(app.LocalFiles(~isBelowPrefix, :))];
-                app.Files = sortrows(files, "Path");
+                app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles, app.RemoteFiles);
             else
                 app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles);
             end
@@ -229,7 +222,7 @@ classdef VirtualBucketBrowser < handle
             for i = 1:nFiles
                 path = files.Path(i);
                 try
-                    ebrains.bucket.downloadFile(app.BucketName, path, fullfile(app.LocalFolder, path), ...
+                    ebrains.bucket.downloadFile(app.BucketName, app.Prefix + path, fullfile(app.LocalFolder, path), ...
                         DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
                         Downloader=app.Downloader);
                 catch exception
@@ -440,14 +433,6 @@ classdef VirtualBucketBrowser < handle
                 sendEventToHTMLSource(app.Page, "busy", jsonencode(struct("busy", isBusy)))
             end
         end
-    end
-end
-
-function mustBeFolderPrefix(prefix)
-% mustBeFolderPrefix - Validate that a prefix is empty or names a folder
-    if prefix ~= "" && ~endsWith(prefix, "/")
-        error('EBRAINS:Bucket:InvalidPrefix', ...
-            'The prefix "%s" must end with "/", as the name of a folder of the bucket does.', prefix)
     end
 end
 
