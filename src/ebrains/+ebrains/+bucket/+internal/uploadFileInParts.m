@@ -73,8 +73,12 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 
     % A relative path would be resolved by Java against a folder other
     % than the current folder of MATLAB.
-    [~, sourceAttributes] = fileattrib(sourceFile);
-    sourceFile = string(sourceAttributes.Name);
+    if isMATLABReleaseOlderThan("R2025a")
+        [~, sourceAttributes] = fileattrib(sourceFile); %#ok<FILEATTRIB> filePermissions needs R2025a
+        sourceFile = string(sourceAttributes.Name);
+    else
+        sourceFile = filePermissions(sourceFile).AbsolutePath;
+    end
 
     fileInfo = dir(sourceFile);
     fileSizeBytes = fileInfo.bytes;
