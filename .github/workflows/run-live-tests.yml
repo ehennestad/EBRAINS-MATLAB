@@ -12,9 +12,12 @@ on:
 
   workflow_dispatch:
 
+# A run cancelled during a test skips the teardown that deletes the objects
+# the test made in the bucket, so a run that overlaps waits for the first
+# to finish instead of cancelling it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   run-live-tests:
