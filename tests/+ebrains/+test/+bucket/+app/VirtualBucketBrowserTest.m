@@ -59,6 +59,18 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
+        function testTransferLeftoversAreNotShown(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            % Left behind by a download, and by a multipart upload of the
+            % ebrains-bucket-sync package, that a killed process did not finish
+            writeFile(fullfile(testCase.Folder, "a.txt.k3x9.sync-part"), "partial");
+            writeFile(fullfile(testCase.Folder, "sub", "big.dat.multipart_manifest.json"), "{}");
+
+            testCase.openApp(testCase.Folder);
+
+            testCase.verifyEqual(testCase.App.Files.Path, "a.txt");
+        end
+
         function testNewFolderIsFilledFromListing(testCase)
             target = fullfile(testCase.Folder, "virtual");
             addListing(testCase.Client, ["a.txt", "sub/b.txt"], [3, 3]);
@@ -163,6 +175,22 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "differs"]);
             testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
                 'Reopening a virtual bucket does not list the bucket.');
+        end
+
+        function testTransferLeftoverOfTheManifestIsNotShown(testCase)
+            % The manifest is written by whichever tool listed the bucket
+            % last, and need not leave out an object named like the file of
+            % an interrupted transfer, as a listing of this toolbox does
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "", ...
+                datetime(2000, 1, 1, TimeZone="UTC"));
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                ebrains.bucket.sync.internal.makeFileTable(["a.txt"; "old.dat.z1.sync-part"], [3; 1]));
+
+            testCase.openApp(testCase.Folder);
+
+            testCase.verifyTrue(testCase.App.IsListed);
+            testCase.verifyEqual(testCase.App.Files.Path, "a.txt");
         end
 
         function testFolderThatIsNotAVirtualBucketNeedsBucketName(testCase)

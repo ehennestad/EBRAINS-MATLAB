@@ -7,9 +7,10 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 %   ebrains.bucket.sync.internal.makeFileTable. Paths are relative to
 %   rootFolder and use "/" as separator on every platform, as object names
 %   do. Folders are not listed: an object store has no empty folders to
-%   sync them to. The .ebrains folder of a virtual bucket and the
-%   files below it are left out. The checksums are left unknown, since computing them
-%   means reading every file.
+%   sync them to. The .ebrains folder of a virtual bucket and the files
+%   below it are left out, and so are the files of interrupted transfers
+%   (see ebrains.bucket.sync.internal.isTransferLeftover). The checksums
+%   are left unknown, since computing them means reading every file.
 %
 %   [files, unreadableFolders] = ebrains.bucket.sync.internal.listLocalFiles(rootFolder)
 %   also returns the subfolders that could not be read, as a string column
@@ -90,9 +91,12 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 
     files = ebrains.bucket.sync.internal.makeFileTable(paths, [listing(isFile).bytes], modifiedTimes);
 
-    % The .ebrains folder describes the folder as a virtual bucket. It is
-    % not part of what is synced.
-    files = files(~ebrains.bucket.internal.metadata.isMetadataPath(files.Path), :);
+    % The .ebrains folder describes the folder as a virtual bucket, and the
+    % file of an interrupted transfer holds no data of its own. Neither is
+    % part of what is synced.
+    isLeftOut = ebrains.bucket.internal.metadata.isMetadataPath(files.Path) ...
+        | ebrains.bucket.sync.internal.isTransferLeftover(files.Path);
+    files = files(~isLeftOut, :);
     unreadableFolders = unreadableFolders(~ebrains.bucket.internal.metadata.isMetadataPath(unreadableFolders));
 end
 

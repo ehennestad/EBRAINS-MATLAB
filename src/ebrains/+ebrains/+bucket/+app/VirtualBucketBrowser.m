@@ -36,6 +36,15 @@ classdef VirtualBucketBrowser < handle
 %   and any other file is downloaded. "Open online" shows the page of
 %   the bucket in the Collaboratory in a web browser.
 %
+%   A file whose name ends in ".sync-part" or ".multipart_manifest.json"
+%   is not shown, whether it is in the folder or in the manifest: a
+%   download is received in a file of the first kind next to its target,
+%   and the ebrains-bucket-sync package keeps a manifest of the second
+%   kind next to a file during a multipart upload, so such a file holds
+%   no data of its own and remains only when a process is killed during
+%   the transfer (see ebrains.bucket.sync.internal.isTransferLeftover). A
+%   file given such a name on purpose is not shown either.
+%
 %   The browser is a web page in a uihtml component, and requires MATLAB
 %   R2023a or later.
 %
@@ -223,7 +232,14 @@ classdef VirtualBucketBrowser < handle
             end
             [manifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(app.LocalFolder);
             if hasManifest
-                app.RemoteFiles = manifestFiles;
+                % The manifest is written by whichever tool listed the
+                % bucket last, and need not leave out the objects named
+                % like the file of an interrupted transfer, as a listing of
+                % this toolbox does (see
+                % ebrains.bucket.sync.internal.isTransferLeftover). The
+                % browser never shows such a file.
+                isLeftover = ebrains.bucket.sync.internal.isTransferLeftover(manifestFiles.Path);
+                app.RemoteFiles = manifestFiles(~isLeftover, :);
                 app.IsListed = true;
             end
 

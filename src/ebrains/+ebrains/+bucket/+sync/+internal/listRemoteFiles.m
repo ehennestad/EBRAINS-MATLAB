@@ -9,7 +9,8 @@ function [files, listing] = listRemoteFiles(bucketName, prefix, client, options)
 %   Objects that mark folders are left out (see
 %   ebrains.bucket.internal.isFolderObject), and so are objects below a
 %   folder ".ebrains" of the prefix, the name of the folder that describes
-%   a virtual bucket.
+%   a virtual bucket, and objects named like the file of an interrupted
+%   transfer (see ebrains.bucket.sync.internal.isTransferLeftover).
 %
 %   Objects whose names could not be used as paths below a folder (a ".."
 %   segment, say) are left out with a warning; see
@@ -68,11 +69,14 @@ function [files, listing] = listRemoteFiles(bucketName, prefix, client, options)
     paths = extractAfter(names, strlength(prefix));
 
     % An object named like the .ebrains folder of a virtual bucket would
-    % replace the description of the local folder, so it is not synced.
-    isMetadata = ebrains.bucket.internal.metadata.isMetadataPath(paths);
-    objects = objects(~isMetadata);
-    paths = paths(~isMetadata);
-    names = names(~isMetadata);
+    % replace the description of the local folder, and one named like the
+    % file of an interrupted transfer would be invisible to every local
+    % listing once downloaded, so neither is synced.
+    isLeftOut = ebrains.bucket.internal.metadata.isMetadataPath(paths) ...
+        | ebrains.bucket.sync.internal.isTransferLeftover(paths);
+    objects = objects(~isLeftOut);
+    paths = paths(~isLeftOut);
+    names = names(~isLeftOut);
 
     isSafe = ebrains.bucket.internal.isSafeRelativePath(paths);
     if ~all(isSafe)

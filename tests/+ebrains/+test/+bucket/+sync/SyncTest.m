@@ -226,6 +226,19 @@ classdef SyncTest < matlab.unittest.TestCase
             end
         end
 
+        %% isTransferLeftover
+        function testIsTransferLeftoverMatchesTheNamesOfBothTools(testCase)
+            % The first two are what an interrupted download leaves behind,
+            % the third a name a user chose, the fourth what an interrupted
+            % multipart upload of the ebrains-bucket-sync package leaves
+            paths = ["a.dat.k3x9.sync-part"; "sub/tp1a2b.sync-part"; "report.sync-part"; ...
+                "big.dat.multipart_manifest.json"; "a.dat"; "x.sync-part.bak"; "sync-part"];
+
+            tf = ebrains.bucket.sync.internal.isTransferLeftover(paths);
+
+            testCase.verifyEqual(tf, [true; true; true; true; false; false; false]);
+        end
+
         %% listLocalFiles
         function testListLocalFilesGivesRelativePathsWithSlashes(testCase)
             writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
@@ -270,6 +283,25 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(files.Path, "top.txt");
             testCase.verifyEmpty(unreadableFolders);
             testCase.verifyEqual(linkedFolders, "sub/link");
+        end
+
+        function testListLocalFilesLeavesOutTheFileOfAnInterruptedDownload(testCase)
+            % A download is received in a temporary file next to its target,
+            % which a MATLAB process killed during the download leaves
+            % behind. The downloader records the name of that file and
+            % fails, and the test writes a file under the recorded name.
+            addDownloadUrls(testCase.Client, 1);
+            [downloader, getTarget] = recordingFailedDownloader();
+            testCase.verifyError(@() ebrains.bucket.sync.internal.downloadAndReplace( ...
+                "my-bucket", "a.dat", fullfile(testCase.Folder, "a.dat"), ...
+                Client=testCase.Client, Downloader=downloader), 'SyncTest:DownloadInterrupted');
+            testCase.assertTrue(startsWith(getTarget(), testCase.Folder), ...
+                'The download is received next to its target.');
+            writeFile(getTarget(), "partial");
+
+            files = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+
+            testCase.verifyEmpty(files.Path);
         end
 
         %% listLocalFile
@@ -513,6 +545,24 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
         end
 
+        function testSyncToBucketNeverUploadsTransferLeftovers(testCase)
+            writeFile(fullfile(testCase.Folder, "a.dat"), "abc");
+            % Left behind by a download, and by a multipart upload of the
+            % ebrains-bucket-sync package, that a killed process did not finish
+            writeFile(fullfile(testCase.Folder, "a.dat.k3x9.sync-part"), "partial");
+            writeFile(fullfile(testCase.Folder, "sub", "big.dat.multipart_manifest.json"), "{}");
+            addListing(testCase.Client, makeObjects( ...
+                ["a.dat", "old.dat.z1.sync-part"], [3, 1], ["2100-01-01T00:00:00", ""]));
+
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Delete=true, Uploader=recordingUploader(), Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, "a.dat");
+            testCase.verifyEqual(actions.Action, "none");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2, ...
+                'Only the two pages of the listing are requested: nothing is uploaded or deleted.');
+        end
+
         function testSyncToBucketStopsBeforeListingOnRefusedExcludeFile(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             excludeFile = fullfile(testCase.applyFixture( ...
@@ -681,6 +731,23 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(actions.Status, [""; "done"]);
             testCase.verifyFalse(isfile(fullfile(testCase.Folder, "sub", "extra.txt")));
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
+        end
+
+        function testSyncFromBucketNeverDownloadsTransferLeftovers(testCase)
+            writeFile(fullfile(testCase.Folder, "b.dat.q7.sync-part"), "partial");
+            % An object a user gave such a name on purpose is left out as well
+            addListing(testCase.Client, makeObjects( ...
+                ["a.dat", "report.sync-part", "big.dat.multipart_manifest.json"], [3, 3, 2]));
+            addDownloadUrls(testCase.Client, 1);
+
+            actions = ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Delete=true, Downloader=@writeAbc, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, "a.dat");
+            testCase.verifyEqual(actions.Status, "done");
+            testCase.verifyEqual(listFileNames(testCase.Folder), ["a.dat", "b.dat.q7.sync-part"]);
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3, ...
+                'The two pages of the listing and one download URL are requested.');
         end
 
         function testSyncFromBucketLinkedFolderHoldsBackDeletions(testCase)
@@ -963,6 +1030,21 @@ function [wasSuccess, response] = recordUpload(record, source)
     record(record.Count + 1) = string(source);
     wasSuccess = true;
     response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
+end
+
+function [downloader, getTarget] = recordingFailedDownloader()
+% recordingFailedDownloader - Downloader that records the file it was given and fails
+%
+%   The record is a containers.Map, a handle, so the anonymous functions
+%   share it.
+    record = containers.Map('KeyType', 'double', 'ValueType', 'any');
+    downloader = @(target, varargin) recordAndFail(record, target);
+    getTarget = @() string(record(1));
+end
+
+function recordAndFail(record, target)
+    record(1) = string(target); %#ok<NASGU> read through the handle by getTarget
+    error('SyncTest:DownloadInterrupted', 'The download was interrupted.')
 end
 
 function writeAbc(target, varargin)
