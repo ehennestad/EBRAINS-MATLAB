@@ -171,11 +171,11 @@ function uploadFromManifest(manifest, manifestFile, options)
     % One display covers every part. The monitor is deleted on the way
     % out, so an error leaves no dialog open. The parts of a resumed
     % upload count as done before the first request.
+    numCompletedParts = numel(manifest.PartETags);
     monitor = ebrains.external.webprogress.MultipartProgressMonitor(fileSizeBytes, ...
+        CompletedBytes=min(numCompletedParts*options.PartSize, fileSizeBytes), ...
         DisplayMode=options.DisplayMode, Figure=options.Figure, Filename=manifest.ObjectName);
     monitorCleanup = onCleanup(@() delete(monitor));
-    numCompletedParts = numel(manifest.PartETags);
-    monitor.addCompletedBytes(min(numCompletedParts*options.PartSize, fileSizeBytes))
 
     transfer = struct( ...
         "BucketName", manifest.BucketName, ...
