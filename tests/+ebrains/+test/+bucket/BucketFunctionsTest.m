@@ -7,6 +7,17 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
 
     properties
         Client ebrains.mocks.MockBucketsClient
+        % Folder of the manifests of multipart uploads, so that no test
+        % writes into the preferences folder of the user
+        ResumeFolder (1,1) string
+    end
+
+    properties (Constant)
+        % PartSize - Smallest part the object store accepts, which keeps the files of the tests small
+        PartSize = 5*2^20
+
+        % FileSize - Three parts: two of PartSize and a last one of 1 MiB
+        FileSize = 2*5*2^20 + 2^20
     end
 
     properties (TestParameter)
@@ -29,6 +40,18 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
         end
+
+        function createResumeFolder(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            testCase.ResumeFolder = fullfile(folderFixture.Folder, "multipart-uploads");
+        end
+    end
+
+    properties (TestParameter)
+        % Shifts of the modification time of a changed file: a newer time,
+        % as an edit gives, and an older one, as a copy that keeps the
+        % time of its original gives
+        timeShiftSeconds = struct("Newer", 3600, "Older", -3600)
     end
 
     methods (Test)
@@ -357,6 +380,403 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
         end
 
+        %% uploadFile, multipart
+        function testUploadFileSendsPartsAboveThreshold(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "/data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/data/big.bin/multipart');
+            testCase.Client.verifyRequestURL(2, '/data/big.bin/multipart/upload-1/1');
+            testCase.Client.verifyRequestURL(3, '/data/big.bin/multipart/upload-1/2');
+            testCase.Client.verifyRequestURL(4, '/data/big.bin/multipart/upload-1/3');
+            testCase.Client.verifyRequestMethod(5, 'PUT');
+            testCase.Client.verifyRequestURL(5, '/data/big.bin/multipart/upload-1');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.assertNumElements(spy.Calls, 3);
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 1, 2]*testCase.PartSize);
+            testCase.verifyEqual(cellfun(@(c) c.Options.NumBytes, spy.Calls), [testCase.PartSize, testCase.PartSize, 2^20]);
+            testCase.verifyEqual(string(cellfun(@(c) c.Url, spy.Calls, UniformOutput=false)), ...
+                "https://store.example.org/part/" + (1:3));
+            % The manifest is removed once the object is assembled
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
+        end
+
+        function testUploadFileRefusesPartsBelowTheSmallestTheStoreAccepts(testCase)
+            sourceFile = makeSourceFile(testCase, 25);
+
+            testCase.verifyError(@() ebrains.bucket.uploadFile("my-bucket", "big.bin", sourceFile, ...
+                PartSize=2^20, Client=testCase.Client), 'MATLAB:validators:mustBeGreaterThanOrEqual');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testUploadFileInPartsRefusesMoreThanTenThousandParts(testCase)
+            % Checked through the internal function, which puts no lower
+            % bound on the part size, so that the file stays small
+            sourceFile = makeSourceFile(testCase, 10*10000 + 1);
+
+            testCase.verifyError(@() ebrains.bucket.internal.uploadFileInParts("my-bucket", "big.bin", sourceFile, ...
+                PartSize=10, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                Client=testCase.Client), 'EBRAINS:Bucket:TooManyParts');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileSharesOneProgressMonitorBetweenParts(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                Client=testCase.Client, Uploader=spy.asFunction());
+
+            monitors = cellfun(@(c) c.Options.ProgressMonitor, spy.Calls, UniformOutput=false);
+            testCase.verifyClass(monitors{1}, 'ebrains.external.webprogress.MultipartProgressMonitor');
+            testCase.verifyTrue(monitors{1} == monitors{2} && monitors{2} == monitors{3});
+        end
+
+        function testUploadFileSendsTheWholeFileAtTheThreshold(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "big.bin", sourceFile, ...
+                MultipartThreshold=testCase.FileSize, Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/big.bin');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyFalse(contains(char(request.URL.EncodedURI), 'multipart'));
+            testCase.assertNumElements(spy.Calls, 1);
+            testCase.verifyFalse(isfield(spy.Calls{1}.Options, 'Offset'));
+        end
+
+        function testUploadFileRetriesARefusedPartThroughANewUrl(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 4);
+            spy = ebrains.mocks.SpyUploader();
+            spy.Responses = { ...
+                {true, ebrains.mocks.SpyUploader.accepted("etag1")}, ...
+                {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')}, ...
+                {true, ebrains.mocks.SpyUploader.accepted("etag2")}, ...
+                {true, ebrains.mocks.SpyUploader.accepted("etag3")}};
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.assertNumElements(spy.Calls, 4);
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 1, 1, 2]*testCase.PartSize);
+            testCase.verifyEqual(string(cellfun(@(c) c.Url, spy.Calls, UniformOutput=false)), ...
+                "https://store.example.org/part/" + (1:4));
+            testCase.Client.verifyRequestURL(4, '/multipart/upload-1/2');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(6), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+        end
+
+        function testUploadFileGivesUpAPartAfterThreeRefusals(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+            refusal = {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')};
+            spy.Responses = {refusal, refusal, refusal};
+
+            try
+                ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                    Client=testCase.Client, Uploader=spy.asFunction());
+                testCase.verifyFail('Expected uploadFile to throw');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'EBRAINS:Bucket:UploadFailed');
+                testCase.verifySubstring(ME.message, 'part 1 of 3');
+                testCase.verifySubstring(ME.message, '503');
+                testCase.verifySubstring(ME.message, 'SlowDown');
+            end
+            testCase.verifyNumElements(spy.Calls, 3);
+            % One request started the upload and one fetched a URL per attempt; none completed it
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 4);
+            % The manifest keeps the upload id, so the next call resumes
+            % from part 1. It is the only file in the resume folder: the
+            % temporary file it was written through has been moved over it.
+            manifestNames = listFileNames(testCase.ResumeFolder);
+            testCase.assertNumElements(manifestNames, 1);
+            testCase.verifyTrue(endsWith(manifestNames, ".json"));
+            manifest = jsondecode(fileread(fullfile(testCase.ResumeFolder, manifestNames)));
+            testCase.verifyEqual(manifest.UploadId, 'upload-1');
+            testCase.verifyEmpty(manifest.PartETags);
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
+        end
+
+        function testUploadFileResumesAnUnchangedFile(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/2'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/3'));
+            testCase.Client.addResponse('OK', struct());
+            spy = ebrains.mocks.SpyUploader();
+            completedBytesAtFirstCall = [];
+            uploader = @(file, url, varargin) recordCompletedBytes(file, url, varargin{:});
+            function [wasSuccess, response] = recordCompletedBytes(file, url, varargin)
+                if isempty(completedBytesAtFirstCall)
+                    options = struct(varargin{:});
+                    completedBytesAtFirstCall = options.ProgressMonitor.CompletedBytes;
+                end
+                [wasSuccess, response] = spy.upload(file, url, varargin{:});
+            end
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=uploader);
+
+            % No request starts a new upload; the first one fetches the URL of part 2
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            testCase.Client.verifyRequestURL(2, '/data/big.bin/multipart/upload-1/3');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(3), ...
+                '{"1":"first-etag","2":"etag1","3":"etag2"}');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [1, 2]*testCase.PartSize);
+            % The part of the manifest counts as done before the first request
+            testCase.verifyEqual(completedBytesAtFirstCall, testCase.PartSize);
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileResumesAfterTheCurrentFolderChanged(testCase)
+            % The manifest is found by the absolute path of the source
+            % file, so a relative path from another folder still resumes.
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.applyFixture(matlab.unittest.fixtures.CurrentFolderFixture(fileparts(sourceFile)));
+            testCase.Client.reset();
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/2'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/3'));
+            testCase.Client.addResponse('OK', struct());
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", "big.bin", ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [1, 2]*testCase.PartSize);
+        end
+
+        function testUploadFileStartsOverWhenTheFileChangedButNotItsSize(testCase, timeShiftSeconds)
+            % The parts sent before would join the rest of another
+            % version of the file. A copy that keeps an older time, as
+            % cp -p or a restored backup does, has changed as well.
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            % One byte is overwritten in place, so the content changes and the size does not
+            fileId = fopen(sourceFile, "r+");
+            fwrite(fileId, uint8(1));
+            fclose(fileId);
+            shiftModificationTime(sourceFile, timeShiftSeconds);
+            testCase.Client.reset();
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/data/big.bin/multipart');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 1, 2]*testCase.PartSize);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileDoesNotResumeTheUploadOfAnotherObject(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "other.bin");
+            testCase.Client.reset();
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            % A new upload is started and every part is sent
+            request = testCase.Client.getRequest(1);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart'));
+            testCase.verifyNumElements(spy.Calls, 3);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            % The manifest of the other object stays for its own upload
+            testCase.verifyNumElements(listFileNames(testCase.ResumeFolder), 1);
+        end
+
+        function testUploadFileStartsOverWhenTheProxyNoLongerKnowsTheUpload(testCase)
+            % A 404 from the part-URL request for the recorded upload id
+            % is the one sign that the upload is gone from the Data Proxy.
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            queueMultipartResponses(testCase.Client, 3, "upload-2");
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            % The refused request for part 2 of the recorded upload, then
+            % a new upload that sends every part
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 6);
+            testCase.Client.verifyRequestURL(1, '/data/big.bin/multipart/upload-1/2');
+            request = testCase.Client.getRequest(2);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart'));
+            testCase.Client.verifyRequestURL(3, '/data/big.bin/multipart/upload-2/1');
+            testCase.Client.verifyRequestURL(5, '/data/big.bin/multipart/upload-2/3');
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 1, 2]*testCase.PartSize);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(6), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileStartsOverWhenTheResumedCompletionIsNotFound(testCase)
+            % With every part recorded, the completion is the first
+            % request of the resumed upload, and its 404 says the
+            % upload is gone.
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAtCompletion(testCase, sourceFile, "data/big.bin");
+            testCase.Client.reset();
+            testCase.Client.addResponse('NotFound', struct('detail', 'Object not found'));
+            queueMultipartResponses(testCase.Client, 3, "upload-2");
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 6);
+            request = testCase.Client.getRequest(1);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart/upload-1'));
+            request = testCase.Client.getRequest(2);
+            testCase.verifyTrue(endsWith(char(request.URL.EncodedURI), '/data/big.bin/multipart'));
+            testCase.verifyEqual(cellfun(@(c) c.Options.Offset, spy.Calls), [0, 1, 2]*testCase.PartSize);
+            testCase.verifyEqual(testCase.Client.getRequestPayload(6), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileKeepsTheManifestWhenAResumedUploadFailsOtherwise(testCase)
+            % Any refusal but a 404 may pass, so the recorded upload is
+            % kept for the next call, and the error says how to start
+            % over instead.
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            interruptUploadAfterFirstPart(testCase, sourceFile, "data/big.bin");
+            manifestFile = fullfile(testCase.ResumeFolder, listFileNames(testCase.ResumeFolder));
+            testCase.Client.reset();
+            testCase.Client.addResponse('InternalServerError', struct('detail', 'Internal Server Error'));
+            spy = ebrains.mocks.SpyUploader();
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                    DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()));
+
+            testCase.assertNotEmpty(exception, "Expected uploadFile to throw.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:getMultipartUploadUrl:InternalServerError');
+            testCase.verifySubstring(exception.message, 'Internal Server Error');
+            testCase.verifySubstring(exception.message, char(manifestFile));
+            testCase.verifySubstring(exception.message, 'Resume=false');
+            % No new upload is started, and the manifest still holds the
+            % recorded upload
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+            testCase.verifyEmpty(spy.Calls);
+            manifest = jsondecode(fileread(manifestFile));
+            testCase.verifyEqual(manifest.UploadId, 'upload-1');
+            testCase.verifyEqual(string(manifest.PartETags), """first-etag""");
+        end
+
+        function testUploadFileFromAReadOnlyFolder(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            makeReadOnly(testCase, fileparts(sourceFile));
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction());
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
+        end
+
+        function testUploadFileGoesOnWithoutResumeWhenTheManifestCannotBeWritten(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            mkdir(testCase.ResumeFolder)
+            makeReadOnly(testCase, testCase.ResumeFolder);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+
+            testCase.verifyWarning(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+                    DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+                'EBRAINS:Bucket:CannotRecordUploadProgress');
+
+            testCase.verifyEqual(testCase.Client.getRequestPayload(5), ...
+                '{"1":"etag1","2":"etag2","3":"etag3"}');
+            testCase.verifyEmpty(listFileNames(testCase.ResumeFolder));
+        end
+
+        function testUploadFileWritesNoManifestWithResumeFalse(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+            refusal = {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')};
+            spy.Responses = {refusal, refusal, refusal};
+
+            testCase.verifyError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, Resume=false, DisplayMode="Command Window", ...
+                    Client=testCase.Client, Uploader=spy.asFunction()), ...
+                'EBRAINS:Bucket:UploadFailed');
+
+            testCase.verifyFalse(isfolder(testCase.ResumeFolder));
+            testCase.verifyEqual(listFileNames(fileparts(sourceFile)), "big.bin");
+        end
+
+        function testUploadFileMissingETagIsAnError(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            queueMultipartResponses(testCase.Client, 3);
+            spy = ebrains.mocks.SpyUploader();
+            spy.Responses = {{true, matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK)}};
+
+            testCase.verifyError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                    Client=testCase.Client, Uploader=spy.asFunction()), ...
+                'EBRAINS:Bucket:PartETagMissing');
+        end
+
+        function testUploadFilePartErrorHoldsNoSignedQuery(testCase)
+            sourceFile = makeSourceFile(testCase, testCase.FileSize);
+            testCase.Client.addResponse('OK', struct('uploadId', 'upload-1'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/part/1?X-Amz-Signature=SECRETSIG'));
+
+            exception = captureError(...
+                @() ebrains.bucket.uploadFile("my-bucket", "data/big.bin", sourceFile, ...
+                    MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, DisplayMode="Command Window", ...
+                    Client=testCase.Client, Uploader=@(source, url, varargin) failLikeHttpClient(url)));
+
+            verifyNoSignedQuery(testCase, exception, "https://store.example.org/part/1")
+            testCase.verifyEqual(exception.identifier, 'MATLAB:webservices:ConnectionRefused');
+        end
+
         %% downloadFile
         function testDownloadFileMissingObjectIsReportedBeforeDownload(testCase)
             testCase.Client.addResponse('NotFound', 'Object not found');
@@ -678,6 +1098,97 @@ function page = makePage(objectNames, byteSizes)
     names = cellstr(reshape(objectNames, [], 1));
     sizes = num2cell(reshape(byteSizes, [], 1));
     page = struct('objects', struct('name', names, 'bytes', sizes));
+end
+
+function sourceFile = makeSourceFile(testCase, numBytes)
+% makeSourceFile - File of numBytes bytes in a temporary folder of the test
+%
+%   A file of more than a megabyte is created sparse through Java, since
+%   the uploads of the tests never read it and the parts of a multipart
+%   upload are at least 5 MiB; fseek of MATLAB cannot reach past the end
+%   of a file.
+    folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+    sourceFile = fullfile(folderFixture.Folder, "big.bin");
+    if numBytes > 2^20
+        randomAccessFile = java.io.RandomAccessFile(char(sourceFile), "rw");
+        randomAccessFile.setLength(numBytes);
+        randomAccessFile.close();
+    else
+        fileId = fopen(sourceFile, "w");
+        fwrite(fileId, uint8(1:numBytes));
+        fclose(fileId);
+    end
+end
+
+function queueMultipartResponses(client, numPartUrls, uploadId)
+% queueMultipartResponses - Responses of a multipart upload the Data Proxy accepts
+%
+%   The upload id, one temporary URL per part request, and the completion.
+    arguments
+        client (1,1) ebrains.mocks.MockBucketsClient
+        numPartUrls (1,1) double
+        uploadId (1,1) string = "upload-1"
+    end
+
+    client.addResponse('OK', struct('uploadId', uploadId));
+    for partRequest = 1:numPartUrls
+        client.addResponse('OK', struct('url', "https://store.example.org/part/" + partRequest));
+    end
+    client.addResponse('OK', struct());
+end
+
+function interruptUploadAfterFirstPart(testCase, sourceFile, objectName)
+% interruptUploadAfterFirstPart - Leave a manifest with one accepted part, as an interrupted upload does
+%
+%   The store accepts part 1 with the ETag "first-etag" and refuses part
+%   2 three times, so the upload with id "upload-1" fails after part 1.
+    queueMultipartResponses(testCase.Client, 4);
+    spy = ebrains.mocks.SpyUploader();
+    refusal = {false, ebrains.mocks.SpyUploader.refused(503, 'SlowDown')};
+    spy.Responses = {{true, ebrains.mocks.SpyUploader.accepted("first-etag")}, refusal, refusal, refusal};
+
+    testCase.assertError(@() ebrains.bucket.uploadFile("my-bucket", objectName, sourceFile, ...
+        MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+        DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+        'EBRAINS:Bucket:UploadFailed');
+end
+
+function interruptUploadAtCompletion(testCase, sourceFile, objectName)
+% interruptUploadAtCompletion - Leave a manifest with every part accepted, as a failed completion does
+%
+%   The store accepts the three parts of the upload with id "upload-1"
+%   and the Data Proxy refuses the completion with 500.
+    testCase.Client.addResponse('OK', struct('uploadId', 'upload-1'));
+    for partRequest = 1:3
+        testCase.Client.addResponse('OK', struct('url', "https://store.example.org/part/" + partRequest));
+    end
+    testCase.Client.addResponse('InternalServerError', struct('detail', 'Internal Server Error'));
+    spy = ebrains.mocks.SpyUploader();
+
+    testCase.assertError(@() ebrains.bucket.uploadFile("my-bucket", objectName, sourceFile, ...
+        MultipartThreshold=2^20, PartSize=testCase.PartSize, ResumeFolder=testCase.ResumeFolder, ...
+        DisplayMode="Command Window", Client=testCase.Client, Uploader=spy.asFunction()), ...
+        'EBRAINS:Bucket:completeMultipartUpload:InternalServerError');
+end
+
+function shiftModificationTime(filePath, offsetSeconds)
+% shiftModificationTime - Move the modification time of a file by a number of seconds
+    file = java.io.File(filePath);
+    file.setLastModified(file.lastModified() + 1000*offsetSeconds);
+end
+
+function makeReadOnly(testCase, folder)
+% makeReadOnly - Remove write access to a folder for the test, or skip the test where that has no effect
+    fileattrib(folder, "-w");
+    testCase.addTeardown(@() fileattrib(folder, "+w"));
+
+    probeFile = fullfile(folder, "probe.txt");
+    fileId = fopen(probeFile, "w");
+    if fileId >= 0
+        fclose(fileId);
+        delete(probeFile)
+        testCase.assumeFail("Files can still be created in a folder without write access on this system.")
+    end
 end
 
 function fileNames = listFileNames(folder)
