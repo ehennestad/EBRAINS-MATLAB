@@ -79,8 +79,10 @@ function actions = fromBucket(bucketName, localFolder, options)
 %                 Path    - Path relative to localFolder and Prefix
 %                 Action  - "download", "delete" or "none"
 %                 Reason  - "new", "size", "newer", "checksum",
-%                           "unchanged", or "extraneous" for a local file
-%                           the bucket does not have
+%                           "unchanged", "extraneous" for a local file
+%                           the bucket does not have, or "placeholder"
+%                           for the empty placeholder of a removed object
+%                           in a virtual bucket (see below)
 %                 Bytes   - Size of the file
 %                 Status  - "done", "failed", "skipped", "planned" (with
 %                           DryRun), or "" for no action
@@ -111,6 +113,17 @@ function actions = fromBucket(bucketName, localFolder, options)
 %   keeps its name. Of objects whose names differ from each other only in
 %   case, only the first in the listing can be stored there; the others
 %   are left out with a warning.
+%
+%   When localFolder is a virtual bucket (see
+%   ebrains.bucket.createVirtualBucket), the sync must be of its bucket
+%   and prefix, and the listing it made becomes the manifest of the
+%   folder. The empty placeholder of an object removed since the last
+%   listing stands for nothing, so it is deleted whether or not Delete is
+%   set, as "delete" with Reason "placeholder". A placeholder the sync did
+%   not delete, because the deletions were held back or the deletion
+%   failed, keeps its manifest entry as long as the file is still empty,
+%   so that ebrains.bucket.sync.toBucket still knows it for a placeholder
+%   rather than upload it as a new, empty object.
 %
 %   The sync refuses to delete everything: with Delete=true and an empty
 %   bucket or folder of it, it stops with an error before it changes

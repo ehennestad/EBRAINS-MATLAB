@@ -477,6 +477,84 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "mine.txt")));
         end
 
+        function testPullKeepsEntryOfPlaceholderWhoseDeletionIsHeldBack(testCase)
+            % The failed download holds the deletions back, so gone.txt
+            % stays as an empty file. Only its manifest entry tells the
+            % next sync to the bucket that it stands for an object.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "gone.txt"], [3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "gone.txt"), "");
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            addDownloadUrl(testCase.Client);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Downloader=@failDownload, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:Incomplete');
+
+            gone = actions(actions.Path == "gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason, gone.Status], ["delete", "placeholder", "skipped"]);
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "gone.txt")));
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, ["a.txt"; "gone.txt"]);
+            testCase.verifyEqual(manifest.Bytes, [3; 3]);
+
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            pushed = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+
+            gone = pushed(pushed.Path == "gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason], ["none", "placeholder"]);
+        end
+
+        function testPullKeepsEntryOfPlaceholderItCouldNotDelete(testCase)
+            % gone.txt lies in a folder without write permission, so its
+            % deletion fails and the empty file stays
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "sub/gone.txt"], [3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "sub", "gone.txt"), "");
+            makeUndeletable(testCase, fullfile(testCase.Folder, "sub", "gone.txt"));
+            % Uploaded before a.txt was written, so a.txt is not downloaded
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Client=testCase.Client, Verbose=false), 'EBRAINS:Bucket:Sync:Incomplete');
+
+            gone = actions(actions.Path == "sub/gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason, gone.Status], ["delete", "placeholder", "failed"]);
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "sub", "gone.txt")));
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, ["a.txt"; "sub/gone.txt"]);
+        end
+
+        function testPullGivesNoEntryToPlaceholderThatHoldsDataNow(testCase)
+            % The download writes into gone.txt before it fails, as another
+            % program may between the listing and the deletions. The file
+            % holds data, so it is no placeholder any more and gets no entry.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "gone.txt"], [3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            goneFile = fullfile(testCase.Folder, "gone.txt");
+            writeFile(goneFile, "");
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            addDownloadUrl(testCase.Client);
+            fillGoneAndFail = @(varargin) fillPlaceholderAndFail(goneFile);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Downloader=fillGoneAndFail, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:Incomplete');
+
+            gone = actions(actions.Path == "gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason, gone.Status], ["delete", "placeholder", "skipped"]);
+            testCase.verifyEqual(fileread(goneFile), 'new data');
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, "a.txt");
+        end
+
         function testCreateVirtualBucketAgainDeletesPlaceholderOfRemovedObject(testCase)
             addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
             ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, Client=testCase.Client);
@@ -521,6 +599,11 @@ function addListing(client, names, bytes, lastModified)
     client.addResponse('OK', struct('objects', []));
 end
 
+function addDownloadUrl(client)
+% addDownloadUrl - Queue the signed URL that one download asks for
+    client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+end
+
 function [wasSuccess, response] = acceptUpload(varargin)
     wasSuccess = true;
     response = matlab.net.http.ResponseMessage(matlab.net.http.StatusCode.OK);
@@ -534,6 +617,38 @@ end
 function writeAbc(target, varargin)
 % writeAbc - Downloader that writes three bytes to the target
     writeFile(target, "abc");
+end
+
+function varargout = failDownload(varargin) %#ok<STOUT> errors before any output is due
+% failDownload - Downloader that fails, as one does when the connection is lost
+    error('EBRAINS:Test:DownloadFailed', 'The download failed.')
+end
+
+function fillPlaceholderAndFail(filePath)
+% fillPlaceholderAndFail - Downloader that writes data into another file, then fails
+    writeFile(filePath, "new data");
+    error('EBRAINS:Test:DownloadFailed', 'The download failed.')
+end
+
+function makeUndeletable(testCase, filePath)
+% makeUndeletable - Take away the permission to delete a file until the test ends
+%
+%   A file is deleted by changing its folder, so the folder loses its write
+%   permission. The test is filtered where that has no effect: on Windows,
+%   which has no chmod, and for a user who can write to any folder, such
+%   as root.
+    testCase.assumeFalse(ispc, 'Folder permissions are set with chmod, which Windows does not have.');
+    folder = fileparts(filePath);
+    [status, output] = system("chmod 555 '" + folder + "'");
+    testCase.assertEqual(status, 0, output);
+    testCase.addTeardown(@() system("chmod 755 '" + folder + "'"));
+    probeFile = fullfile(folder, "write-probe");
+    fileID = fopen(probeFile, "w");
+    if fileID ~= -1
+        fclose(fileID);
+        delete(probeFile)
+    end
+    testCase.assumeEqual(fileID, -1, 'This user can change a folder without write permission.');
 end
 
 function writeFile(filePath, content)
