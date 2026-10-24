@@ -351,6 +351,48 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
                 'A refused confirmation requests no download.');
         end
+
+        function testDownloadKeepsAFileEditedWhileItWasDownloaded(testCase)
+            % The file is judged before the download and can change while
+            % the object is transferred, so it is checked again right
+            % before the download replaces it.
+            target = fullfile(testCase.Folder, "virtual");
+            localFile = fullfile(target, "a.txt");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
+                Client=testCase.Client, Downloader=@(file, varargin) editThenWrite(localFile, file), ...
+                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(fileread(localFile), 'xyz');
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testOnlineOnlyReadsAFileRestoredWithTheTimeOfItsChecksum(testCase)
+            % A file rewritten with the time it had when its checksum was
+            % cached looks unchanged to the cache. Making it online only
+            % discards it, so the checksum is read again first.
+            target = fullfile(testCase.Folder, "virtual");
+            localFile = fullfile(target, "a.txt");
+            addListing(testCase.Client, "a.txt", 3, "900150983cd24fb0d6963f7d28e17f72"); % MD5 of "abc"
+            testCase.openApp(target);
+            laterTime = datetime(2000, 1, 1, 1, 0, 0, TimeZone="UTC");
+            writeFile(localFile, "abc");
+            setFileTime(localFile, laterTime);
+            sendPageEvent("refresh")
+            testCase.assertEqual(testCase.App.Files.State, "downloaded", ...
+                'The checksum, not the time, says that the file is downloaded.');
+            writeFile(localFile, "xyz");
+            setFileTime(localFile, laterTime);
+
+            sendPageEvent("onlineOnly", "a.txt")
+
+            testCase.verifyEqual(fileread(localFile), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
     end
 
     methods (Test) % The page of the bucket
@@ -461,16 +503,20 @@ function sendPageEvent(name, paths)
     page.HTMLEventReceivedFcn(page, struct("HTMLEventName", name, "HTMLEventData", data));
 end
 
-function addListing(client, names, bytes)
+function addListing(client, names, bytes, hashes)
 % addListing - Queue the responses to an update from the bucket
 %
 %   The browser counts the objects with the stat endpoint before it lists
 %   them. The listing then gets one page, and the empty page that ends it.
+%   Objects have no checksum unless hashes are given.
+    if nargin < 4
+        hashes = repmat("", size(names));
+    end
     objects = struct( ...
         'name', cellstr(reshape(names, [], 1)), ...
         'bytes', num2cell(reshape(bytes, [], 1)), ...
         'last_modified', '2000-01-01T00:00:00', ...
-        'hash', '', ...
+        'hash', cellstr(reshape(hashes, [], 1)), ...
         'content_type', 'application/octet-stream');
     client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0));
     client.addResponse('OK', struct('objects', objects));
@@ -487,8 +533,18 @@ end
 
 function giveTimeOfListedObjects(filePath)
 % giveTimeOfListedObjects - Give a file the time that addListing gives every object, as a download does
-    listedTime = datetime(2000, 1, 1, TimeZone="UTC");
-    java.io.File(char(filePath)).setLastModified(round(posixtime(listedTime) * 1000));
+    setFileTime(filePath, datetime(2000, 1, 1, TimeZone="UTC"));
+end
+
+function setFileTime(filePath, time)
+% setFileTime - Set the modification time of a file
+    java.io.File(char(filePath)).setLastModified(round(posixtime(time) * 1000));
+end
+
+function editThenWrite(localFile, target)
+% editThenWrite - Downloader that edits the local file during the transfer, then delivers the download
+    writeFile(localFile, "xyz");
+    writeFile(target, "abc");
 end
 
 function recordURL(testCase, url)

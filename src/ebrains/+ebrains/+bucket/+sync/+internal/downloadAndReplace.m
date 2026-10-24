@@ -22,6 +22,16 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
 %                       ebrains.bucket.sync.toBucket would upload it again.
 %                       Default is NaT, which keeps the time of the
 %                       download.
+%       LocalFile     : File table of ebrains.bucket.sync.internal.makeFileTable
+%                       with the row of the file at localFile as it was read
+%                       when the download was decided, or no rows when there
+%                       was no file. Right before the download is put in
+%                       place, the file must still have the Bytes and
+%                       ModifiedTime of that row, or still be missing;
+%                       otherwise the download is discarded with the error
+%                       EBRAINS:Bucket:LocalFileChanged, since the file holds
+%                       data that was not judged. Default is [], which skips
+%                       the check.
 %       DisplayMode   : Where progress is shown, as for ebrains.bucket.downloadFile.
 %       Figure        : Parent figure of the progress dialog.
 %       Client        : ebrains.bucket.api.BucketsClient that sends the requests.
@@ -36,6 +46,7 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
         localFile (1,1) string
         options.ExpectedBytes (1,1) double = NaN
         options.ModifiedTime (1,1) datetime = NaT
+        options.LocalFile = []
         options.DisplayMode (1,1) string = "Command Window"
         options.Figure = []
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
@@ -76,6 +87,9 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
             objectName, fileInfo(1).bytes, options.ExpectedBytes)
     end
 
+    if istable(options.LocalFile)
+        assertLocalFileUnchanged(localFile, options.LocalFile)
+    end
     movefile(temporaryFile, localFile, "f")
 
     note = setModifiedTime(localFile, options.ModifiedTime);
@@ -101,6 +115,23 @@ function note = setModifiedTime(filePath, modifiedTime)
     if ~java.io.File(char(absolutePath)).setLastModified(epochMilliseconds)
         note = "Downloaded, but the file kept the time of the download, " + ...
             "so a sync to the bucket would upload it again.";
+    end
+end
+
+function assertLocalFileUnchanged(localFile, expected)
+% assertLocalFileUnchanged - Error unless the file is as it was when the download was decided
+%
+%   A file that appeared, vanished, or changed in size or time while the
+%   object was downloaded holds data that was not judged, so it is kept.
+%   Two unknown times count as the same.
+    [folder, name, extension] = fileparts(localFile);
+    current = ebrains.bucket.sync.internal.listLocalFile(folder, name + extension);
+    isUnchanged = height(current) == height(expected) && (isempty(expected) || ...
+        (current.Bytes == expected.Bytes && isequaln(current.ModifiedTime, expected.ModifiedTime)));
+    if ~isUnchanged
+        error('EBRAINS:Bucket:LocalFileChanged', ...
+            ['The file "%s" changed while the object was downloaded, so the download ' ...
+             'was discarded. Refresh and try again.'], localFile)
     end
 end
 

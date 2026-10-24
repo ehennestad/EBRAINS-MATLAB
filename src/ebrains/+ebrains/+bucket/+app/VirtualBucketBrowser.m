@@ -398,6 +398,23 @@ classdef VirtualBucketBrowser < handle
     end
 
     methods (Access = private) % Actions
+        function forgetChecksums(app, paths)
+        % forgetChecksums - Drop the cached checksums of the given paths, so that the next scan reads the files
+        %
+        %   The cache takes a file with the size and time of its entry as
+        %   unchanged, which a rewrite within the same time slot, or a
+        %   restore that keeps the time, is not. An action that discards
+        %   local data reads the files it is about to discard.
+            if isempty(app.ChecksumCache)
+                return
+            end
+            cachedPaths = string(keys(app.ChecksumCache));
+            isSelected = ismember(lower(cachedPaths), lower(reshape(paths, [], 1)));
+            if any(isSelected)
+                remove(app.ChecksumCache, cellstr(cachedPaths(isSelected)));
+            end
+        end
+
         function downloadPaths(app, paths)
         % downloadPaths - Download the files of the given paths that are online only or differ
             % The files may have been edited since the last scan
@@ -463,7 +480,8 @@ classdef VirtualBucketBrowser < handle
         %   ebrains.bucket.sync.fromBucket gives a download, so that a
         %   later sync in either direction sees it as unchanged. Both come
         %   from the last listing; without one the download is only put in
-        %   place.
+        %   place. The file is replaced only while it is still as it was
+        %   read when the download was decided.
             expectedBytes = NaN;
             modifiedTime = NaT;
             if app.IsListed
@@ -473,16 +491,25 @@ classdef VirtualBucketBrowser < handle
                     modifiedTime = app.RemoteFiles.ModifiedTime(index);
                 end
             end
+            % The row of the file as the last scan read it; where the folder
+            % ignores case the row may carry the name in another case.
+            isRow = app.LocalFiles.Path == relativePath;
+            if ~any(isRow)
+                isRow = strcmpi(app.LocalFiles.Path, relativePath);
+            end
             ebrains.bucket.sync.internal.downloadAndReplace(app.BucketName, app.Prefix + relativePath, ...
                 fullfile(app.LocalFolder, relativePath), ...
-                ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, ...
+                ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, LocalFile=app.LocalFiles(isRow, :), ...
                 DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
                 Downloader=app.Downloader);
         end
 
         function makePathsOnlineOnly(app, paths)
         % makePathsOnlineOnly - Replace the downloaded files of the given paths with placeholders
-            % The files may have been edited since the last scan
+            % The files may have been edited since the last scan, and a cached
+            % checksum of a file rewritten within the same time slot would
+            % hide the edit, so the files are read again in full.
+            app.forgetChecksums(paths)
             app.rescanPaths(paths)
             files = app.Files(ismember(app.Files.Path, paths), :);
 
