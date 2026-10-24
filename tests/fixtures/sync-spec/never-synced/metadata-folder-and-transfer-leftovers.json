@@ -1,0 +1,26 @@
+{
+  "description": "The .ebrains folder at the root, in any case, and the files of interrupted transfers are left out of every sync. The suffixes are matched in lowercase on the path itself, so a folder of such a name and a name in another case are synced.",
+  "paths": [
+    ".ebrains/bucket.json",
+    ".EBRAINS/manifest.csv",
+    ".ebrains",
+    "sub/.ebrains/x",
+    ".ebrainsx",
+    "a.dat",
+    "a.dat.k3x9.sync-part",
+    "report.sync-part",
+    "Report.SYNC-PART",
+    "a.sync-part/b.txt",
+    "big.bin.multipart_manifest.json",
+    "sub/big.bin.multipart_manifest.json",
+    "multipart_manifest.json"
+  ],
+  "expected_kept": [
+    "sub/.ebrains/x",
+    ".ebrainsx",
+    "a.dat",
+    "Report.SYNC-PART",
+    "a.sync-part/b.txt",
+    "multipart_manifest.json"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "description": "A double quote may only open a field, or be doubled inside a quoted one; a field that holds one is quoted. A bare double quote inside an unquoted field is not CSV text, and the row is refused.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\nb\"c.txt,1,,\n",
+  "expected_error_line": 3
+}

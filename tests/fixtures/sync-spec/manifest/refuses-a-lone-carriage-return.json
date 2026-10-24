@@ -1,0 +1,5 @@
+{
+  "description": "Lines end with LF, or CR LF for a reader. A CR on its own is neither a line end nor part of a path outside quotes, so the row that holds one is refused.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\rb.txt,1,,\n",
+  "expected_error_line": 2
+}
