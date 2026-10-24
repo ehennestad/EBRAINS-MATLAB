@@ -37,7 +37,8 @@ function filePath = getBucketObject(bucketName, objectName, options)
     if ~ebrains.bucket.internal.isSafeRelativePath(objectName)
         error('EBRAINS:Bucket:UnsafeObjectName', ...
             ['The object name "%s" could lead outside the target folder. Give a name without ' ...
-             '"." or ".." segments, doubled or trailing slashes, or backslashes.'], objectName)
+             '"." or ".." segments, doubled or trailing slashes, backslashes, or a Windows drive ' ...
+             'such as "C:" at its start.'], objectName)
     end
 
     filePath = fullfile(options.TargetFolder, objectName);

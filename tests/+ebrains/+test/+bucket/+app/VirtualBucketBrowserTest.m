@@ -272,6 +272,17 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
                 Prefix="other", Client=testCase.Client), 'EBRAINS:Bucket:OtherBucket');
         end
 
+        function testPrefixWithDriveIsRefused(testCase)
+            target = fullfile(testCase.Folder, "virtual");
+
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(target, ...
+                BucketName="my-bucket", Prefix="C:/set", Client=testCase.Client), ...
+                'EBRAINS:Bucket:InvalidPrefix');
+
+            testCase.verifyFalse(isfolder(target), 'The folder is not created for a refused prefix.');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
         function testUpdateDeletesPlaceholderOfRemovedObject(testCase)
             target = fullfile(testCase.Folder, "virtual");
             addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
