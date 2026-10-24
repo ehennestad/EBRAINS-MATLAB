@@ -27,7 +27,8 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             "ParentSegment", "../x.txt", ...
             "ParentSegmentWithFolder", "../newdir/x.txt", ...
             "ParentSegmentsBelowFolder", "a/../../x.txt", ...
-            "BackslashParentSegments", "a\..\..\x.txt")
+            "BackslashParentSegments", "a\..\..\x.txt", ...
+            "WindowsDrive", "C:/x.txt")
 
         % Object names that place the file at a/b.txt below the target
         % folder; a leading "/" is ignored, as everywhere in the namespace
@@ -1043,6 +1044,25 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEmpty(listFileNames(folderFixture.Folder), ...
                 'Nothing may be created next to the root.');
             testCase.verifyFalse(isfile(fullfile(rootPath, "a", "b.txt")));
+        end
+
+        function testCreateVirtualBucketLeavesOutNamesWithAWindowsDrive(testCase)
+            % A name whose first segment is a drive, "C:/x" or "c:x", is a
+            % path on that drive on Windows, so it is left out like a name
+            % with a ".." segment. On the other platforms fullfile keeps
+            % the drive as a folder name, so a file created from such a
+            % name would show up below the root.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            rootPath = fullfile(folderFixture.Folder, "virtual-bucket");
+            objectNames = ["C:/drive.txt", "c:relative.txt", "ok.txt"];
+            testCase.Client.addResponse('OK', makePage(objectNames));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+
+            testCase.verifyWarning( ...
+                @() ebrains.bucket.createVirtualBucket("my-bucket", rootPath, Client=testCase.Client), ...
+                'EBRAINS:Bucket:UnsafeObjectName');
+
+            testCase.verifyEqual(listEntryNames(rootPath), [".ebrains", "ok.txt"]);
         end
 
         function testCreateVirtualBucketListErrorPropagates(testCase)

@@ -22,6 +22,7 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             "EmptyBucket", '{"format_version": 1, "bucket": "", "prefix": "", "listed_at": null}', ...
             "PrefixWithoutSlash", '{"format_version": 1, "bucket": "b", "prefix": "set", "listed_at": null}', ...
             "PrefixThatLeaves", '{"format_version": 1, "bucket": "b", "prefix": "../set/", "listed_at": null}', ...
+            "PrefixWithDrive", '{"format_version": 1, "bucket": "b", "prefix": "C:/set/", "listed_at": null}', ...
             "NoListedAt", '{"format_version": 1, "bucket": "b", "prefix": ""}', ...
             "ListedAtWithOffset", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-01-02T03:04:05+00:00"}', ...
             "ListedAtOnFebruary30", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-02-30T00:00:00Z"}')
@@ -283,6 +284,18 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(ebrains.bucket.internal.metadata.readManifest(testCase.Folder).Path, "a.txt");
         end
 
+        function testCreateVirtualBucketRefusesPrefixWithDrive(testCase)
+            % The prefix is checked before the bucket is listed, so no
+            % request is sent and no folder is created
+            target = fullfile(testCase.Folder, "virtual");
+
+            testCase.verifyError(@() ebrains.bucket.createVirtualBucket("my-bucket", target, ...
+                Prefix="C:/set", Client=testCase.Client), 'EBRAINS:Bucket:InvalidPrefix');
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+            testCase.verifyFalse(isfolder(target));
+        end
+
         function testCreateVirtualBucketRefusesOtherBucket(testCase)
             ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
 
@@ -303,6 +316,14 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(actions.Path, "a.txt", ...
                 'Neither the local .ebrains folder nor the object below .ebrains/ is planned.');
             testCase.verifyEqual(actions.Action, "none");
+        end
+
+        function testSyncRefusesPrefixWithDriveBeforeListing(testCase)
+            % Both sync functions normalize the prefix in runSync before
+            % the bucket is listed, so one direction covers them
+            testCase.verifyError(@() ebrains.bucket.sync.fromBucket("my-bucket", testCase.Folder, ...
+                Prefix="c:set", Client=testCase.Client, Verbose=false), 'EBRAINS:Bucket:InvalidPrefix');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
         function testSyncOfOtherBucketIsRefusedBeforeListing(testCase)
