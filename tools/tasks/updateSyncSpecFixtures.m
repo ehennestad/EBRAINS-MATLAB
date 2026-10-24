@@ -20,7 +20,7 @@ function updateSyncSpecFixtures()
     % of the package (its pull request 16, based on pull request 15 with
     % the exclude rules) until they are merged, so the pin is a commit of
     % that branch rather than a release tag.
-    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@9cd5e06a6457444f931216799d44aa41f30d987f";
+    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@952c5c152949667b1c3ca920357217aa76fe6d14";
     sourceFolder = "spec/fixtures";
     targetFolder = "tests/fixtures/sync-spec";
 

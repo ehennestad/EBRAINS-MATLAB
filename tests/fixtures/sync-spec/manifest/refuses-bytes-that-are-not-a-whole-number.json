@@ -1,0 +1,5 @@
+{
+  "description": "bytes is digits only: no sign, fraction or space.",
+  "text": "path,bytes,modified_time,hash\na.txt,-5,,\n",
+  "expected_error_line": 2
+}

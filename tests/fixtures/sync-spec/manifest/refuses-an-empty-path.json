@@ -1,0 +1,5 @@
+{
+  "description": "An empty path is refused.",
+  "text": "path,bytes,modified_time,hash\n,1,,\n",
+  "expected_error_line": 2
+}

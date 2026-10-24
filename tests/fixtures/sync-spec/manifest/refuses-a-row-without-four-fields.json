@@ -1,0 +1,5 @@
+{
+  "description": "A row with fewer or more fields than the header is refused, and so is an empty line.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\nb.txt,1\n",
+  "expected_error_line": 3
+}

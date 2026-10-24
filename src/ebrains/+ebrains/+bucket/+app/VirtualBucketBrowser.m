@@ -104,6 +104,16 @@ classdef VirtualBucketBrowser < handle
         % paths relative to LocalFolder. Empty if it was never listed.
         RemoteFiles = []
 
+        % ChecksumCache - MD5 checksums of local files, by path
+        %
+        % containers.Map from a path to a struct with the Bytes and Time of
+        % the file when its checksum was computed, and the Hash. The file
+        % states need the checksum of a file whose time differs from its
+        % object's, and reading large files again on every scan would be
+        % slow. Created on first use, since a default value would be one
+        % map shared by every browser.
+        ChecksumCache = []
+
         % Message - Note on the last action, shown below the file list
         Message (1,1) string = ""
 
@@ -322,7 +332,34 @@ classdef VirtualBucketBrowser < handle
                 remoteFiles = ebrains.bucket.sync.internal.dropCaseCollisions(remoteFiles);
             end
             app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles, remoteFiles, ...
-                IgnoreCase=ignoreCase);
+                IgnoreCase=ignoreCase, LocalHashFcn=@(path) app.localChecksum(path));
+        end
+
+        function hash = localChecksum(app, path)
+        % localChecksum - MD5 checksum of a local file, read again only when its size or time changed
+        %
+        %   A file that cannot be read gives "", which leaves its state to
+        %   its time.
+            if isempty(app.ChecksumCache)
+                app.ChecksumCache = containers.Map('KeyType', 'char', 'ValueType', 'any');
+            end
+            file = app.LocalFiles(app.LocalFiles.Path == path, :);
+            key = char(path);
+            if isKey(app.ChecksumCache, key)
+                cached = app.ChecksumCache(key);
+                if cached.Bytes == file.Bytes && isequal(cached.Time, file.ModifiedTime)
+                    hash = cached.Hash;
+                    return
+                end
+            end
+
+            try
+                hash = ebrains.bucket.sync.internal.computeMD5(fullfile(app.LocalFolder, path));
+            catch
+                hash = "";
+                return
+            end
+            app.ChecksumCache(key) = struct("Bytes", file.Bytes, "Time", file.ModifiedTime, "Hash", hash);
         end
     end
 

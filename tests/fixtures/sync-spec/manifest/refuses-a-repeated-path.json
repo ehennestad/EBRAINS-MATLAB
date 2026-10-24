@@ -1,0 +1,5 @@
+{
+  "description": "A path that is on an earlier line is refused.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\nb.txt,1,,\na.txt,2,,\n",
+  "expected_error_line": 4
+}

@@ -1,5 +1,5 @@
 {
-  "description": "An uploaded file replaces or adds its entry with the local size and checksum and an unknown time, and a deleted object loses its entry. Other entries are those of the listing.",
+  "description": "An uploaded file replaces or adds its entry with the local size, the MD5 checksum of the uploaded file and an unknown time, and a deleted object loses its entry. Other entries are those of the listing.",
   "listing": [
     {
       "path": "a.dat",
@@ -30,7 +30,8 @@
     {
       "path": "new.dat",
       "bytes": 2,
-      "modified_time": "2024-01-03T00:00:00Z"
+      "modified_time": "2024-01-03T00:00:00Z",
+      "hash": "eee"
     }
   ],
   "deleted": [
@@ -55,7 +56,7 @@
       "path": "new.dat",
       "bytes": 2,
       "modified_time": null,
-      "hash": ""
+      "hash": "eee"
     }
   ]
 }

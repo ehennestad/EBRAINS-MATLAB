@@ -1,0 +1,5 @@
+{
+  "description": "modified_time is empty or in the form YYYY-MM-DDTHH:MM:SSZ: a fraction, an offset or a missing Z is refused, and so is a date that does not exist.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,2024-01-02T03:04:05Z,\nb.txt,1,2024-02-30T00:00:00Z,\n",
+  "expected_error_line": 3
+}

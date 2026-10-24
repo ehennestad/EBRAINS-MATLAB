@@ -12,6 +12,29 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
         Folder string
     end
 
+    properties (TestParameter)
+        % Texts of a bucket.json that does not follow virtual-bucket.schema.json
+        BadBucketInfo = struct( ...
+            "NotJson", '{"format_version": 1,', ...
+            "NotAnObject", '[1, 2]', ...
+            "VersionNotWhole", '{"format_version": 1.5, "bucket": "b", "prefix": "", "listed_at": null}', ...
+            "VersionTrue", '{"format_version": true, "bucket": "b", "prefix": "", "listed_at": null}', ...
+            "EmptyBucket", '{"format_version": 1, "bucket": "", "prefix": "", "listed_at": null}', ...
+            "PrefixWithoutSlash", '{"format_version": 1, "bucket": "b", "prefix": "set", "listed_at": null}', ...
+            "PrefixThatLeaves", '{"format_version": 1, "bucket": "b", "prefix": "../set/", "listed_at": null}', ...
+            "NoListedAt", '{"format_version": 1, "bucket": "b", "prefix": ""}', ...
+            "ListedAtWithOffset", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-01-02T03:04:05+00:00"}', ...
+            "ListedAtOnFebruary30", '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": "2024-02-30T00:00:00Z"}')
+
+        % Texts of a manifest whose only times are of a day that does not exist
+        ManifestOfImpossibleDates = struct( ...
+            "OneRow", "path,bytes,modified_time,hash" + newline + ...
+                "a.txt,1,2024-02-30T00:00:00Z," + newline, ...
+            "TwoRows", "path,bytes,modified_time,hash" + newline + ...
+                "a.txt,1,2024-02-30T00:00:00Z," + newline + ...
+                "b.txt,1,2024-02-30T00:00:00Z," + newline)
+    end
+
     methods (TestMethodSetup)
         function setUp(testCase)
             testCase.Client = ebrains.mocks.MockBucketsClient();
@@ -26,7 +49,7 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             % The text is that of the paths-that-need-quotes fixture of the spec
             text = "path,bytes,modified_time,hash" + newline + ...
                 """a,b.txt"",1,," + newline + ...
-                "måling/data file.txt,3,2024-01-02T03:04:05Z,abc" + newline + ...
+                "måling/data file.txt,3,2024-01-02T03:04:05Z,900150983cd24fb0d6963f7d28e17f72" + newline + ...
                 """say """"hi"""".txt"",2,," + newline;
 
             files = ebrains.bucket.internal.metadata.parseManifest(text);
@@ -40,6 +63,19 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
         function testManifestWithoutHeaderIsRejected(testCase)
             testCase.verifyError(@() ebrains.bucket.internal.metadata.parseManifest("a.txt,1,,"), ...
                 'EBRAINS:Bucket:InvalidManifest');
+        end
+
+        function testManifestOfImpossibleDatesIsRefusedAtItsLine(testCase, ManifestOfImpossibleDates)
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(ManifestOfImpossibleDates);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifyThat(exception.message, ...
+                matlab.unittest.constraints.StartsWithSubstring("Line 2: "));
         end
 
         function testBucketInfoRoundTripKeepsUnknownFields(testCase)
@@ -75,6 +111,132 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
 
             testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
                 'EBRAINS:Bucket:UnknownVirtualBucketFormat');
+        end
+
+        function testBucketInfoThatBreaksTheSchemaIsRefused(testCase, BadBucketInfo)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "bucket.json"), BadBucketInfo);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
+                'EBRAINS:Bucket:InvalidBucketInfo');
+        end
+
+        function testInvalidManifestErrorNamesFileAndLine(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            manifestFile = fullfile(testCase.Folder, ".ebrains", "manifest.csv");
+            writeFile(manifestFile, "path,bytes,modified_time,hash" + newline + "a.txt,1,," + newline + "../x.txt,1,," + newline);
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, sprintf('"%s", line 3: the path "../x.txt"', manifestFile));
+        end
+
+        function testManifestThatIsNotUtf8IsRefused(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            fileID = fopen(fullfile(testCase.Folder, ".ebrains", "manifest.csv"), "w");
+            fwrite(fileID, [unicode2native(char("path,bytes,modified_time,hash" + newline + "m"), "UTF-8"), ...
+                uint8(229), unicode2native(char("ling.txt,1,," + newline), "UTF-8")]); % "å" in Latin-1
+            fclose(fileID);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readManifest(testCase.Folder), ...
+                'EBRAINS:Bucket:NotUTF8Text');
+        end
+
+        function testEmptyManifestIsRefusedAtItsFirstLine(testCase)
+            % An empty file is UTF-8 text without the header line
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "manifest.csv"), "");
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, "line 1:");
+        end
+
+        function testRuleBrokenBeforeASyntaxErrorIsReportedFirst(testCase)
+            % The rows before a quoting error are read, so a rule broken
+            % on an earlier line is the first line that breaks the layout
+            text = "path,bytes,modified_time,hash" + newline + "../x.txt,1,," + newline + """unclosed,1,," + newline;
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(text);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, 'Line 2: the path "../x.txt"');
+        end
+
+        function testSyntaxErrorAfterGoodRowsIsReportedAtItsLine(testCase)
+            text = "path,bytes,modified_time,hash" + newline + "a.txt,1,," + newline + """unclosed,1,," + newline;
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(text);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifySubstring(exception.message, "Line 3: it is not a row of CSV text (a quoted field is not closed)");
+        end
+
+        function testSyntaxErrorOnTheFirstLineIsReportedAsSuch(testCase)
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest("""path,bytes,modified_time,hash");
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifySubstring(exception.message, "Line 1: it is not a row of CSV text");
+        end
+
+        function testEmptyBucketInfoIsRefusedAsNotJson(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "bucket.json"), "");
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the file to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidBucketInfo');
+            testCase.verifySubstring(exception.message, "it is not JSON text in UTF-8");
+        end
+
+        function testUnreadableBucketInfoIsReportedAsUnreadable(testCase)
+            % A file that cannot be opened is not bad JSON
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            bucketInfoFile = fullfile(testCase.Folder, ".ebrains", "bucket.json");
+            writeFile(bucketInfoFile, '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": null}');
+            makeFileUnreadable(testCase, bucketInfoFile);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
+                'EBRAINS:Bucket:CouldNotReadFile');
+        end
+
+        function testManifestWithCarriageReturnsIsRead(testCase)
+            crlf = char([13 10]);
+            files = ebrains.bucket.internal.metadata.parseManifest( ...
+                "path,bytes,modified_time,hash" + crlf + "a.txt,1,2024-01-02T03:04:05Z," + crlf);
+
+            testCase.verifyEqual(files.Path, "a.txt");
+            testCase.verifyEqual(files.ModifiedTime, datetime(2024, 1, 2, 3, 4, 5, TimeZone="UTC"));
         end
 
         %% createVirtualBucket
@@ -230,6 +392,27 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(manifest.Bytes, [3; 4]);
             testCase.verifyTrue(isnat(manifest.ModifiedTime(2)), ...
                 'The time of an uploaded object is only known from a new listing.');
+            testCase.verifyEqual(manifest.Hash(2), ...
+                ebrains.bucket.sync.internal.computeMD5(fullfile(testCase.Folder, "new.txt")), ...
+                'The manifest records the checksum of an uploaded file.');
+        end
+
+        function testPushRecordsTheChecksumOfTheContentItSent(testCase)
+            % The checksum is read before the upload, so an edit made while
+            % the file is being uploaded does not end up in the manifest
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
+            addListing(testCase.Client, "other.txt", 3, "2000-01-01T00:00:00");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            testCase.Client.addResponse('OK', struct());
+
+            ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@editThenAccept, Client=testCase.Client, Verbose=false);
+
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Hash(manifest.Path == "new.txt"), "900150983cd24fb0d6963f7d28e17f72", ...
+                'The manifest holds the checksum of the content that was sent, "abc".');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "new.txt")), 'xyz');
         end
 
         function testPullWritesListingAsManifest(testCase)
@@ -362,4 +545,26 @@ function writeFile(filePath, content)
     fileID = fopen(filePath, "w");
     fwrite(fileID, unicode2native(char(content), "UTF-8"));
     fclose(fileID);
+end
+
+function makeFileUnreadable(testCase, filePath)
+% makeFileUnreadable - Take away the permission to read a file until the test ends
+%
+%   The test is filtered where that has no effect: on Windows, which has
+%   no chmod, and for a user who can read any file, such as root.
+    testCase.assumeFalse(ispc, 'File permissions are set with chmod, which Windows does not have.');
+    [status, output] = system("chmod 000 '" + filePath + "'");
+    testCase.assertEqual(status, 0, output);
+    testCase.addTeardown(@() system("chmod 644 '" + filePath + "'"));
+    fileID = fopen(filePath, "r");
+    if fileID ~= -1
+        fclose(fileID);
+    end
+    testCase.assumeEqual(fileID, -1, 'This user can read a file without read permission.');
+end
+
+function [wasSuccess, response] = editThenAccept(sourceFile, varargin)
+% editThenAccept - Uploader that edits the source file during the transfer, then accepts it
+    writeFile(sourceFile, "xyz");
+    [wasSuccess, response] = acceptUpload(sourceFile, varargin{:});
 end
