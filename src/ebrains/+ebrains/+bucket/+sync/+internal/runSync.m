@@ -12,6 +12,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %       2. Plan what to copy and delete (ebrains.bucket.sync.internal.planSync).
 %       3. Copy the new and changed files.
 %       4. Delete the extraneous files, if asked to and no copy failed.
+%   A sync to the bucket from a folder whose file system ignores case
+%   does not delete an object whose name differs only in case from a
+%   local file: the folder cannot hold the two apart, so the object may
+%   be the only copy of its data. The row is skipped with the reason.
 %   When localFolder is a virtual bucket (see
 %   ebrains.bucket.internal.metadata.readBucketInfo), the sync must be of
 %   its bucket and prefix, a sync to the bucket leaves its placeholders
@@ -73,8 +77,11 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % only in case are one file: a download writes into the local file
     % and keeps its name. Matching them exactly would plan that file for
     % deletion as well. An upload compares names exactly, since the bucket
-    % tells them apart.
-    ignoreCase = ~isToBucket && ebrains.bucket.sync.internal.isCaseInsensitive(localFolder, localFiles.Path);
+    % tells them apart, but on such a file system it does not delete an
+    % object whose name differs only in case from a local file (see the
+    % plan below).
+    folderIgnoresCase = ebrains.bucket.sync.internal.isCaseInsensitive(localFolder, localFiles.Path);
+    ignoreCase = ~isToBucket && folderIgnoresCase;
 
     % The exclude patterns are matched the way names are: where names are
     % matched without regard to case, so are the patterns, or an object
@@ -168,9 +175,31 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     message = repmat("", nActions, 1);
 
     isCopy = actions.Action == copyAction;
-    isDelete = actions.Action == "delete";
+
+    % An upload compares names exactly, so an object whose name differs
+    % only in case from a local file is extraneous to the plan. Where the
+    % local folder ignores case it cannot hold the two apart, a sync from
+    % the bucket keeps only one of them, and the object may be the only
+    % copy of its data, so it is not deleted: the row is skipped with the
+    % reason and does not count as a deletion.
+    isCaseCollision = false(nActions, 1);
+    collisionMessage = strings(nActions, 1);
+    if isToBucket && folderIgnoresCase
+        [isCaseCollision, collidingLocalPaths] = ...
+            ebrains.bucket.sync.internal.caseCollidingDeletions(actions, localFiles);
+        collisionMessage(isCaseCollision) = "Not deleted, since the name differs only in case from " + ...
+            "the local file """ + collidingLocalPaths(isCaseCollision) + """, which the local folder " + ...
+            "cannot hold apart.";
+        if any(isCaseCollision)
+            warning('EBRAINS:Bucket:Sync:CaseCollision', ...
+                ['%d object(s) of %s have a name that differs only in case from a local file, ' ...
+                 'which the local folder cannot hold apart, for example "%s". They are not deleted.'], ...
+                sum(isCaseCollision), remoteLabel, actions.Path(find(isCaseCollision, 1)));
+        end
+    end
+    isDelete = actions.Action == "delete" & ~isCaseCollision;
     [refusalId, refusal] = ebrains.bucket.sync.internal.deletionRefusal( ...
-        actions, height(sourceFiles), syncOptions.MaxDelete);
+        actions(~isCaseCollision, :), height(sourceFiles), syncOptions.MaxDelete);
     if otherBucket ~= ""
         refusal = otherBucket;
     end
@@ -181,7 +210,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         else
             fprintf('Syncing %s to "%s".\n', remoteLabel, localFolder);
         end
-        printPlanSummary(actions, isCopy, isDelete, copyAction)
+        printPlanSummary(actions, isCopy, isDelete, isCaseCollision, copyAction)
     end
 
     if syncOptions.DryRun
@@ -201,8 +230,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
             status(isDelete) = "skipped";
             message(isDelete) = skipReason;
         end
+        status(isCaseCollision) = "skipped";
+        message(isCaseCollision) = collisionMessage(isCaseCollision);
         if syncOptions.Verbose
-            printPlannedActions(actions, isCopy | isDelete)
+            printPlannedActions(actions, isCopy | isDelete | isCaseCollision)
             if refusal ~= ""
                 fprintf('[DryRun] A real run would stop before changing anything: %s\n', refusal);
             end
@@ -267,6 +298,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     if deletionHoldBack == "" && any(status == "failed")
         deletionHoldBack = "Not deleted, since a file failed to copy.";
     end
+    status(isCaseCollision) = "skipped";
+    message(isCaseCollision) = collisionMessage(isCaseCollision);
     deleteIndices = find(isDelete);
     if deletionHoldBack ~= "" && ~isempty(deleteIndices)
         status(deleteIndices) = "skipped";
@@ -453,8 +486,10 @@ function keys = matchKeys(paths, ignoreCase)
     end
 end
 
-function printPlanSummary(actions, isCopy, isDelete, copyAction)
-    isExtraneousKept = actions.Reason == "extraneous" & ~isDelete;
+function printPlanSummary(actions, isCopy, isDelete, isCaseCollision, copyAction)
+    % An object kept because its name collides with a local file in case
+    % is explained by the warning, not offered for deletion
+    isExtraneousKept = actions.Reason == "extraneous" & ~isDelete & ~isCaseCollision;
     fprintf('%d file(s) to %s (%s), %d to delete, %d unchanged.\n', ...
         sum(isCopy), copyAction, ebrains.util.getDataSizeLabel(sum(actions.Bytes(isCopy))), ...
         sum(isDelete), sum(actions.Reason == "unchanged"));
