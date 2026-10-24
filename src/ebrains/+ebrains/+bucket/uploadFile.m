@@ -33,7 +33,11 @@ function uploadFile(bucketName, objectName, sourceFile, options)
 %       MultipartThreshold : Size in bytes above which the file is sent
 %                            as a multipart upload. Default is 1 GiB.
 %       PartSize           : Size in bytes of each part but the last of a
-%                            multipart upload. Default is 10 MiB.
+%                            multipart upload, at least 5 MiB, the smallest
+%                            part the object store accepts. A file is sent
+%                            in at most 10,000 parts, so a file larger than
+%                            10,000 times PartSize is refused before any
+%                            part is sent. Default is 10 MiB.
 %       Resume             : Record the progress of a multipart upload in
 %                            the manifest file and resume from it.
 %                            Default is true.
@@ -63,7 +67,7 @@ function uploadFile(bucketName, objectName, sourceFile, options)
         objectName (1,1) string {mustBeNonzeroLengthText}
         sourceFile (1,1) string {mustBeFile}
         options.MultipartThreshold (1,1) double {mustBePositive} = 2^30
-        options.PartSize (1,1) double {mustBeInteger, mustBePositive} = 10*2^20
+        options.PartSize (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.PartSize, 5242880)} = 10*2^20 % at least 5 MiB
         options.Resume (1,1) logical = true
         options.ResumeFolder (1,1) string = fullfile(prefdir, "EBRAINS", "multipart-uploads")
         options.DisplayMode (1,1) string ...

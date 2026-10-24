@@ -35,8 +35,11 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
 %       sourceFile : Path of the local file to upload
 %
 %   Name-Value Arguments
-%       PartSize    : Size in bytes of each part but the last. Default is
-%                     10 MiB.
+%       PartSize    : Size in bytes of each part but the last. The object
+%                     store accepts no part below 5 MiB except the last,
+%                     which ebrains.bucket.uploadFile enforces, and at most
+%                     10,000 parts, which this function checks before it
+%                     sends any. Default is 10 MiB.
 %       Resume      : Record progress in the manifest file and resume
 %                     from it. Default is true.
 %       ResumeFolder: Folder of the manifest files. Default is
@@ -82,6 +85,20 @@ function uploadFileInParts(bucketName, objectName, sourceFile, options)
     end
 
     fileInfo = dir(sourceFile);
+
+    % The object store assembles at most 10,000 parts, so a file that needs
+    % more is refused before any part is sent, with a part size that fits.
+    maxParts = 10000;
+    numParts = ceil(fileInfo.bytes / options.PartSize);
+    if numParts > maxParts
+        error('EBRAINS:Bucket:TooManyParts', ...
+            ['The file "%s" (%s) would be sent in %d parts of %s, more than the %d parts ' ...
+             'of a multipart upload. Give a PartSize of at least %s.'], ...
+            sourceFile, ebrains.util.getDataSizeLabel(fileInfo.bytes), numParts, ...
+            ebrains.util.getDataSizeLabel(options.PartSize), maxParts, ...
+            ebrains.util.getDataSizeLabel(ceil(fileInfo.bytes / maxParts)))
+    end
+
     manifest = newManifest(bucketName, objectName, sourceFile, fileInfo.bytes, options.PartSize);
     manifestFile = "";
     if options.Resume
