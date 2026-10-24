@@ -11,7 +11,8 @@ function replaceWithPlaceholders(rootFolder, files)
 %   to discard their data was made. A file is emptied only while it still
 %   has the Bytes and ModifiedTime of its row: a file that is missing or
 %   has changed since holds data that was not judged. Either is an error,
-%   reported before any file is changed.
+%   reported before any file is changed. An unknown time in the row
+%   matches an unknown time at the check.
 %
 %   See also ebrains.bucket.app.internal.createPlaceholderFiles, ebrains.bucket.sync.internal.listLocalFile
 
@@ -27,7 +28,9 @@ function replaceWithPlaceholders(rootFolder, files)
             error('EBRAINS:Bucket:FileNotFound', ...
                 'The file "%s" does not exist, so no file was made online only.', filePath)
         end
-        if current.Bytes ~= files.Bytes(i) || current.ModifiedTime ~= files.ModifiedTime(i)
+        % isequaln takes two unknown times as the same: a file whose time
+        % cannot be read has none at the decision and at this check alike.
+        if current.Bytes ~= files.Bytes(i) || ~isequaln(current.ModifiedTime, files.ModifiedTime(i))
             error('EBRAINS:Bucket:LocalFileChanged', ...
                 ['The file "%s" changed since it was read, so no file was made online only. ' ...
                  'Refresh and try again.'], filePath)

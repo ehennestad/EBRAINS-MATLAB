@@ -133,6 +133,19 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "b.txt")), 'xyz');
         end
+
+        function testReplaceWithPlaceholdersAcceptsAFileWithoutATime(testCase)
+            % A file whose time cannot be read has an unknown time at the
+            % decision and at the check alike, so it is not a changed file.
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            java.io.File(char(fullfile(testCase.Folder, "a.txt"))).setLastModified(0);
+            files = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt");
+            testCase.assumeTrue(isnat(files.ModifiedTime), 'The file system keeps a time of zero apart from none.');
+
+            ebrains.bucket.app.internal.replaceWithPlaceholders(testCase.Folder, files);
+
+            testCase.verifyEqual(dir(fullfile(testCase.Folder, "a.txt")).bytes, 0);
+        end
     end
 end
 
