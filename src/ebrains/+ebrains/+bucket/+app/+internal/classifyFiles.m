@@ -36,8 +36,8 @@ function files = classifyFiles(localFiles, remoteFiles, options)
 %       LocalHashFcn : Function that returns the MD5 checksum of a local
 %                    file, called as LocalHashFcn(path) with a path of
 %                    localFiles, for the files whose checksum decides and
-%                    whose Hash in localFiles is "". Default is [], which
-%                    leaves such a file judged by its times.
+%                    whose Hash in localFiles is "". Without it, such a
+%                    file is judged by its times.
 %
 %   Output Arguments
 %       files : Table with one row per path found on either side, sorted by
