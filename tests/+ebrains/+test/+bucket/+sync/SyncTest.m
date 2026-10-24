@@ -272,6 +272,40 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(linkedFolders, "sub/link");
         end
 
+        %% listLocalFile
+        function testListLocalFileReadsOneFileAsTheListingDoes(testCase)
+            writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "sub", "inner.txt"), "abcdef");
+            allFiles = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+
+            file = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "sub/inner.txt");
+
+            testCase.verifyEqual(file, allFiles(allFiles.Path == "sub/inner.txt", :));
+        end
+
+        function testListLocalFileOfAFolderOrMissingFileHasNoRows(testCase)
+            writeFile(fullfile(testCase.Folder, "sub", "inner.txt"), "abc");
+
+            folder = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "sub");
+            missing = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "sub/missing.txt");
+
+            testCase.verifyEqual(height(folder), 0);
+            testCase.verifyEqual(height(missing), 0);
+            testCase.verifyEqual(string(folder.Properties.VariableNames), ["Path", "Bytes", "ModifiedTime", "Hash"]);
+        end
+
+        function testListLocalFileReadsFileUnderAnotherCaseWhereCaseIsIgnored(testCase)
+            % A local file matched to an object of the same name in another
+            % case carries the path of the object, and is read under it.
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "data.txt"), "abc");
+
+            file = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "Data.txt");
+
+            testCase.verifyEqual(file.Path, "Data.txt");
+            testCase.verifyEqual(file.Bytes, 3);
+        end
+
         %% listRemoteFiles
         function testListRemoteFilesStripsPrefixAndLeavesOutFolders(testCase)
             addListing(testCase.Client, makeObjects( ...

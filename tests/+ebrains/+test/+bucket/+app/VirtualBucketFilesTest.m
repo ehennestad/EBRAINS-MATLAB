@@ -102,18 +102,49 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
 
         function testReplaceWithPlaceholdersEmptiesFiles(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            files = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt");
 
-            ebrains.bucket.app.internal.replaceWithPlaceholders(testCase.Folder, "a.txt");
+            ebrains.bucket.app.internal.replaceWithPlaceholders(testCase.Folder, files);
 
             testCase.verifyEqual(dir(fullfile(testCase.Folder, "a.txt")).bytes, 0);
         end
 
         function testReplaceWithPlaceholdersChecksEveryPathFirst(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            files = [ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt"); ...
+                makeFiles("missing.txt", 3)];
 
             testCase.verifyError(@() ebrains.bucket.app.internal.replaceWithPlaceholders( ...
-                testCase.Folder, ["a.txt", "missing.txt"]), 'EBRAINS:Bucket:FileNotFound');
+                testCase.Folder, files), 'EBRAINS:Bucket:FileNotFound');
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
+        end
+
+        function testReplaceWithPlaceholdersRefusesAChangedFile(testCase)
+            % The file keeps its size, so only its time tells that it changed
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "xyz");
+            files = [ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt"); ...
+                ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "b.txt")];
+            laterTime = datetime(2030, 1, 1, TimeZone="UTC");
+            java.io.File(char(fullfile(testCase.Folder, "b.txt"))).setLastModified(round(posixtime(laterTime) * 1000));
+
+            testCase.verifyError(@() ebrains.bucket.app.internal.replaceWithPlaceholders( ...
+                testCase.Folder, files), 'EBRAINS:Bucket:LocalFileChanged');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "b.txt")), 'xyz');
+        end
+
+        function testReplaceWithPlaceholdersAcceptsAFileWithoutATime(testCase)
+            % A file whose time cannot be read has an unknown time at the
+            % decision and at the check alike, so it is not a changed file.
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            java.io.File(char(fullfile(testCase.Folder, "a.txt"))).setLastModified(0);
+            files = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt");
+            testCase.assumeTrue(isnat(files.ModifiedTime), 'The file system keeps a time of zero apart from none.');
+
+            ebrains.bucket.app.internal.replaceWithPlaceholders(testCase.Folder, files);
+
+            testCase.verifyEqual(dir(fullfile(testCase.Folder, "a.txt")).bytes, 0);
         end
     end
 end

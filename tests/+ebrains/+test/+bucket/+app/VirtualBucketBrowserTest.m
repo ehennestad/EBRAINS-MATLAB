@@ -4,8 +4,8 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % The browser runs with a MockBucketsClient and a stand-in for the
     % downloader, so no request reaches the Data Proxy. The requests of
     % the page are sent to the callback of its uihtml component, as the
-    % page sends them. Only actions that need no confirmation are tested,
-    % since a confirmation dialog waits for a user.
+    % page sends them. A confirmation dialog waits for a user, so the
+    % browser is given a Confirmer that records the question and refuses.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -14,6 +14,9 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % OpenedURL - Addresses the browser asked its opener to show
         OpenedURL (1,:) string = string.empty(1, 0)
+
+        % Confirmations - Titles and messages of the confirmations the browser asked for, one row each
+        Confirmations (:,2) string = strings(0, 2)
     end
 
     methods (TestClassSetup)
@@ -284,16 +287,110 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         function testOnlineOnlyOfEditedFileIsNotSilent(testCase)
             % A file changed in place after its download keeps its size, and
             % is later than its object. It differs, so emptying it asks first.
-            target = fullfile(testCase.Folder, "virtual");
-            addListing(testCase.Client, "a.txt", 3);
-            testCase.openApp(target);
-            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
-            sendPageEvent("download", "a.txt")
-            testCase.assertEqual(testCase.App.Files.State, "downloaded");
+            target = testCase.openWithDownloadedFile();
             writeFile(fullfile(target, "a.txt"), "xyz");
 
             testCase.App.refresh()
 
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testOnlineOnlyReadsAFileAgainBeforeJudgingIt(testCase)
+            % The file is edited after the last scan, so the table of the
+            % browser still says that it is downloaded
+            target = testCase.openWithDownloadedFile();
+            writeFile(fullfile(target, "a.txt"), "xyz");
+
+            sendPageEvent("onlineOnly", "a.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "a.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Make online only?");
+            testCase.verifySubstring(testCase.Confirmations(1, 2), "1 of the 1 files differ from the bucket");
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testDownloadReadsAFileAgainBeforeJudgingIt(testCase)
+            target = testCase.openWithDownloadedFile();
+            nRequests = testCase.Client.getRequestCount();
+            writeFile(fullfile(target, "a.txt"), "xyz");
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "a.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Replace local copies?");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
+                'A refused confirmation requests no download.');
+        end
+
+        function testDownloadReadsAFileStoredUnderAnotherCase(testCase)
+            % The file is stored as data.txt and listed as Data.txt, so its
+            % row carries the path of the object. Edited after the last
+            % scan, it differs, and downloading it must ask, rather than
+            % take it for a placeholder because the stored name has
+            % another case.
+            assumeCaseInsensitive(testCase);
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "Data.txt", 3);
+            testCase.openApp(target);
+            delete(fullfile(target, "Data.txt"))
+            writeFile(fullfile(target, "data.txt"), "abc");
+            giveTimeOfListedObjects(fullfile(target, "data.txt"));
+            sendPageEvent("refresh")
+            testCase.assertEqual(testCase.App.Files.Path, "Data.txt");
+            testCase.assertEqual(testCase.App.Files.State, "downloaded");
+            writeFile(fullfile(target, "data.txt"), "xyz");
+            nRequests = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", "Data.txt")
+
+            testCase.verifyEqual(fileread(fullfile(target, "data.txt")), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Replace local copies?");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), nRequests, ...
+                'A refused confirmation requests no download.');
+        end
+
+        function testDownloadKeepsAFileEditedWhileItWasDownloaded(testCase)
+            % The file is judged before the download and can change while
+            % the object is transferred, so it is checked again right
+            % before the download replaces it.
+            target = fullfile(testCase.Folder, "virtual");
+            localFile = fullfile(target, "a.txt");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
+                Client=testCase.Client, Downloader=@(file, varargin) editThenWrite(localFile, file), ...
+                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(fileread(localFile), 'xyz');
+            testCase.verifyEqual(testCase.App.Files.State, "differs");
+        end
+
+        function testOnlineOnlyReadsAFileRestoredWithTheTimeOfItsChecksum(testCase)
+            % A file rewritten with the time it had when its checksum was
+            % cached looks unchanged to the cache. Making it online only
+            % discards it, so the checksum is read again first.
+            target = fullfile(testCase.Folder, "virtual");
+            localFile = fullfile(target, "a.txt");
+            addListing(testCase.Client, "a.txt", 3, "900150983cd24fb0d6963f7d28e17f72"); % MD5 of "abc"
+            testCase.openApp(target);
+            laterTime = datetime(2000, 1, 1, 1, 0, 0, TimeZone="UTC");
+            writeFile(localFile, "abc");
+            setFileTime(localFile, laterTime);
+            sendPageEvent("refresh")
+            testCase.assertEqual(testCase.App.Files.State, "downloaded", ...
+                'The checksum, not the time, says that the file is downloaded.');
+            writeFile(localFile, "xyz");
+            setFileTime(localFile, laterTime);
+
+            sendPageEvent("onlineOnly", "a.txt")
+
+            testCase.verifyEqual(fileread(localFile), 'xyz');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
             testCase.verifyEqual(testCase.App.Files.State, "differs");
         end
     end
@@ -365,7 +462,22 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     methods (Access = private)
         function openApp(testCase, folder)
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@writeAbc);
+                Client=testCase.Client, Downloader=@writeAbc, ...
+                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+        end
+
+        function target = openWithDownloadedFile(testCase)
+        % openWithDownloadedFile - Open a new virtual bucket of one object and download it
+        %
+        %   The file a.txt holds "abc" and has the time of its object, as
+        %   a download gives it, so it is downloaded. The bucket was listed
+        %   since the browser opened.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, "a.txt", 3);
+            testCase.openApp(target);
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            sendPageEvent("download", "a.txt")
+            testCase.assertEqual(testCase.App.Files.State, "downloaded");
         end
     end
 end
@@ -391,16 +503,20 @@ function sendPageEvent(name, paths)
     page.HTMLEventReceivedFcn(page, struct("HTMLEventName", name, "HTMLEventData", data));
 end
 
-function addListing(client, names, bytes)
+function addListing(client, names, bytes, hashes)
 % addListing - Queue the responses to an update from the bucket
 %
 %   The browser counts the objects with the stat endpoint before it lists
 %   them. The listing then gets one page, and the empty page that ends it.
+%   Objects have no checksum unless hashes are given.
+    if nargin < 4
+        hashes = repmat("", size(names));
+    end
     objects = struct( ...
         'name', cellstr(reshape(names, [], 1)), ...
         'bytes', num2cell(reshape(bytes, [], 1)), ...
         'last_modified', '2000-01-01T00:00:00', ...
-        'hash', '', ...
+        'hash', cellstr(reshape(hashes, [], 1)), ...
         'content_type', 'application/octet-stream');
     client.addResponse('OK', struct('name', 'my-bucket', 'objects_count', numel(objects), 'bytes', 0));
     client.addResponse('OK', struct('objects', objects));
@@ -417,13 +533,29 @@ end
 
 function giveTimeOfListedObjects(filePath)
 % giveTimeOfListedObjects - Give a file the time that addListing gives every object, as a download does
-    listedTime = datetime(2000, 1, 1, TimeZone="UTC");
-    java.io.File(char(filePath)).setLastModified(round(posixtime(listedTime) * 1000));
+    setFileTime(filePath, datetime(2000, 1, 1, TimeZone="UTC"));
+end
+
+function setFileTime(filePath, time)
+% setFileTime - Set the modification time of a file
+    java.io.File(char(filePath)).setLastModified(round(posixtime(time) * 1000));
+end
+
+function editThenWrite(localFile, target)
+% editThenWrite - Downloader that edits the local file during the transfer, then delivers the download
+    writeFile(localFile, "xyz");
+    writeFile(target, "abc");
 end
 
 function recordURL(testCase, url)
 % recordURL - Opener that records the address instead of showing it
     testCase.OpenedURL(end+1) = url;
+end
+
+function tf = refuseConfirmation(testCase, message, title)
+% refuseConfirmation - Confirmer that records the question and answers Cancel
+    testCase.Confirmations(end+1, :) = [title, message];
+    tf = false;
 end
 
 function writeAbc(target, varargin)

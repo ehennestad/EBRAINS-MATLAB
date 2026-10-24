@@ -28,7 +28,10 @@ classdef VirtualBucketBrowser < handle
 %   listing of the bucket, which the virtual bucket keeps. Listing a bucket
 %   of many objects takes a while, so the bucket is listed again only when
 %   "Update from bucket" is pressed. The update adds placeholders for
-%   objects that the folder does not have yet. A folder that was never
+%   objects that the folder does not have yet. The local folder is read
+%   when the browser opens and when "Refresh" is pressed. "Download" and
+%   "Make online only" read the selected files again first, so that a
+%   file edited since is judged as it is now. A folder that was never
 %   listed is judged from its files alone: an empty file is online only
 %   and any other file is downloaded. "Open online" shows the page of
 %   the bucket in the Collaboratory in a web browser.
@@ -56,6 +59,10 @@ classdef VirtualBucketBrowser < handle
 %                    for ebrains.bucket.downloadFile. Meant for tests.
 %       Opener     : Function that is called with an address to open in
 %                    a web browser. Meant for tests; WEB is called
+%                    otherwise.
+%       Confirmer  : Function that answers a confirmation, called as
+%                    Confirmer(message, title, confirmText) and returning
+%                    true to go on. Meant for tests; UICONFIRM asks
 %                    otherwise.
 %
 %   Example:
@@ -96,6 +103,7 @@ classdef VirtualBucketBrowser < handle
         Client ebrains.bucket.api.BucketsClient
         Downloader function_handle
         Opener function_handle
+        Confirmer function_handle
 
         % LocalFiles - File table of the local folder, from the last scan
         LocalFiles table
@@ -141,6 +149,7 @@ classdef VirtualBucketBrowser < handle
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
                 options.Opener (1,1) function_handle = @web
+                options.Confirmer function_handle {mustBeScalarOrEmpty} = function_handle.empty
             end
 
             % The folder dialog was cancelled: there is nothing to open
@@ -203,6 +212,7 @@ classdef VirtualBucketBrowser < handle
             app.Client = options.Client;
             app.Downloader = options.Downloader;
             app.Opener = options.Opener;
+            app.Confirmer = options.Confirmer;
 
             % A folder that is not a virtual bucket yet becomes one. One that
             % is already is only read, so that it can be on a read-only
@@ -317,7 +327,31 @@ classdef VirtualBucketBrowser < handle
             % belong to the file system, not to the bucket.
             isFinderFile = regexprep(localFiles.Path, "^.*/", "") == ".DS_Store";
             app.LocalFiles = localFiles(~isFinderFile, :);
+            app.assignStates()
+        end
 
+        function rescanPaths(app, paths)
+        % rescanPaths - Read the files of the given paths again, give each a state and show it
+        %
+        %   An action that discards local data must judge a file as it is
+        %   now, not as it was at the last scan: the file may have been
+        %   edited in another application since. Only the given files are
+        %   read, since the state of a path rests on its own file and
+        %   manifest entry alone, and the folder may stand for a bucket of
+        %   many objects. On a file system that ignores case the row of a
+        %   path is the one that matches it in any case.
+            paths = unique(reshape(paths, [], 1));
+            ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(app.LocalFolder, app.LocalFiles.Path);
+            isSelected = ismember(matchKeys(app.LocalFiles.Path, ignoreCase), matchKeys(paths, ignoreCase));
+            readFiles = arrayfun(@(path) ebrains.bucket.sync.internal.listLocalFile(app.LocalFolder, path), ...
+                paths, UniformOutput=false);
+            app.LocalFiles = sortrows(vertcat(app.LocalFiles(~isSelected, :), readFiles{:}), "Path");
+            app.assignStates()
+            app.sendState()
+        end
+
+        function assignStates(app)
+        % assignStates - Give each file of LocalFiles and of the manifest its state, in Files
             if ~app.IsListed
                 app.Files = ebrains.bucket.app.internal.classifyFiles(app.LocalFiles);
                 return
@@ -364,8 +398,27 @@ classdef VirtualBucketBrowser < handle
     end
 
     methods (Access = private) % Actions
+        function forgetChecksums(app, paths)
+        % forgetChecksums - Drop the cached checksums of the given paths, so that the next scan reads the files
+        %
+        %   The cache takes a file with the size and time of its entry as
+        %   unchanged, which a rewrite within the same time slot, or a
+        %   restore that keeps the time, is not. An action that discards
+        %   local data reads the files it is about to discard.
+            if isempty(app.ChecksumCache)
+                return
+            end
+            cachedPaths = string(keys(app.ChecksumCache));
+            isSelected = ismember(lower(cachedPaths), lower(reshape(paths, [], 1)));
+            if any(isSelected)
+                remove(app.ChecksumCache, cellstr(cachedPaths(isSelected)));
+            end
+        end
+
         function downloadPaths(app, paths)
         % downloadPaths - Download the files of the given paths that are online only or differ
+            % The files may have been edited since the last scan
+            app.rescanPaths(paths)
             files = app.Files(ismember(app.Files.Path, paths), :);
             files = files(files.State == "online_only" | files.State == "differs", :);
             if isempty(files)
@@ -427,7 +480,8 @@ classdef VirtualBucketBrowser < handle
         %   ebrains.bucket.sync.fromBucket gives a download, so that a
         %   later sync in either direction sees it as unchanged. Both come
         %   from the last listing; without one the download is only put in
-        %   place.
+        %   place. The file is replaced only while it is still as it was
+        %   read when the download was decided.
             expectedBytes = NaN;
             modifiedTime = NaT;
             if app.IsListed
@@ -437,15 +491,26 @@ classdef VirtualBucketBrowser < handle
                     modifiedTime = app.RemoteFiles.ModifiedTime(index);
                 end
             end
+            % The row of the file as the last scan read it; where the folder
+            % ignores case the row may carry the name in another case.
+            isRow = app.LocalFiles.Path == relativePath;
+            if ~any(isRow)
+                isRow = strcmpi(app.LocalFiles.Path, relativePath);
+            end
             ebrains.bucket.sync.internal.downloadAndReplace(app.BucketName, app.Prefix + relativePath, ...
                 fullfile(app.LocalFolder, relativePath), ...
-                ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, ...
+                ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, LocalFile=app.LocalFiles(isRow, :), ...
                 DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
                 Downloader=app.Downloader);
         end
 
         function makePathsOnlineOnly(app, paths)
         % makePathsOnlineOnly - Replace the downloaded files of the given paths with placeholders
+            % The files may have been edited since the last scan, and a cached
+            % checksum of a file rewritten within the same time slot would
+            % hide the edit, so the files are read again in full.
+            app.forgetChecksums(paths)
+            app.rescanPaths(paths)
             files = app.Files(ismember(app.Files.Path, paths), :);
 
             nLocalOnly = sum(files.State == "local_only");
@@ -495,8 +560,11 @@ classdef VirtualBucketBrowser < handle
                 return
             end
 
+            % The files are emptied only while they are still the files that
+            % were judged, by the size and time they were judged by.
+            judgedFiles = ebrains.bucket.sync.internal.makeFileTable(files.Path, files.LocalBytes, files.LocalTime);
             try
-                ebrains.bucket.app.internal.replaceWithPlaceholders(app.LocalFolder, files.Path);
+                ebrains.bucket.app.internal.replaceWithPlaceholders(app.LocalFolder, judgedFiles);
             catch exception
                 app.refresh()
                 uialert(app.UIFigure, exception.message, "Could not make the files online only")
@@ -550,6 +618,10 @@ classdef VirtualBucketBrowser < handle
 
         function tf = confirm(app, message, title, confirmText)
         % confirm - Ask the user to confirm an action
+            if ~isempty(app.Confirmer)
+                tf = app.Confirmer(message, title, confirmText);
+                return
+            end
             selection = uiconfirm(app.UIFigure, message, title, ...
                 Options=[confirmText, "Cancel"], DefaultOption=2, CancelOption=2, Icon="warning");
             tf = selection == confirmText;
