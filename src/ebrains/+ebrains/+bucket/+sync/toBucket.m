@@ -98,6 +98,16 @@ function actions = toBucket(localFolder, bucketName, options)
 %   Folders are not synced as such: an object store holds files, so an
 %   empty local folder has nothing to upload.
 %
+%   A file whose name ends in ".sync-part" or ".multipart_manifest.json"
+%   is neither uploaded nor deleted, whatever Exclude says, and an object
+%   of such a name is left alone too: a download is received in a file of
+%   the first kind next to its target, and the ebrains-bucket-sync package
+%   keeps a manifest of the second kind next to a file during a multipart
+%   upload, so such a file holds no data of its own and remains only when
+%   a process is killed during the transfer (see
+%   ebrains.bucket.sync.internal.isTransferLeftover). A file given such a
+%   name on purpose is left out as well.
+%
 %   Example:
 %       % See what would happen, then mirror a results folder to a bucket
 %       ebrains.bucket.sync.toBucket("results", "my-bucket", ...

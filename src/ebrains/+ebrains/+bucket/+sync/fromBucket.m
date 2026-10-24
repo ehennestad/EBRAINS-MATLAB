@@ -130,6 +130,16 @@ function actions = fromBucket(bucketName, localFolder, options)
 %   anything, since that is more often a wrong prefix than what is wanted.
 %   Folders that become empty when their files are deleted are kept.
 %
+%   An object whose name ends in ".sync-part" or ".multipart_manifest.json"
+%   is neither downloaded nor deleted, whatever Exclude says, and a local
+%   file of such a name is left alone too: a download is received in a
+%   file of the first kind next to its target, and the ebrains-bucket-sync
+%   package keeps a manifest of the second kind next to a file during a
+%   multipart upload, so such a file holds no data of its own and remains
+%   only when a process is killed during the transfer (see
+%   ebrains.bucket.sync.internal.isTransferLeftover). An object given such
+%   a name on purpose is left out as well.
+%
 %   Example:
 %       % See what would happen, then mirror a folder of a bucket locally
 %       ebrains.bucket.sync.fromBucket("my-bucket", "data", ...

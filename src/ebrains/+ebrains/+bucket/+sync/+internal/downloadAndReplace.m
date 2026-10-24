@@ -6,8 +6,11 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
 %   localFile with it only once the download is complete, so a failed
 %   download leaves the file as it was: the empty placeholder of a virtual
 %   bucket, or an older copy. The temporary file sits next to the target,
-%   so that the move is a rename on the same file system. note is "" or
-%   says why the file could not be given the time of its object.
+%   so that the move is a rename on the same file system, and its name
+%   ends in ebrains.bucket.sync.internal.downloadPartSuffix, which every
+%   sync leaves out, so that a file left behind by a process killed during
+%   the download is never uploaded. note is "" or says why the file could
+%   not be given the time of its object.
 %
 %   Name-Value Arguments
 %       ExpectedBytes : Size the listing reports for the object. A download
@@ -69,7 +72,7 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
     if strlength(targetFolder) > 0 && ~isfolder(targetFolder)
         mkdir(targetFolder)
     end
-    temporaryFile = string(tempname(char(targetFolder))) + ".sync-part";
+    temporaryFile = string(tempname(char(targetFolder))) + ebrains.bucket.sync.internal.downloadPartSuffix();
     temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
 
     ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
