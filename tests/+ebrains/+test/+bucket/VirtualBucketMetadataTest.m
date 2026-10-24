@@ -576,6 +576,34 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(manifest.Path, "a.txt");
         end
 
+        function testPullKeepsPlaceholderThatHoldsDataByTheTimeItIsDeleted(testCase)
+            % The download writes into gone.txt and succeeds, so the
+            % deletions run. The folder was listed before the download, when
+            % gone.txt was empty, but the file holds data by the time it is
+            % to be deleted, so it is kept and gets no manifest entry.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "gone.txt"], [3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            goneFile = fullfile(testCase.Folder, "gone.txt");
+            writeFile(goneFile, "");
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            addDownloadUrl(testCase.Client);
+            fillGoneThenDownload = @(target, varargin) fillPlaceholderThenWrite(goneFile, target);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Downloader=fillGoneThenDownload, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:PlaceholderKept');
+
+            gone = actions(actions.Path == "gone.txt", :);
+            testCase.verifyEqual([gone.Action, gone.Reason, gone.Status], ["delete", "placeholder", "skipped"]);
+            testCase.verifySubstring(gone.Message, "holds data");
+            testCase.verifyEqual(fileread(goneFile), 'new data');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, "a.txt");
+        end
+
         function testCreateVirtualBucketAgainDeletesPlaceholderOfRemovedObject(testCase)
             addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
             ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, Client=testCase.Client);
@@ -643,6 +671,12 @@ end
 function varargout = failDownload(varargin) %#ok<STOUT> errors before any output is due
 % failDownload - Downloader that fails, as one does when the connection is lost
     error('EBRAINS:Test:DownloadFailed', 'The download failed.')
+end
+
+function fillPlaceholderThenWrite(filePath, target)
+% fillPlaceholderThenWrite - Downloader that writes data into another file, then its own target
+    writeFile(filePath, "new data");
+    writeFile(target, "abc");
 end
 
 function fillPlaceholderAndFail(filePath)

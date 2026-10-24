@@ -17,10 +17,14 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %   its bucket and prefix, a sync to the bucket leaves its placeholders
 %   alone, a sync from the bucket deletes the placeholders of removed
 %   objects, and its manifest is updated from the listing the sync made.
+%   Such a placeholder is deleted only while it is still empty: a file
+%   that holds data by the time the deletions run was written into since
+%   the folder was listed, and is kept with a warning, as "skipped".
 %   A placeholder of a removed object that a sync from the bucket did not
-%   delete, since the deletions were held back or the deletion failed,
-%   keeps its manifest entry as long as the file is still empty, so that
-%   the next sync to the bucket still knows it for a placeholder.
+%   delete, since the deletions were held back, the deletion failed or
+%   the file holds data, keeps its manifest entry as long as the file is
+%   still empty, so that the next sync to the bucket still knows it for a
+%   placeholder.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -269,6 +273,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
         message(deleteIndices) = deletionHoldBack;
         deleteIndices = [];
     end
+    keptPlaceholderPaths = strings(0, 1);
     for k = 1:numel(deleteIndices)
         i = deleteIndices(k);
         relativePath = actions.Path(i);
@@ -279,6 +284,19 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
             if isToBucket
                 ebrains.bucket.deleteObject(bucketName, prefix + relativePath, ...
                     Client=client);
+            elseif actions.Reason(i) == "placeholder"
+                % The folder was listed before the downloads, so the file is
+                % read again: one that holds data now was written into since,
+                % and its data may exist nowhere else
+                if ~ebrains.bucket.sync.internal.deletePlaceholder(localFolder, relativePath)
+                    status(i) = "skipped";
+                    message(i) = "Not deleted, since the file holds data now and is no placeholder any more.";
+                    keptPlaceholderPaths(end+1, 1) = relativePath; %#ok<AGROW>
+                    if syncOptions.Verbose
+                        fprintf('  Kept: %s\n', message(i));
+                    end
+                    continue
+                end
             else
                 ebrains.bucket.sync.internal.deleteLocalFile(fullfile(localFolder, relativePath))
             end
@@ -294,6 +312,14 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     actions.Status = status;
     actions.Message = message;
+
+    if ~isempty(keptPlaceholderPaths)
+        warning('EBRAINS:Bucket:Sync:PlaceholderKept', ...
+            ['%d file(s) were empty placeholders of objects the bucket no longer has when the ' ...
+             'folder was listed, but hold data now, for example "%s". They were kept, since ' ...
+             'their data may exist nowhere else.'], ...
+            numel(keptPlaceholderPaths), keptPlaceholderPaths(1));
+    end
 
     if isVirtualBucket
         updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...

@@ -9,13 +9,14 @@ function manifestFiles = manifestAfterPull(listedFiles, actions, localFolder, lo
 %   with the Status of each row, localFiles are the files of the local
 %   folder at the sync, and oldManifestFiles the manifest before it.
 %
-%   A placeholder whose deletion was held back or failed, a row with Reason
-%   "placeholder" and a Status other than "done", still stands for its
-%   object, so it keeps its entry from oldManifestFiles, as after a sync to
-%   the bucket: only the entry tells the next sync to the bucket that the
-%   empty file is a placeholder rather than a new file to upload. A file
-%   that holds data by now is no placeholder and gets no entry, and nor
-%   does a file that is gone.
+%   A placeholder whose deletion was held back, failed or was skipped
+%   because the file holds data, a row with Reason "placeholder" and a
+%   Status other than "done", still stands for its object, so it keeps
+%   its entry from oldManifestFiles, as after a sync to the bucket: only
+%   the entry tells the next sync to the bucket that the empty file is a
+%   placeholder rather than a new file to upload. A file that holds data
+%   by now is no placeholder and gets no entry, and nor does a file that
+%   is gone.
 %
 %   manifestFiles = ebrains.bucket.sync.internal.manifestAfterPull(...,
 %   IgnoreCase=true) matches paths without regard to case, as the sync
