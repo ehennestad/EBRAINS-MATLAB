@@ -164,6 +164,46 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifySubstring(exception.message, "line 1:");
         end
 
+        function testRuleBrokenBeforeASyntaxErrorIsReportedFirst(testCase)
+            % The rows before a quoting error are read, so a rule broken
+            % on an earlier line is the first line that breaks the layout
+            text = "path,bytes,modified_time,hash" + newline + "../x.txt,1,," + newline + """unclosed,1,," + newline;
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(text);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, 'Line 2: the path "../x.txt"');
+        end
+
+        function testSyntaxErrorAfterGoodRowsIsReportedAtItsLine(testCase)
+            text = "path,bytes,modified_time,hash" + newline + "a.txt,1,," + newline + """unclosed,1,," + newline;
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest(text);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifySubstring(exception.message, "Line 3: it is not a row of CSV text (a quoted field is not closed)");
+        end
+
+        function testSyntaxErrorOnTheFirstLineIsReportedAsSuch(testCase)
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.parseManifest("""path,bytes,modified_time,hash");
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifySubstring(exception.message, "Line 1: it is not a row of CSV text");
+        end
+
         function testEmptyBucketInfoIsRefusedAsNotJson(testCase)
             mkdir(fullfile(testCase.Folder, ".ebrains"))
             writeFile(fullfile(testCase.Folder, ".ebrains", "bucket.json"), "");
@@ -357,6 +397,24 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
                 'The manifest records the checksum of an uploaded file.');
         end
 
+        function testPushRecordsTheChecksumOfTheContentItSent(testCase)
+            % The checksum is read before the upload, so an edit made while
+            % the file is being uploaded does not end up in the manifest
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            writeFile(fullfile(testCase.Folder, "new.txt"), "abc");
+            addListing(testCase.Client, "other.txt", 3, "2000-01-01T00:00:00");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/upload?sig=1'));
+            testCase.Client.addResponse('OK', struct());
+
+            ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@editThenAccept, Client=testCase.Client, Verbose=false);
+
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Hash(manifest.Path == "new.txt"), "900150983cd24fb0d6963f7d28e17f72", ...
+                'The manifest holds the checksum of the content that was sent, "abc".');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "new.txt")), 'xyz');
+        end
+
         function testPullWritesListingAsManifest(testCase)
             ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
             addListing(testCase.Client, ["a.txt", "b.txt"], [3, 3], "2000-01-01T00:00:00");
@@ -503,4 +561,10 @@ function makeFileUnreadable(testCase, filePath)
         fclose(fileID);
     end
     testCase.assumeEqual(fileID, -1, 'This user can read a file without read permission.');
+end
+
+function [wasSuccess, response] = editThenAccept(sourceFile, varargin)
+% editThenAccept - Uploader that edits the source file during the transfer, then accepts it
+    writeFile(sourceFile, "xyz");
+    [wasSuccess, response] = acceptUpload(sourceFile, varargin{:});
 end

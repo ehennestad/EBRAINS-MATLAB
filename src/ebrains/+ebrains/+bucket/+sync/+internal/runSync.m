@@ -226,6 +226,12 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
             localFile = fullfile(localFolder, relativePath);
             objectName = prefix + relativePath;
             if isToBucket
+                if isVirtualBucket && localFiles.Hash(sourceIndices(i)) == ""
+                    % The manifest records the checksum of the content that
+                    % was sent, so the file is read before the upload rather
+                    % than afterwards, when it may have changed.
+                    localFiles.Hash(sourceIndices(i)) = checksumOrUnknown(localFile);
+                end
                 ebrains.bucket.uploadFile(bucketName, objectName, localFile, ...
                     DisplayMode=syncOptions.DisplayMode, Client=client, ...
                     Uploader=syncOptions.Uploader);
@@ -320,16 +326,16 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
 % updateManifest - Record the listing of a sync as the manifest of a virtual bucket
 %
 %   A sync to the bucket changed it after the listing, so the files it
-%   uploaded, with the MD5 checksum of each, and the objects it deleted
-%   are applied to the listing, and
-%   the placeholders of removed objects keep their entries. A failed
-%   transfer leaves the entry as the listing gave it.
+%   uploaded, with the MD5 checksum read before each upload, and the
+%   objects it deleted are applied to the listing, and the placeholders
+%   of removed objects keep their entries. A failed transfer leaves the
+%   entry as the listing gave it.
     manifestFiles = listedFiles;
     if isToBucket
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
         deletedPaths = actions.Path(isDone & actions.Action == "delete");
-        uploadedFiles = withChecksums(localFolder, localFiles(ismember(localFiles.Path, uploadedPaths), :));
+        uploadedFiles = localFiles(ismember(localFiles.Path, uploadedPaths), :);
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
             uploadedFiles, deletedPaths, localFiles, oldManifestFiles);
     end
@@ -337,19 +343,16 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
 end
 
-function files = withChecksums(localFolder, files)
-% withChecksums - Give each file the MD5 checksum of its content where it has none
+function hash = checksumOrUnknown(filePath)
+% checksumOrUnknown - MD5 checksum of a file, or "" for a file that cannot be read
 %
-%   The manifest records the checksum of each uploaded file, which the
-%   file states compare a local file with while the time of its object is
-%   unknown. A file that cannot be read keeps an unknown checksum.
-    for i = reshape(find(files.Hash == ""), 1, [])
-        try
-            files.Hash(i) = ebrains.bucket.sync.internal.computeMD5(fullfile(localFolder, files.Path(i)));
-        catch
-            % The file was uploaded; without a checksum, the file states
-            % judge it by its time.
-        end
+%   A file that cannot be read before its upload fails the upload too, as
+%   a rule, and a failed upload leaves no entry in the manifest. Should
+%   the upload go through, the file states judge the file by its time.
+    try
+        hash = ebrains.bucket.sync.internal.computeMD5(filePath);
+    catch
+        hash = "";
     end
 end
 
