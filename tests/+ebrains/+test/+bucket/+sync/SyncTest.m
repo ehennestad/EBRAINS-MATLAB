@@ -338,6 +338,33 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEqual(file.Bytes, 3);
         end
 
+        %% deletePlaceholder
+        function testDeletePlaceholderDeletesAnEmptyFile(testCase)
+            writeFile(fullfile(testCase.Folder, "sub", "gone.txt"), "");
+
+            wasDeleted = ebrains.bucket.sync.internal.deletePlaceholder(testCase.Folder, "sub/gone.txt");
+
+            testCase.verifyTrue(wasDeleted);
+            testCase.verifyFalse(isfile(fullfile(testCase.Folder, "sub", "gone.txt")));
+        end
+
+        function testDeletePlaceholderKeepsAFileThatHoldsData(testCase)
+            % The file was an empty placeholder when the folder was listed
+            % and was written into since, so its data may exist nowhere else
+            writeFile(fullfile(testCase.Folder, "gone.txt"), "new data");
+
+            wasDeleted = ebrains.bucket.sync.internal.deletePlaceholder(testCase.Folder, "gone.txt");
+
+            testCase.verifyFalse(wasDeleted);
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "gone.txt")), 'new data');
+        end
+
+        function testDeletePlaceholderOfAMissingFileHasNothingToDo(testCase)
+            wasDeleted = ebrains.bucket.sync.internal.deletePlaceholder(testCase.Folder, "gone.txt");
+
+            testCase.verifyTrue(wasDeleted);
+        end
+
         %% listRemoteFiles
         function testListRemoteFilesStripsPrefixAndLeavesOutFolders(testCase)
             addListing(testCase.Client, makeObjects( ...

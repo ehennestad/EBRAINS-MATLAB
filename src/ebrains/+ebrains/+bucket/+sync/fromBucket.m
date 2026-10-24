@@ -119,11 +119,14 @@ function actions = fromBucket(bucketName, localFolder, options)
 %   and prefix, and the listing it made becomes the manifest of the
 %   folder. The empty placeholder of an object removed since the last
 %   listing stands for nothing, so it is deleted whether or not Delete is
-%   set, as "delete" with Reason "placeholder". A placeholder the sync did
-%   not delete, because the deletions were held back or the deletion
-%   failed, keeps its manifest entry as long as the file is still empty,
-%   so that ebrains.bucket.sync.toBucket still knows it for a placeholder
-%   rather than upload it as a new, empty object.
+%   set, as "delete" with Reason "placeholder". It is read again right
+%   before: a file that holds data by then was written into since the
+%   folder was listed, and is kept with a warning, as "skipped", since
+%   its data may exist nowhere else. A placeholder the sync did not
+%   delete, because the deletions were held back or the deletion failed,
+%   keeps its manifest entry as long as the file is still empty, so that
+%   ebrains.bucket.sync.toBucket still knows it for a placeholder rather
+%   than upload it as a new, empty object.
 %
 %   The sync refuses to delete everything: with Delete=true and an empty
 %   bucket or folder of it, it stops with an error before it changes

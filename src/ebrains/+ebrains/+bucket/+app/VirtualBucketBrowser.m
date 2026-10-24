@@ -28,13 +28,15 @@ classdef VirtualBucketBrowser < handle
 %   listing of the bucket, which the virtual bucket keeps. Listing a bucket
 %   of many objects takes a while, so the bucket is listed again only when
 %   "Update from bucket" is pressed. The update adds placeholders for
-%   objects that the folder does not have yet. The local folder is read
-%   when the browser opens and when "Refresh" is pressed. "Download" and
-%   "Make online only" read the selected files again first, so that a
-%   file edited since is judged as it is now. A folder that was never
-%   listed is judged from its files alone: an empty file is online only
-%   and any other file is downloaded. "Open online" shows the page of
-%   the bucket in the Collaboratory in a web browser.
+%   objects that the folder does not have yet, and deletes the
+%   placeholders of objects removed from the bucket while they are still
+%   empty; a file written into since the last scan is kept. The local
+%   folder is read when the browser opens and when "Refresh" is pressed.
+%   "Download" and "Make online only" read the selected files again
+%   first, so that a file edited since is judged as it is now. A folder
+%   that was never listed is judged from its files alone: an empty file
+%   is online only and any other file is downloaded. "Open online" shows
+%   the page of the bucket in the Collaboratory in a web browser.
 %
 %   A file whose name ends in ".sync-part" or ".multipart_manifest.json"
 %   is not shown, whether it is in the folder or in the manifest: a
@@ -272,8 +274,9 @@ classdef VirtualBucketBrowser < handle
         %
         %   Objects that the folder has no file for get an empty
         %   placeholder, and the placeholders of objects removed since the
-        %   last listing are deleted. Local files with data that the bucket
-        %   does not have are kept.
+        %   last listing are deleted, each read again right before, so
+        %   that one written into since the last scan is kept. Local files
+        %   with data that the bucket does not have are kept.
             restoreControls = app.setBusy();  %#ok<NASGU>
             progressDialog = uiprogressdlg(app.UIFigure, Title="Update from bucket", ...
                 Message=sprintf("Counting the objects of bucket ""%s""...", app.BucketName), ...
@@ -308,14 +311,18 @@ classdef VirtualBucketBrowser < handle
             ebrains.bucket.app.internal.createPlaceholderFiles(app.LocalFolder, remoteFiles.Path(isNew));
 
             % The folder stands for the bucket, so the placeholder of an
-            % object removed since the last listing stands for nothing
+            % object removed since the last listing stands for nothing.
+            % LocalFiles is the last scan, which may be old: a file that
+            % was an empty placeholder then may hold data now, so each is
+            % read again right before it is deleted, and kept if it does.
             removedFiles = ebrains.bucket.sync.internal.makeFileTable(strings(0, 1), zeros(0, 1));
             if app.IsListed
                 removedFiles = ebrains.bucket.sync.internal.placeholdersOfRemovedObjects( ...
                     app.LocalFiles, remoteFiles, app.RemoteFiles, IgnoreCase=ignoreCase);
             end
-            for removedPath = reshape(removedFiles.Path, 1, [])
-                ebrains.bucket.sync.internal.deleteLocalFile(fullfile(app.LocalFolder, removedPath))
+            isRemoved = false(height(removedFiles), 1);
+            for i = 1:height(removedFiles)
+                isRemoved(i) = ebrains.bucket.sync.internal.deletePlaceholder(app.LocalFolder, removedFiles.Path(i));
             end
 
             ebrains.bucket.internal.metadata.writeManifest(app.LocalFolder, remoteFiles)
@@ -326,9 +333,13 @@ classdef VirtualBucketBrowser < handle
             app.IsListedInSession = true;
             app.ListedTime = listedTime;
             app.Message = "Added placeholders for " + countText(sum(isNew), "new object") + ".";
-            if height(removedFiles) > 0
+            if any(isRemoved)
                 app.Message = app.Message + " Removed the placeholders of " + ...
-                    countText(height(removedFiles), "removed object") + ".";
+                    countText(sum(isRemoved), "removed object") + ".";
+            end
+            if any(~isRemoved)
+                app.Message = app.Message + " Kept " + countText(sum(~isRemoved), "file") + ...
+                    " written into since the last scan, which the bucket no longer has.";
             end
             app.refresh()
         end

@@ -26,6 +26,7 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
         FileStateFixture = fixtureFiles("file-state")
         PlaceholderFixture = fixtureFiles("placeholder")
         ManifestUpdateFixture = fixtureFiles("manifest-update")
+        NeverSyncedFixture = fixtureFiles("never-synced")
     end
 
     methods (Test)
@@ -149,6 +150,20 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
                 toFileTable(fixture.listing), toFileTable(fixture.manifest));
 
             testCase.verifyEqual(plan, toPlanTable(fixture.expected), fixture.description);
+        end
+
+        function testNeverSyncedFixture(testCase, NeverSyncedFixture)
+            % The paths a sync may touch: those outside the .ebrains folder
+            % that are not the files of interrupted transfers, the two
+            % checks ebrains.bucket.sync.internal.listLocalFiles and
+            % listRemoteFiles apply before any exclude pattern
+            fixture = readFixture(NeverSyncedFixture);
+            paths = toStringColumn(fixture.paths);
+
+            isNeverSynced = ebrains.bucket.internal.metadata.isMetadataPath(paths) ...
+                | ebrains.bucket.sync.internal.isTransferLeftover(paths);
+
+            testCase.verifyEqual(paths(~isNeverSynced), toStringColumn(fixture.expected_kept), fixture.description);
         end
 
         function testManifestUpdateFixture(testCase, ManifestUpdateFixture)

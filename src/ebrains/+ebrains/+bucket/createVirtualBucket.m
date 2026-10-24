@@ -21,7 +21,8 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   read. A folder that is a virtual bucket already must be one of the same
 %   bucket and prefix. Files that exist are kept, so running the function
 %   again adds placeholders for new objects. It also deletes the empty
-%   placeholders of objects removed since the last listing.
+%   placeholders of objects removed since the last listing; one that
+%   holds data by the time it is deleted is kept, with a warning.
 %
 %   Name-Value Arguments
 %       Prefix  : Folder of the bucket to create, such as "results/". A
@@ -54,15 +55,25 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     if ~isfolder(virtualBucketRootPath); mkdir(virtualBucketRootPath); end
 
     % A placeholder whose object is gone since the last listing stands for
-    % nothing and holds no data, so it is deleted
+    % nothing and holds no data, so it is deleted. The file is read again
+    % right before, and kept if it holds data by then.
     [oldManifestFiles, hasManifest] = ebrains.bucket.internal.metadata.readManifest(virtualBucketRootPath);
     if hasManifest
         localFiles = ebrains.bucket.sync.internal.listLocalFiles(virtualBucketRootPath);
         ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(virtualBucketRootPath, localFiles.Path);
         removedFiles = ebrains.bucket.sync.internal.placeholdersOfRemovedObjects( ...
             localFiles, listedFiles, oldManifestFiles, IgnoreCase=ignoreCase);
+        keptPaths = strings(0, 1);
         for removedPath = reshape(removedFiles.Path, 1, [])
-            ebrains.bucket.sync.internal.deleteLocalFile(fullfile(virtualBucketRootPath, removedPath))
+            if ~ebrains.bucket.sync.internal.deletePlaceholder(virtualBucketRootPath, removedPath)
+                keptPaths(end+1, 1) = removedPath; %#ok<AGROW>
+            end
+        end
+        if ~isempty(keptPaths)
+            warning('EBRAINS:Bucket:Sync:PlaceholderKept', ...
+                ['%d file(s) were empty placeholders of objects the bucket no longer has when the ' ...
+                 'folder was listed, but hold data now, for example "%s". They were kept, since ' ...
+                 'their data may exist nowhere else.'], numel(keptPaths), keptPaths(1));
         end
     end
 

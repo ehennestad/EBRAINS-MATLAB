@@ -323,6 +323,29 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.App.Files.Path, "a.txt");
         end
 
+        function testUpdateKeepsPlaceholderWrittenIntoSinceTheLastScan(testCase)
+            % The browser scanned the folder when it opened, when gone.txt
+            % was an empty placeholder. Data is written into it after that,
+            % as a script that saves into the folder does, and the object
+            % is removed from the bucket. The update must not delete the
+            % file from the stale scan: it holds the only copy of its data.
+            target = fullfile(testCase.Folder, "virtual");
+            addListing(testCase.Client, ["a.txt", "gone.txt"], [3, 3]);
+            testCase.openApp(target);
+            goneFile = fullfile(target, "gone.txt");
+            placeholder = dir(goneFile);
+            testCase.assertEqual(placeholder.bytes, 0, "gone.txt starts as an empty placeholder.");
+            writeFile(goneFile, "new data");
+            addListing(testCase.Client, "a.txt", 3);
+
+            sendPageEvent("update")
+
+            testCase.verifyTrue(isfile(goneFile));
+            testCase.verifyEqual(fileread(goneFile), 'new data');
+            testCase.verifyEqual(testCase.App.Files.Path, ["a.txt"; "gone.txt"]);
+            testCase.verifyEqual(testCase.App.Files.State(testCase.App.Files.Path == "gone.txt"), "local_only");
+        end
+
         function testOnlineOnlyOfEditedFileIsNotSilent(testCase)
             % A file changed in place after its download keeps its size, and
             % is later than its object. It differs, so emptying it asks first.
