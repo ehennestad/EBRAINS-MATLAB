@@ -16,11 +16,12 @@ function updateSyncSpecFixtures()
 
     projectRootDirectory = ebtools.projectdir();
 
-    % The fixtures of virtual buckets are on the virtual-bucket-spec branch
-    % of the package (its pull request 16, based on pull request 15 with
-    % the exclude rules) until they are merged, so the pin is a commit of
-    % that branch rather than a release tag.
-    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@952c5c152949667b1c3ca920357217aa76fe6d14";
+    % The fixtures of virtual buckets and of the Windows-drive rule are on
+    % the open pull request stack of the package (pull requests 15 to 24,
+    % whose top is the branch recheck-selected-files-before-acting) until
+    % they are merged, so the pin is a commit of that branch rather than a
+    % release tag.
+    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@fabfa122f165bdefccc7857ee40ea64f2baf97c4";
     sourceFolder = "spec/fixtures";
     targetFolder = "tests/fixtures/sync-spec";
 

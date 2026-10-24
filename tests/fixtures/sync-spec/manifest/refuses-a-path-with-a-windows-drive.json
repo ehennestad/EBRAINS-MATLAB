@@ -1,0 +1,5 @@
+{
+  "description": "A path whose first segment is a Windows drive, such as C:, is absolute on Windows and so leaves the folder there. It is refused, as a listing leaves such a name out.",
+  "text": "path,bytes,modified_time,hash\na.txt,1,,\nC:/x.txt,1,,\n",
+  "expected_error_line": 3
+}
