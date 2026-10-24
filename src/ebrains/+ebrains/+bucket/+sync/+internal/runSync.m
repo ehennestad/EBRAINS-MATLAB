@@ -17,6 +17,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %   its bucket and prefix, a sync to the bucket leaves its placeholders
 %   alone, a sync from the bucket deletes the placeholders of removed
 %   objects, and its manifest is updated from the listing the sync made.
+%   A placeholder of a removed object that a sync from the bucket did not
+%   delete, since the deletions were held back or the deletion failed,
+%   keeps its manifest entry as long as the file is still empty, so that
+%   the next sync to the bucket still knows it for a placeholder.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -293,7 +297,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     if isVirtualBucket
         updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...
-            localFiles, manifestFiles, actions, isToBucket)
+            localFiles, manifestFiles, actions, isToBucket, ignoreCase)
     end
 
     if syncOptions.Verbose
@@ -322,15 +326,18 @@ function paths = excludePaths(paths, excludePatterns, ignoreCase)
     paths = pathTable.Path;
 end
 
-function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, oldManifestFiles, actions, isToBucket)
+function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, ...
+    oldManifestFiles, actions, isToBucket, ignoreCase)
 % updateManifest - Record the listing of a sync as the manifest of a virtual bucket
 %
 %   A sync to the bucket changed it after the listing, so the files it
 %   uploaded, with the MD5 checksum read before each upload, and the
 %   objects it deleted are applied to the listing, and the placeholders
-%   of removed objects keep their entries. A failed transfer leaves the
-%   entry as the listing gave it.
-    manifestFiles = listedFiles;
+%   of removed objects keep their entries. A sync from the bucket keeps
+%   the entry of each placeholder of a removed object that it did not
+%   delete while the file is still empty, since only the entry tells the
+%   file from one emptied on purpose. A failed transfer leaves the entry
+%   as the listing gave it.
     if isToBucket
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
@@ -338,6 +345,9 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
         uploadedFiles = localFiles(ismember(localFiles.Path, uploadedPaths), :);
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
             uploadedFiles, deletedPaths, localFiles, oldManifestFiles);
+    else
+        manifestFiles = ebrains.bucket.sync.internal.manifestAfterPull(listedFiles, ...
+            actions, localFolder, localFiles, oldManifestFiles, IgnoreCase=ignoreCase);
     end
     ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
