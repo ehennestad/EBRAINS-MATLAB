@@ -148,6 +148,48 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:NotUTF8Text');
         end
 
+        function testEmptyManifestIsRefusedAtItsFirstLine(testCase)
+            % An empty file is UTF-8 text without the header line
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "manifest.csv"), "");
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the manifest to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidManifest');
+            testCase.verifySubstring(exception.message, "line 1:");
+        end
+
+        function testEmptyBucketInfoIsRefusedAsNotJson(testCase)
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            writeFile(fullfile(testCase.Folder, ".ebrains", "bucket.json"), "");
+
+            exception = MException.empty;
+            try
+                ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder);
+            catch exception
+            end
+
+            testCase.assertNotEmpty(exception, "Expected the file to be refused.");
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:InvalidBucketInfo');
+            testCase.verifySubstring(exception.message, "it is not JSON text in UTF-8");
+        end
+
+        function testUnreadableBucketInfoIsReportedAsUnreadable(testCase)
+            % A file that cannot be opened is not bad JSON
+            mkdir(fullfile(testCase.Folder, ".ebrains"))
+            bucketInfoFile = fullfile(testCase.Folder, ".ebrains", "bucket.json");
+            writeFile(bucketInfoFile, '{"format_version": 1, "bucket": "b", "prefix": "", "listed_at": null}');
+            makeFileUnreadable(testCase, bucketInfoFile);
+
+            testCase.verifyError(@() ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder), ...
+                'EBRAINS:Bucket:CouldNotReadFile');
+        end
+
         function testManifestWithCarriageReturnsIsRead(testCase)
             crlf = char([13 10]);
             files = ebrains.bucket.internal.metadata.parseManifest( ...
@@ -445,4 +487,20 @@ function writeFile(filePath, content)
     fileID = fopen(filePath, "w");
     fwrite(fileID, unicode2native(char(content), "UTF-8"));
     fclose(fileID);
+end
+
+function makeFileUnreadable(testCase, filePath)
+% makeFileUnreadable - Take away the permission to read a file until the test ends
+%
+%   The test is filtered where that has no effect: on Windows, which has
+%   no chmod, and for a user who can read any file, such as root.
+    testCase.assumeFalse(ispc, 'File permissions are set with chmod, which Windows does not have.');
+    [status, output] = system("chmod 000 '" + filePath + "'");
+    testCase.assertEqual(status, 0, output);
+    testCase.addTeardown(@() system("chmod 644 '" + filePath + "'"));
+    fileID = fopen(filePath, "r");
+    if fileID ~= -1
+        fclose(fileID);
+    end
+    testCase.assumeEqual(fileID, -1, 'This user can read a file without read permission.');
 end

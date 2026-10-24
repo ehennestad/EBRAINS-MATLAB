@@ -41,6 +41,10 @@ function info = readBucketInfo(rootFolder)
     try
         data = jsondecode(ebrains.bucket.internal.metadata.readTextFile(filePath));
     catch exception
+        % A file that cannot be opened is reported as such, not as bad JSON
+        if exception.identifier == "EBRAINS:Bucket:CouldNotReadFile"
+            rethrow(exception)
+        end
         throw(addCause(invalid("it is not JSON text in UTF-8"), exception))
     end
     if ~isstruct(data) || ~isscalar(data)
