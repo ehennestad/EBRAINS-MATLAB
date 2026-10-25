@@ -7,7 +7,13 @@ function savedFilePath = download(targetPath, url, options)
 %
 %   If FILENAME is a folder, the file is saved in that folder under the
 %   name the server gives in its Content-Disposition header, or else
-%   under the last segment of the URL path.
+%   under the last segment of the URL path. An existing file or folder
+%   of that name is left unchanged, and ebrains.external.webprogress.download raises the
+%   error webprogress:download:FileExists. A Content-Disposition name of
+%   a file that MATLAB runs, such as a .m, .mlx or .p file, raises the
+%   error webprogress:download:RunnableFilename, because the file would
+%   shadow any function of the same name. Give the path of the file to
+%   write to save under another name or to replace a file.
 %
 %   The file is received in a temporary file in the target folder, which
 %   replaces the target only after a successful download. If the
@@ -223,6 +229,15 @@ function savedFilePath = download(targetPath, url, options)
                     "Cannot name the downloaded file because neither the server " + ...
                     "response nor the URL gives a file name. Give the path of the " + ...
                     "file to write instead of a folder.")
+            end
+            % The server or the URL chose the name, so a file of that
+            % name is not replaced. A file path names the file to replace.
+            existingPath = fullfile(targetFolder, targetName);
+            if isfile(existingPath) || isfolder(existingPath)
+                error("webprogress:download:FileExists", ...
+                    "Cannot save the downloaded file as ""%s"" because a file or folder " + ...
+                    "of that name already exists. Give the path of the file to write " + ...
+                    "instead of a folder. A file path replaces an existing file.", existingPath)
             end
         else
             [~, name, ext] = fileparts(targetPath);
@@ -509,15 +524,21 @@ function filename = getRemoteFilename(response, uri)
     %   The Content-Disposition file name takes precedence, as in the file
     %   consumer. Only its last component is kept, because the server
     %   controls it and folder parts such as "../" would write outside the
-    %   target folder. The result is "" when there is no usable name.
+    %   target folder. For the same reason a Content-Disposition name of a
+    %   file that MATLAB runs is an error: the saved file would shadow any
+    %   function of that name while the target folder is the current
+    %   folder or on the path. A name from the URL is the caller's choice
+    %   and is kept. The result is "" when there is no usable name.
     filename = "";
+    isNamedByServer = false;
 
     dispositionField = response.getFields("Content-Disposition");
     if ~isempty(dispositionField)
         filename = dispositionField(end).getParameter("filename");
+        isNamedByServer = ~isempty(filename) && strlength(filename) > 0;
     end
 
-    if (isempty(filename) || strlength(filename) == 0) && ~isempty(uri.Path)
+    if ~isNamedByServer && ~isempty(uri.Path)
         filename = uri.Path(end);
     end
 
@@ -530,6 +551,23 @@ function filename = getRemoteFilename(response, uri)
     if any(filename == [".", ".."])
         filename = "";
     end
+
+    if isNamedByServer && isRunnableFile(filename)
+        error("webprogress:download:RunnableFilename", ...
+            "The server names the file ""%s"", which MATLAB can run as code, so it was " + ...
+            "not saved. Give the path of the file to write instead of a folder.", filename)
+    end
+end
+
+function tf = isRunnableFile(filename)
+    %isRunnableFile - Return whether MATLAB runs a file with this name as code
+    %   Windows removes trailing periods and spaces from a file name when
+    %   the file is saved, so "disp.m." is saved as "disp.m", and the
+    %   extension is read without them. It is compared without case, so
+    %   that "disp.M" is refused on a file system that ignores case.
+    [~, ~, ext] = fileparts(regexprep(filename, "[. ]+$", ""));
+    runnableExtensions = [".m", ".mlx", ".mlapp", ".p", ".sfx", "." + mexext()];
+    tf = any(lower(ext) == runnableExtensions);
 end
 
 function deleteIfFile(filePath)
