@@ -10,10 +10,10 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
 %   ends in ebrains.bucket.sync.internal.downloadPartSuffix, which every
 %   sync leaves out, so that a file left behind by a process killed during
 %   the download is never uploaded. ebrains.bucket.downloadFile receives
-%   the object in a temporary file of its own next to the target before
-%   it renames it over that file, and is told to end its name with the
-%   same suffix, so that it is left out as well. note is "" or says why
-%   the file could not be given the time of its object.
+%   the object in a temporary file of its own and renames it over the
+%   target at the end. That file gets the same suffix, so a sync leaves
+%   it out too. note is "" or says why the file could not be given the
+%   time of its object.
 %
 %   Name-Value Arguments
 %       ExpectedBytes : Size the listing reports for the object. A download

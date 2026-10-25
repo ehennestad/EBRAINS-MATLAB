@@ -27,11 +27,11 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %       Figure      : Parent figure of the progress dialog. By default the
 %                     dialog gets a window of its own.
 %       TemporarySuffix : Suffix of the temporary file the object is
-%                     received in, ".part" by default. A sync passes the
-%                     suffix every sync leaves out, so that the file a
-%                     MATLAB process killed during the download leaves
-%                     behind is never uploaded (see
-%                     ebrains.bucket.sync.internal.downloadPartSuffix).
+%                     received in. The default is ".part". A sync passes
+%                     ".sync-part", which every sync leaves out, so a
+%                     file left behind by a killed download is never
+%                     uploaded. See
+%                     ebrains.bucket.sync.internal.downloadPartSuffix.
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.

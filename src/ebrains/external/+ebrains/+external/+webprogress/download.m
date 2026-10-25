@@ -81,12 +81,12 @@ function savedFilePath = download(targetPath, url, options)
 %   download. Two MATLAB sessions that download to the same FILENAME
 %   with Resume=true write the same partial file and corrupt it.
 %
-%   [...] = ebrains.external.webprogress.download(...,TemporarySuffix=SUFFIX) ends the
-%   name of the temporary file the download is received in with SUFFIX
-%   instead of ".part", so that a tool that scans the target folder
-%   recognises the file a process killed during the download leaves
-%   behind. With Resume=true the part is kept in FILENAME + SUFFIX and
-%   its ETag and length in FILENAME + SUFFIX + ".json".
+%   [...] = ebrains.external.webprogress.download(...,TemporarySuffix=SUFFIX) sets the
+%   suffix of the temporary file. The default is ".part". A process
+%   killed during a download leaves the temporary file behind. A tool
+%   that scans the folder, such as a sync, can then tell that file from
+%   the user's files by its suffix. With Resume=true the part is kept in
+%   FILENAME + SUFFIX, and its state in FILENAME + SUFFIX + ".json".
 %
 %   ebrains.external.webprogress.download raises an error if the server responds with a
 %   status that is not a successful 2xx status, if the connection closes
