@@ -304,6 +304,29 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEmpty(files.Path);
         end
 
+        function testListLocalFilesLeavesOutTheFileTheDownloaderReceivesIn(testCase)
+            % ebrains.external.webprogress.download receives a download in
+            % a temporary file of its own next to the target, under the
+            % suffix it is given, and renames it over the target at the
+            % end. A MATLAB process killed during the download leaves that
+            % file behind, so the sync asks for the suffix every sync
+            % leaves out. The downloader here receives the file the way
+            % the real one does and then fails.
+            addDownloadUrls(testCase.Client, 1);
+            [downloader, getReceivedFile] = receivingFailedDownloader();
+            testCase.verifyError(@() ebrains.bucket.sync.internal.downloadAndReplace( ...
+                "my-bucket", "a.dat", fullfile(testCase.Folder, "a.dat"), ...
+                Client=testCase.Client, Downloader=downloader), 'SyncTest:DownloadInterrupted');
+            receivedFile = getReceivedFile();
+            testCase.assertTrue(isfile(receivedFile), 'The received file is left behind.');
+            testCase.verifyTrue(endsWith(receivedFile, ".sync-part"), ...
+                'The downloader is asked to receive the object under the .sync-part suffix.');
+
+            files = ebrains.bucket.sync.internal.listLocalFiles(testCase.Folder);
+
+            testCase.verifyEmpty(files.Path);
+        end
+
         %% listLocalFile
         function testListLocalFileReadsOneFileAsTheListingDoes(testCase)
             writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
@@ -1072,6 +1095,38 @@ end
 function recordAndFail(record, target)
     record(1) = string(target); %#ok<NASGU> read through the handle by getTarget
     error('SyncTest:DownloadInterrupted', 'The download was interrupted.')
+end
+
+function [downloader, getReceivedFile] = receivingFailedDownloader()
+% receivingFailedDownloader - Downloader that receives the file as webprogress.download does, then fails
+%
+%   The file is received in tempname(folder of the target) + the
+%   TemporarySuffix it is given, as ebrains.external.webprogress.download
+%   receives it, and is left there, as a MATLAB process killed during
+%   the download leaves it. The record is a containers.Map, a handle, so
+%   the anonymous functions share it.
+    record = containers.Map('KeyType', 'double', 'ValueType', 'any');
+    downloader = @(target, url, varargin) receiveAndFail(record, target, varargin);
+    getReceivedFile = @() string(record(1));
+end
+
+function receiveAndFail(record, target, nameValues)
+    suffix = namedValue(nameValues, "TemporarySuffix");
+    receivedFile = string(tempname(fileparts(target))) + suffix;
+    writeFile(receivedFile, "partial");
+    record(1) = receivedFile; %#ok<NASGU> read through the handle by getReceivedFile
+    error('SyncTest:DownloadInterrupted', 'The download was interrupted.')
+end
+
+function value = namedValue(nameValues, name)
+% namedValue - The value that follows name in a list of name-value arguments
+    for i = 1:2:numel(nameValues)
+        if string(nameValues{i}) == name
+            value = nameValues{i + 1};
+            return
+        end
+    end
+    error('SyncTest:NameNotGiven', 'No argument named "%s" was given.', name)
 end
 
 function writeAbc(target, varargin)

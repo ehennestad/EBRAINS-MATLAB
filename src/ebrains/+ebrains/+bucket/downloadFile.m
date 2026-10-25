@@ -26,6 +26,12 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %                     "Command Window".
 %       Figure      : Parent figure of the progress dialog. By default the
 %                     dialog gets a window of its own.
+%       TemporarySuffix : Suffix of the temporary file the object is
+%                     received in, ".part" by default. A sync passes the
+%                     suffix every sync leaves out, so that the file a
+%                     MATLAB process killed during the download leaves
+%                     behind is never uploaded (see
+%                     ebrains.bucket.sync.internal.downloadPartSuffix).
 %       Client      : ebrains.bucket.api.BucketsClient that sends the
 %                     requests. Meant for tests and custom clients; a
 %                     default client is created otherwise.
@@ -45,6 +51,7 @@ function downloadFile(bucketName, objectName, targetFile, options)
         targetFile (1,1) string {mustBeNonzeroLengthText, mustNotBeFolder}
         options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
         options.Figure = []
+        options.TemporarySuffix (1,1) string {mustBeNonzeroLengthText} = ".part"
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
     end
@@ -68,7 +75,8 @@ function downloadFile(bucketName, objectName, targetFile, options)
     % has none.
     try
         options.Downloader(targetFile, downloadUrl, ...
-            Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure);
+            Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure, ...
+            TemporarySuffix=options.TemporarySuffix);
     catch exception
         throw(ebrains.bucket.internal.redactSignedUrl(exception, downloadUrl))
     end

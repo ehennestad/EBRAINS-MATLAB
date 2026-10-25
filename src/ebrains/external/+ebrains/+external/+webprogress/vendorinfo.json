@@ -8,5 +8,8 @@
   "ExcludedFiles": [
     "toolboxdir.m",
     "toolboxversion.m"
+  ],
+  "LocalChanges": [
+    "download.m: TemporarySuffix option, which ebrains.bucket.downloadFile needs. Carried here until it is in a release of the source and the package is vendored again."
   ]
 }

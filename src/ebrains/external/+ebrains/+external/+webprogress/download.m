@@ -81,6 +81,13 @@ function savedFilePath = download(targetPath, url, options)
 %   download. Two MATLAB sessions that download to the same FILENAME
 %   with Resume=true write the same partial file and corrupt it.
 %
+%   [...] = ebrains.external.webprogress.download(...,TemporarySuffix=SUFFIX) ends the
+%   name of the temporary file the download is received in with SUFFIX
+%   instead of ".part", so that a tool that scans the target folder
+%   recognises the file a process killed during the download leaves
+%   behind. With Resume=true the part is kept in FILENAME + SUFFIX and
+%   its ETag and length in FILENAME + SUFFIX + ".json".
+%
 %   ebrains.external.webprogress.download raises an error if the server responds with a
 %   status that is not a successful 2xx status, if the connection closes
 %   before the number of bytes the server announced in its
@@ -113,6 +120,7 @@ function savedFilePath = download(targetPath, url, options)
         options.ProgressFcn    {mustBeFunctionHandleOrEmpty}     = []
         options.CancelRequestedFcn {mustBeFunctionHandleOrEmpty} = []
         options.DataTimeout    (1,1) double {mustBePositive}     = 60
+        options.TemporarySuffix (1,:) char  {mustBeNonzeroLengthText} = '.part'
     end
 
     cancelRequestedFcn = options.CancelRequestedFcn;
@@ -177,7 +185,7 @@ function savedFilePath = download(targetPath, url, options)
     if options.Resume
         [~, name, ext] = fileparts(targetPath);
         targetName = string(name) + string(ext);
-        receivedFile = string(fullfile(targetFolder, targetName)) + ".part";
+        receivedFile = string(fullfile(targetFolder, targetName)) + options.TemporarySuffix;
         stateFile = receivedFile + ".json";
         receiveResumable(uri, receivedFile, stateFile, requestOpts)
     else
@@ -191,7 +199,7 @@ function savedFilePath = download(targetPath, url, options)
         % its own, such as ".txt" for a text/plain response. onCleanup
         % deletes the temporary file when the function exits early,
         % including by an error or Ctrl+C.
-        receivedFile = string(tempname(targetFolder)) + ".part";
+        receivedFile = string(tempname(targetFolder)) + options.TemporarySuffix;
         temporaryFileCleanup = onCleanup(@() deleteIfFile(receivedFile));
         consumer = matlab.net.http.io.FileConsumer(receivedFile);
 
