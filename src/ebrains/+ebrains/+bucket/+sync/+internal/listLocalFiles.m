@@ -22,8 +22,8 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 %   also returns the subfolders that are symbolic links, in the same form.
 %   Their content is not listed: it is stored outside rootFolder, where a
 %   sync must not delete files, and a caller that deletes what the table
-%   lacks must check this output too. Links are found with Java; without
-%   it, linked folders are listed as ordinary folders.
+%   lacks must check this output too. Before R2024b links are found with
+%   Java; without it, linked folders are listed as ordinary folders.
 %
 %   A folder that does not exist has no files, so the table is empty. A
 %   root folder that cannot be read is an error.

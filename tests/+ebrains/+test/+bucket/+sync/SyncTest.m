@@ -1155,9 +1155,10 @@ function exception = captureError(fcn)
 end
 
 function makeFolderLink(testCase, target, linkPath)
-% makeFolderLink - Create a symbolic link to a folder, which the sync finds through Java
+% makeFolderLink - Create a symbolic link to a folder, which the sync finds through MATLAB or Java
     testCase.assumeFalse(ispc, 'Symbolic links are created with ln, which Windows does not have.');
-    testCase.assumeTrue(usejava('jvm'), 'Linked folders are found through Java.');
+    testCase.assumeTrue(~isMATLABReleaseOlderThan("R2024b") || usejava('jvm'), ...
+        'Before R2024b, linked folders are found through Java.');
     folder = fileparts(linkPath);
     if ~isfolder(folder)
         mkdir(folder)

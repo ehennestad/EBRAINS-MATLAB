@@ -14,8 +14,9 @@ function assertNotBelowLinkedFolder(rootFolder, relativePath, objectName)
 %   an object named below such a folder fails its row rather than being
 %   written through the link. The folders are checked from the root
 %   down, so the error names the first linked one. A folder that does
-%   not exist is no link. Without Java no link is found, as in the
-%   listing. objectName names the object in the error message.
+%   not exist is no link. Before R2024b links are found with Java, and
+%   without it none is found, as in the listing. objectName names the
+%   object in the error message.
 %
 %   relativePath is relative to rootFolder, with "/" separators, as the
 %   paths of a listing are.
@@ -29,8 +30,9 @@ function assertNotBelowLinkedFolder(rootFolder, relativePath, objectName)
         objectName (1,1) string
     end
 
-    % Java resolves a relative path against its own working directory,
-    % so the root is made absolute, the way the listing reads it
+    % Before R2024b, Java resolves a relative path against its own
+    % working directory, so the root is made absolute, the way the
+    % listing reads it
     rootListing = dir(rootFolder);
     isRootEntry = strcmp({rootListing.name}, '.');
     if any(isRootEntry)
