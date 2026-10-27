@@ -327,6 +327,25 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyEmpty(files.Path);
         end
 
+        %% assertNotBelowLinkedFolder
+        function testAssertNotBelowLinkedFolderNamesTheLinkedFolder(testCase)
+            outside = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            makeFolderLink(testCase, outside, fullfile(testCase.Folder, "sub", "link"));
+            assertNotBelow = @(relativePath) ebrains.bucket.sync.internal.assertNotBelowLinkedFolder( ...
+                testCase.Folder, relativePath, "set/" + relativePath);
+
+            % Folders that are no links, and ones that do not exist, pass
+            assertNotBelow("a.txt")
+            assertNotBelow("sub/a.txt")
+            assertNotBelow("sub/other/deep/a.txt")
+
+            exception = captureError(@() assertNotBelow("sub/link/deep/a.txt"));
+
+            testCase.verifyEqual(exception.identifier, 'EBRAINS:Bucket:Sync:LocalFolderIsLink');
+            testCase.verifySubstring(exception.message, '"set/sub/link/deep/a.txt"');
+            testCase.verifySubstring(exception.message, fullfile(testCase.Folder, "sub", "link"));
+        end
+
         %% listLocalFile
         function testListLocalFileReadsOneFileAsTheListingDoes(testCase)
             writeFile(fullfile(testCase.Folder, "top.txt"), "abc");
@@ -819,6 +838,29 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(isfile(fullfile(outside, "elsewhere.txt")));
         end
 
+        function testSyncFromBucketRefusesObjectsBelowLinkedFolder(testCase)
+            % The files of a linked folder are stored elsewhere and are not
+            % synced, and neither are the objects named below it: a download
+            % would write through the link, outside the synced folder. The
+            % object fails its row, as one whose local path is a folder does,
+            % and the other objects are downloaded.
+            outside = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            makeFolderLink(testCase, outside, fullfile(testCase.Folder, "link"));
+            addListing(testCase.Client, makeObjects(["a.txt", "link/x.txt"], [3, 3]));
+            addDownloadUrls(testCase.Client, 1);
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.fromBucket("my-bucket", ...
+                testCase.Folder, Downloader=@writeAbc, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:LinkedFolder');
+
+            testCase.verifyEqual(actions.Path, ["a.txt"; "link/x.txt"]);
+            testCase.verifyEqual(actions.Status, ["done"; "failed"]);
+            testCase.verifySubstring(actions.Message(2), "is a symbolic link");
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "a.txt")));
+            testCase.verifyFalse(isfile(fullfile(outside, "x.txt")), ...
+                'Nothing is written through the link.');
+        end
+
         function testSyncFromBucketGivesDownloadsTheTimeOfTheirObject(testCase)
             % With the time of its object, the file is unchanged to a sync
             % back to the bucket
@@ -1157,10 +1199,21 @@ function makeUnreadable(testCase, folder)
     testCase.assumeEmpty(dir(folder), 'This user can read a folder without read permission.');
 end
 
+function exception = captureError(fcn)
+% captureError - The error a function raises, or an error when it raises none
+    exception = MException.empty;
+    try
+        fcn();
+    catch exception
+    end
+    assert(~isempty(exception), 'The function raised no error.')
+end
+
 function makeFolderLink(testCase, target, linkPath)
-% makeFolderLink - Create a symbolic link to a folder, which the sync finds through Java
+% makeFolderLink - Create a symbolic link to a folder, which the sync finds through MATLAB or Java
     testCase.assumeFalse(ispc, 'Symbolic links are created with ln, which Windows does not have.');
-    testCase.assumeTrue(usejava('jvm'), 'Linked folders are found through Java.');
+    testCase.assumeTrue(~isMATLABReleaseOlderThan("R2024b") || usejava('jvm'), ...
+        'Before R2024b, linked folders are found through Java.');
     folder = fileparts(linkPath);
     if ~isfolder(folder)
         mkdir(folder)
