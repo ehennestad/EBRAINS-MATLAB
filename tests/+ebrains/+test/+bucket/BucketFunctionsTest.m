@@ -836,6 +836,29 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(strtrim(string(fileread(targetFile))), "received");
         end
 
+        function testDownloadFileHandsTheTemporarySuffixToTheDownloader(testCase)
+            % The downloader receives the object in a temporary file next
+            % to the target whose name ends in the suffix, ".part" unless
+            % another is given.
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=2'));
+            suffixes = strings(1, 0);
+            downloader = @(target, url, varargin) recordSuffix(target, varargin);
+            function recordSuffix(target, nameValues)
+                suffixes(end+1) = string(namedValue(nameValues, "TemporarySuffix"));
+                writelines("received", target);
+            end
+
+            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                Client=testCase.Client, Downloader=downloader);
+            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                Client=testCase.Client, Downloader=downloader, TemporarySuffix=".sync-part");
+
+            testCase.verifyEqual(suffixes, [".part", ".sync-part"]);
+        end
+
         function testDownloadFileDownloaderErrorPropagates(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "file.txt");
@@ -1230,6 +1253,17 @@ function [wasSuccess, response] = failLikeHttpClient(url) %#ok<STOUT> the output
     exception = MException('MATLAB:webservices:ConnectionRefused', ...
         'Error connecting to %s: Could not connect to server', url);
     throw(exception.addCause(cause))
+end
+
+function value = namedValue(nameValues, name)
+% namedValue - The value that follows name in a list of name-value arguments
+    for i = 1:2:numel(nameValues)
+        if string(nameValues{i}) == name
+            value = nameValues{i + 1};
+            return
+        end
+    end
+    error('BucketFunctionsTest:NameNotGiven', 'No argument named "%s" was given.', name)
 end
 
 function exception = captureError(fcn)

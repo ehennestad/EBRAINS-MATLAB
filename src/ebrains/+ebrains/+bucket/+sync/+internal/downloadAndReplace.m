@@ -9,8 +9,11 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
 %   so that the move is a rename on the same file system, and its name
 %   ends in ebrains.bucket.sync.internal.downloadPartSuffix, which every
 %   sync leaves out, so that a file left behind by a process killed during
-%   the download is never uploaded. note is "" or says why the file could
-%   not be given the time of its object.
+%   the download is never uploaded. ebrains.bucket.downloadFile receives
+%   the object in a temporary file of its own and renames it over the
+%   target at the end. That file gets the same suffix, so a sync leaves
+%   it out too. note is "" or says why the file could not be given the
+%   time of its object.
 %
 %   Name-Value Arguments
 %       ExpectedBytes : Size the listing reports for the object. A download
@@ -76,6 +79,7 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
     temporaryFileCleanup = onCleanup(@() deleteIfFile(temporaryFile)); % runs on return or error
 
     ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
+        TemporarySuffix=ebrains.bucket.sync.internal.downloadPartSuffix(), ...
         DisplayMode=options.DisplayMode, Figure=options.Figure, ...
         Client=options.Client, Downloader=options.Downloader);
 
