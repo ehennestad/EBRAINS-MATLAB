@@ -22,8 +22,8 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
 %   also returns the subfolders that are symbolic links, in the same form.
 %   Their content is not listed: it is stored outside rootFolder, where a
 %   sync must not delete files, and a caller that deletes what the table
-%   lacks must check this output too. Links are found with Java; without
-%   it, linked folders are listed as ordinary folders.
+%   lacks must check this output too. Before R2024b links are found with
+%   Java; without it, linked folders are listed as ordinary folders.
 %
 %   A folder that does not exist has no files, so the table is empty. A
 %   root folder that cannot be read is an error.
@@ -63,7 +63,7 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
     % dir follows a linked folder, so the entries below one are dropped
     isSubfolder = isFolderEntry & names ~= "." & names ~= "..";
     subfolders = fullfile(folders(isSubfolder), names(isSubfolder));
-    linkedAbsolute = subfolders(isSymbolicLink(subfolders));
+    linkedAbsolute = subfolders(ebrains.bucket.sync.internal.isSymbolicLink(subfolders));
     isBelowLink = false(size(folders));
     for linkedFolder = reshape(linkedAbsolute, 1, [])
         isBelowLink = isBelowLink | folders == linkedFolder | startsWith(folders, linkedFolder + filesep);
@@ -98,17 +98,6 @@ function [files, unreadableFolders, linkedFolders] = listLocalFiles(rootFolder)
         | ebrains.bucket.sync.internal.isTransferLeftover(files.Path);
     files = files(~isLeftOut, :);
     unreadableFolders = unreadableFolders(~ebrains.bucket.internal.metadata.isMetadataPath(unreadableFolders));
-end
-
-function tf = isSymbolicLink(absolutePaths)
-% isSymbolicLink - Whether each path is a symbolic link, false for all without Java
-    tf = false(size(absolutePaths));
-    if ~usejava('jvm')
-        return
-    end
-    for i = 1:numel(absolutePaths)
-        tf(i) = java.nio.file.Files.isSymbolicLink(java.io.File(char(absolutePaths(i))).toPath());
-    end
 end
 
 function relativePaths = toRelativePaths(absolutePaths, absoluteRoot)
