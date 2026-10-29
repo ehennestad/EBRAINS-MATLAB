@@ -373,8 +373,9 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
 %   uploaded files are taken from. A sync from the bucket keeps
 %   the entry of each placeholder of a removed object that it did not
 %   delete while the file is still empty, since only the entry tells the
-%   file from one emptied on purpose. A failed transfer leaves the entry
-%   as the listing gave it.
+%   file from one emptied on purpose; those placeholders are found in
+%   listedLocalFiles as well, since an excluded one is not deleted
+%   either. A failed transfer leaves the entry as the listing gave it.
     if isToBucket
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
@@ -384,7 +385,7 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
             uploadedFiles, deletedPaths, listedLocalFiles, oldManifestFiles);
     else
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPull(listedFiles, ...
-            actions, localFolder, localFiles, oldManifestFiles, IgnoreCase=ignoreCase);
+            actions, localFolder, listedLocalFiles, oldManifestFiles, IgnoreCase=ignoreCase);
     end
     ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
