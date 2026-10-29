@@ -475,6 +475,37 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(manifest.Path, ["a.txt"; "gone.txt"]);
         end
 
+        function testPushKeepsProtectingExcludedPlaceholderOfRemovedObject(testCase)
+            % The manifest is made before the exclude patterns, so the
+            % entry of an excluded placeholder survives a push that leaves
+            % the file out, and the next push without the pattern still
+            % knows the file for a placeholder rather than upload an empty
+            % object. Mirrors
+            % test_placeholder_of_a_removed_object_stays_protected_in_the_next_push
+            % of the ebrains-bucket-sync package.
+            ebrains.bucket.internal.metadata.writeBucketInfo(testCase.Folder, "my-bucket", "");
+            ebrains.bucket.internal.metadata.writeManifest(testCase.Folder, ...
+                makeFiles(["a.txt", "excluded.txt", "gone.txt"], [3, 3, 3]));
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "excluded.txt"), "");
+            writeFile(fullfile(testCase.Folder, "gone.txt"), "");
+
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", Exclude="excluded.txt", ...
+                Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+            testCase.verifyEqual(actions.Path, ["a.txt"; "gone.txt"]);
+            manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
+            testCase.verifyEqual(manifest.Path, ["a.txt"; "excluded.txt"; "gone.txt"], ...
+                'The entry of the excluded placeholder survives the push.');
+
+            addListing(testCase.Client, "a.txt", 3, "2000-01-01T00:00:00");
+            actions = ebrains.bucket.sync.toBucket(testCase.Folder, "my-bucket", ...
+                Uploader=@failUpload, Client=testCase.Client, Verbose=false);
+
+            testCase.verifyEqual(actions.Path, ["a.txt"; "excluded.txt"; "gone.txt"]);
+            testCase.verifyEqual(actions.Reason, repmat("placeholder", 3, 1));
+        end
+
         function testPullDeletesPlaceholderOfRemovedObject(testCase)
             % Without Delete, a file with data and an empty file the
             % manifest does not know are kept
