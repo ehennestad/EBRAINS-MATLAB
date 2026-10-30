@@ -25,10 +25,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %   that holds data by the time the deletions run was written into since
 %   the folder was listed, and is kept with a warning, as "skipped".
 %   A placeholder of a removed object that a sync from the bucket did not
-%   delete, since the deletions were held back, the deletion failed or
-%   the file holds data, keeps its manifest entry as long as the file is
-%   still empty, so that the next sync to the bucket still knows it for a
-%   placeholder.
+%   delete, since the deletions were held back, the deletion failed, the
+%   file holds data or an exclude pattern left the file out of the sync,
+%   keeps its manifest entry as long as the file is still empty, so that
+%   the next sync to the bucket still knows it for a placeholder.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
