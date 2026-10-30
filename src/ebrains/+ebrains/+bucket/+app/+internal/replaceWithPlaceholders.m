@@ -10,9 +10,12 @@ function replaceWithPlaceholders(rootFolder, files)
 %   The rows of files are the files as they were read when the decision
 %   to discard their data was made. A file is emptied only while it still
 %   has the Bytes and ModifiedTime of its row: a file that is missing or
-%   has changed since holds data that was not judged. Either is an error,
-%   reported before any file is changed. An unknown time in the row
-%   matches an unknown time at the check.
+%   has changed since holds data that was not judged. A file that is a
+%   symbolic link points to data outside rootFolder. Each of these is an
+%   error, reported before any file is changed. An unknown time in the
+%   row matches an unknown time at the check. Before R2024b links are
+%   found with Java, which needs an absolute rootFolder, and without Java
+%   no link is found.
 %
 %   See also ebrains.bucket.app.internal.createPlaceholderFiles, ebrains.bucket.sync.internal.listLocalFile
 
@@ -23,6 +26,13 @@ function replaceWithPlaceholders(rootFolder, files)
 
     for i = 1:height(files)
         filePath = fullfile(rootFolder, files.Path(i));
+        % Opening a link for writing would empty the file it points to,
+        % which is not the virtual bucket's to discard
+        if ebrains.bucket.sync.internal.isSymbolicLink(filePath)
+            error('EBRAINS:Bucket:FileIsLink', ...
+                ['"%s" is a symbolic link to a file elsewhere, which cannot be made online only, ' ...
+                 'so no file was. Remove the link to make the object online only.'], filePath)
+        end
         current = ebrains.bucket.sync.internal.listLocalFile(rootFolder, files.Path(i));
         if isempty(current)
             error('EBRAINS:Bucket:FileNotFound', ...
