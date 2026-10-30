@@ -68,6 +68,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     % 1. List both sides
     [localFiles, unreadableFolders, linkedFolders] = ebrains.bucket.sync.internal.listLocalFiles(localFolder);
+    listedLocalFiles = localFiles;
     listedTime = datetime("now", TimeZone="UTC");
     remoteFiles = ebrains.bucket.sync.internal.listRemoteFiles(bucketName, prefix, client);
     listedFiles = remoteFiles;
@@ -361,7 +362,7 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 
     if isVirtualBucket
         updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, ...
-            localFiles, manifestFiles, actions, isToBucket, ignoreCase)
+            localFiles, listedLocalFiles, manifestFiles, actions, isToBucket, ignoreCase)
     end
 
     if syncOptions.Verbose
@@ -391,13 +392,18 @@ function paths = excludePaths(paths, excludePatterns, ignoreCase)
 end
 
 function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime, localFiles, ...
-    oldManifestFiles, actions, isToBucket, ignoreCase)
+    listedLocalFiles, oldManifestFiles, actions, isToBucket, ignoreCase)
 % updateManifest - Record the listing of a sync as the manifest of a virtual bucket
 %
 %   A sync to the bucket changed it after the listing, so the files it
 %   uploaded, with the MD5 checksum read before each upload, and the
 %   objects it deleted are applied to the listing, and the placeholders
-%   of removed objects keep their entries. A sync from the bucket keeps
+%   of removed objects keep their entries. The placeholders are those of
+%   the local listing before the exclude patterns, listedLocalFiles: an
+%   excluded placeholder is still a placeholder, and without its entry
+%   the next sync without the pattern would upload the empty file as a
+%   new object. localFiles is the listing after the patterns, which the
+%   uploaded files are taken from. A sync from the bucket keeps
 %   the entry of each placeholder of a removed object that it did not
 %   delete while the file is still empty, since only the entry tells the
 %   file from one emptied on purpose. A failed transfer leaves the entry
@@ -408,7 +414,7 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
         deletedPaths = actions.Path(isDone & actions.Action == "delete");
         uploadedFiles = localFiles(ismember(localFiles.Path, uploadedPaths), :);
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPush(listedFiles, ...
-            uploadedFiles, deletedPaths, localFiles, oldManifestFiles);
+            uploadedFiles, deletedPaths, listedLocalFiles, oldManifestFiles);
     else
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPull(listedFiles, ...
             actions, localFolder, localFiles, oldManifestFiles, IgnoreCase=ignoreCase);
