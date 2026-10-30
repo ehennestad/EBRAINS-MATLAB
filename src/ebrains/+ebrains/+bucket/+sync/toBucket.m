@@ -93,10 +93,11 @@ function actions = toBucket(localFolder, bucketName, options)
 %
 %   On a file system that ignores the case of names, such as the default
 %   ones of macOS and Windows, an object whose name differs only in case
-%   from a local file is not deleted, with a warning: the folder cannot
-%   hold the two apart, so a sync from the bucket keeps only one of them,
-%   and the object may be the only copy of its data. The row is listed as
-%   skipped with the reason, and does not count towards MaxDelete.
+%   from a local file, excluded or not, is not deleted, with a warning:
+%   the folder cannot hold the two apart, so a sync from the bucket keeps
+%   only one of them, and the object may be the only copy of its data.
+%   The row is listed as skipped with the reason, and does not count
+%   towards MaxDelete.
 %
 %   The sync refuses to delete everything: with Delete=true and an empty
 %   localFolder it stops with an error before it changes anything, since

@@ -14,8 +14,8 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %       4. Delete the extraneous files, if asked to and no copy failed.
 %   A sync to the bucket from a folder whose file system ignores case
 %   does not delete an object whose name differs only in case from a
-%   local file: the folder cannot hold the two apart, so the object may
-%   be the only copy of its data. The row is skipped with the reason.
+%   local file, excluded or not: the folder cannot hold the two apart, so
+%   the object may be the only copy of its data. The row is skipped with the reason.
 %   When localFolder is a virtual bucket (see
 %   ebrains.bucket.internal.metadata.readBucketInfo), the sync must be of
 %   its bucket and prefix, a sync to the bucket leaves its placeholders
@@ -182,12 +182,15 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
     % local folder ignores case it cannot hold the two apart, a sync from
     % the bucket keeps only one of them, and the object may be the only
     % copy of its data, so it is not deleted: the row is skipped with the
-    % reason and does not count as a deletion.
+    % reason and does not count as a deletion. An excluded local file
+    % counts too, since it takes up the name all the same: the patterns
+    % of an upload match names exactly, so they may leave out the file
+    % but not the object.
     isCaseCollision = false(nActions, 1);
     collisionMessage = strings(nActions, 1);
     if isToBucket && folderIgnoresCase
         [isCaseCollision, collidingLocalPaths] = ...
-            ebrains.bucket.sync.internal.caseCollidingDeletions(actions, localFiles);
+            ebrains.bucket.sync.internal.caseCollidingDeletions(actions, listedLocalFiles);
         collisionMessage(isCaseCollision) = "Not deleted, since the name differs only in case from " + ...
             "the local file """ + collidingLocalPaths(isCaseCollision) + """, which the local folder " + ...
             "cannot hold apart.";
