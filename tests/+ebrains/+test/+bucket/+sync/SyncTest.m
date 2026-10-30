@@ -640,6 +640,23 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifySubstring(actions.Message(2), "differs only in case");
         end
 
+        function testSyncToBucketKeepsObjectWhoseNameDiffersInCaseFromAnExcludedFile(testCase)
+            % The patterns of a push match names exactly, so data.txt leaves
+            % out the local file but not the object Data.txt, which the
+            % folder cannot hold next to it all the same.
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "data.txt"), "local");
+            addListing(testCase.Client, makeObjects("Data.txt", 6, ""));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, ...
+                "my-bucket", Delete=true, Exclude="data.txt", Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:CaseCollision');
+
+            testCase.verifyEqual(actions.Path, "Data.txt");
+            testCase.verifyEqual(actions.Status, "skipped");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2, 'No DELETE may be sent.');
+        end
+
         function testSyncToBucketLeavesExcludedFilesAlone(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             writeFile(fullfile(testCase.Folder, "scratch.tmp"), "abc");
