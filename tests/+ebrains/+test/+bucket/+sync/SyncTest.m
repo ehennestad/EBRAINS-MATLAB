@@ -407,6 +407,29 @@ classdef SyncTest < matlab.unittest.TestCase
             testCase.verifyTrue(wasDeleted);
         end
 
+        %% caseCollidingDeletions
+        function testCaseCollidingDeletionsFindsObjectsNamedLikeALocalFileInAnotherCase(testCase)
+            local = ebrains.bucket.sync.internal.makeFileTable(["A.txt"; "b.txt"], [3; 3]);
+            remote = ebrains.bucket.sync.internal.makeFileTable(["A.txt"; "a.txt"; "extra.txt"], [3; 3; 1]);
+            plan = ebrains.bucket.sync.internal.planSync(local, remote, Delete=true);
+            testCase.assertEqual(plan.Path, ["A.txt"; "a.txt"; "b.txt"; "extra.txt"]);
+
+            [isCollision, localPaths] = ebrains.bucket.sync.internal.caseCollidingDeletions(plan, local);
+
+            testCase.verifyEqual(isCollision, [false; true; false; false]);
+            testCase.verifyEqual(localPaths, [""; "A.txt"; ""; ""]);
+        end
+
+        function testCaseCollidingDeletionsFindsNothingWithoutDeletions(testCase)
+            local = ebrains.bucket.sync.internal.makeFileTable("A.txt", 3);
+            remote = ebrains.bucket.sync.internal.makeFileTable(["A.txt"; "a.txt"], [3; 3]);
+            plan = ebrains.bucket.sync.internal.planSync(local, remote, Delete=false);
+
+            isCollision = ebrains.bucket.sync.internal.caseCollidingDeletions(plan, local);
+
+            testCase.verifyEqual(isCollision, [false; false]);
+        end
+
         %% listRemoteFiles
         function testListRemoteFilesStripsPrefixAndLeavesOutFolders(testCase)
             addListing(testCase.Client, makeObjects( ...
@@ -581,6 +604,40 @@ classdef SyncTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(actions.Action, ["none"; "none"]);
             testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testSyncToBucketKeepsObjectWhoseNameDiffersInCaseFromALocalFile(testCase)
+            % The folder holds A.txt and cannot hold a.txt next to it, so a
+            % pull kept only one of the two objects. The push must not
+            % delete the other: it may be the only copy of its data.
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "A.txt"), "abc");
+            addListing(testCase.Client, makeObjects( ...
+                ["A.txt", "a.txt"], [3, 3], ["2100-01-01T00:00:00", ""]));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, ...
+                "my-bucket", Delete=true, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:CaseCollision');
+
+            testCase.verifyEqual(actions.Path, ["A.txt"; "a.txt"]);
+            testCase.verifyEqual(actions.Action, ["none"; "delete"]);
+            testCase.verifyEqual(actions.Status, [""; "skipped"]);
+            testCase.verifySubstring(actions.Message(2), "differs only in case");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2, 'No DELETE may be sent.');
+        end
+
+        function testSyncToBucketDryRunShowsCaseCollidingDeletionAsSkipped(testCase)
+            assumeCaseInsensitive(testCase);
+            writeFile(fullfile(testCase.Folder, "A.txt"), "abc");
+            addListing(testCase.Client, makeObjects( ...
+                ["A.txt", "a.txt"], [3, 3], ["2100-01-01T00:00:00", ""]));
+
+            actions = testCase.verifyWarning(@() ebrains.bucket.sync.toBucket(testCase.Folder, ...
+                "my-bucket", Delete=true, DryRun=true, Client=testCase.Client, Verbose=false), ...
+                'EBRAINS:Bucket:Sync:CaseCollision');
+
+            testCase.verifyEqual(actions.Status, [""; "skipped"]);
+            testCase.verifySubstring(actions.Message(2), "differs only in case");
         end
 
         function testSyncToBucketLeavesExcludedFilesAlone(testCase)
