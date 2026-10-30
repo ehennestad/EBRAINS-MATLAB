@@ -624,28 +624,17 @@ classdef VirtualBucketBrowser < handle
                     return
                 end
             end
-            app.runSystemCommand(openFileCommand(fullfile(app.LocalFolder, relativePath)))
+            openFile(fullfile(app.LocalFolder, relativePath))
         end
 
         function revealPath(app, relativePath)
         % revealPath - Show a file or folder in the file manager of the system
-            app.runSystemCommand(revealCommand(fullfile(app.LocalFolder, relativePath)))
+            revealInFileManager(fullfile(app.LocalFolder, relativePath))
         end
 
         function openBucketOnline(app)
         % openBucketOnline - Show the page of the bucket in the Collaboratory in a web browser
             app.Opener(ebrains.bucket.internal.buildBucketViewURL(app.BucketName))
-        end
-
-        function runSystemCommand(app, command)
-        % runSystemCommand - Run a command of the operating system, and report a failure
-        %
-        %   Explorer exits with status 1 when it succeeds, so the status of
-        %   a command on Windows says nothing.
-            [status, output] = system(command);
-            if status ~= 0 && ~ispc
-                uialert(app.UIFigure, output, "The command failed")
-            end
         end
 
         function tf = confirm(app, message, title, confirmText)
@@ -839,27 +828,52 @@ function name = revealActionName()
     end
 end
 
-function command = openFileCommand(filePath)
-% openFileCommand - Command that opens a file with the default application of the system
-    if ismac
-        command = "open " + quoteForShell(filePath);
-    elseif ispc
-        command = "start """" """ + filePath + """";
+function openFile(filePath)
+% openFile - Open a file with the default application of the system
+%
+%   On Windows the file is opened with winopen rather than through a
+%   shell command: cmd expands %NAME% in a path even inside double
+%   quotes, so a file whose name holds percent signs would open another
+%   path. Object names come from the bucket, which other members of a
+%   collab can write to. On the other systems the path is quoted for the
+%   shell, where nothing is expanded inside single quotes.
+    if ispc
+        winopen(filePath)
+    elseif ismac
+        runSystemCommand("open " + quoteForShell(filePath))
     else
-        command = "xdg-open " + quoteForShell(filePath);
+        runSystemCommand("xdg-open " + quoteForShell(filePath))
     end
 end
 
-function command = revealCommand(absolutePath)
-% revealCommand - Command that shows a file or folder in the file manager of the system
-    if ismac
-        command = "open -R " + quoteForShell(absolutePath);
+function revealInFileManager(absolutePath)
+% revealInFileManager - Show a file or folder in the file manager of the system
+%
+%   On Windows, Explorer is started directly with its arguments as one
+%   text, so that no shell expands %NAME% in the path (see openFile).
+%   Without .NET the shell command is used all the same.
+    if ispc && NET.isNETSupported()
+        System.Diagnostics.Process.Start("explorer.exe", "/select,""" + absolutePath + """");
     elseif ispc
-        command = "explorer /select,""" + absolutePath + """";
+        runSystemCommand("explorer /select,""" + absolutePath + """")
+    elseif ismac
+        runSystemCommand("open -R " + quoteForShell(absolutePath))
     elseif isfolder(absolutePath)
-        command = "xdg-open " + quoteForShell(absolutePath);
+        runSystemCommand("xdg-open " + quoteForShell(absolutePath))
     else
-        command = "xdg-open " + quoteForShell(fileparts(absolutePath));
+        runSystemCommand("xdg-open " + quoteForShell(fileparts(absolutePath)))
+    end
+end
+
+function runSystemCommand(command)
+% runSystemCommand - Run a command of the operating system, and fail with its output
+%
+%   Explorer exits with status 1 when it succeeds, so the status of a
+%   command on Windows says nothing. The error reaches the event handler
+%   of the page, which shows it.
+    [status, output] = system(command);
+    if status ~= 0 && ~ispc
+        error('EBRAINS:Bucket:CommandFailed', '%s', output)
     end
 end
 
