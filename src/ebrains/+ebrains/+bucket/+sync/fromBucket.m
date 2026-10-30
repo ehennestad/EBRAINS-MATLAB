@@ -123,8 +123,9 @@ function actions = fromBucket(bucketName, localFolder, options)
 %   before: a file that holds data by then was written into since the
 %   folder was listed, and is kept with a warning, as "skipped", since
 %   its data may exist nowhere else. A placeholder the sync did not
-%   delete, because the deletions were held back or the deletion failed,
-%   keeps its manifest entry as long as the file is still empty, so that
+%   delete, because the deletions were held back, the deletion failed or
+%   an exclude pattern left the file out of the sync, keeps its manifest
+%   entry as long as the file is still empty, so that
 %   ebrains.bucket.sync.toBucket still knows it for a placeholder rather
 %   than upload it as a new, empty object.
 %

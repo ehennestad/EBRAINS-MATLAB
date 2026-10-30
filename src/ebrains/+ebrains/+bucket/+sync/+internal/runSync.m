@@ -25,10 +25,10 @@ function actions = runSync(direction, localFolder, bucketName, syncOptions, clie
 %   that holds data by the time the deletions run was written into since
 %   the folder was listed, and is kept with a warning, as "skipped".
 %   A placeholder of a removed object that a sync from the bucket did not
-%   delete, since the deletions were held back, the deletion failed or
-%   the file holds data, keeps its manifest entry as long as the file is
-%   still empty, so that the next sync to the bucket still knows it for a
-%   placeholder.
+%   delete, since the deletions were held back, the deletion failed, the
+%   file holds data or an exclude pattern left the file out of the sync,
+%   keeps its manifest entry as long as the file is still empty, so that
+%   the next sync to the bucket still knows it for a placeholder.
 %   A copy that fails does not stop the sync: the other files are copied,
 %   the failure is recorded in the table, and a warning names the files
 %   that failed once the sync is done.
@@ -406,8 +406,9 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
 %   uploaded files are taken from. A sync from the bucket keeps
 %   the entry of each placeholder of a removed object that it did not
 %   delete while the file is still empty, since only the entry tells the
-%   file from one emptied on purpose. A failed transfer leaves the entry
-%   as the listing gave it.
+%   file from one emptied on purpose; those placeholders are found in
+%   listedLocalFiles as well, since an excluded one is not deleted
+%   either. A failed transfer leaves the entry as the listing gave it.
     if isToBucket
         isDone = actions.Status == "done";
         uploadedPaths = actions.Path(isDone & actions.Action == "upload");
@@ -417,7 +418,7 @@ function updateManifest(localFolder, bucketName, prefix, listedFiles, listedTime
             uploadedFiles, deletedPaths, listedLocalFiles, oldManifestFiles);
     else
         manifestFiles = ebrains.bucket.sync.internal.manifestAfterPull(listedFiles, ...
-            actions, localFolder, localFiles, oldManifestFiles, IgnoreCase=ignoreCase);
+            actions, localFolder, listedLocalFiles, oldManifestFiles, IgnoreCase=ignoreCase);
     end
     ebrains.bucket.internal.metadata.writeManifest(localFolder, manifestFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(localFolder, bucketName, prefix, listedTime)
