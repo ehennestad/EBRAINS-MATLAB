@@ -13,9 +13,8 @@ function replaceWithPlaceholders(rootFolder, files)
 %   has changed since holds data that was not judged. A file that is a
 %   symbolic link points to data outside rootFolder. Each of these is an
 %   error, reported before any file is changed. An unknown time in the
-%   row matches an unknown time at the check. Before R2024b links are
-%   found with Java, which needs an absolute rootFolder, and without Java
-%   no link is found.
+%   row matches an unknown time at the check. Links are found as
+%   ebrains.bucket.sync.internal.isSymbolicLink finds them.
 %
 %   See also ebrains.bucket.app.internal.createPlaceholderFiles, ebrains.bucket.sync.internal.listLocalFile
 

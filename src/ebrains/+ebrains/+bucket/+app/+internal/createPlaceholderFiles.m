@@ -10,9 +10,8 @@ function pathsWithoutPlaceholder = createPlaceholderFiles(rootFolder, paths)
 %   folder or a symbolic link at the path, or a file where a folder of the
 %   path must go. Opening a dangling link for writing would create the
 %   file it points to, outside rootFolder. Such paths are returned as a
-%   string column, and the other paths get their placeholders. Before
-%   R2024b links are found with Java, which needs an absolute rootFolder,
-%   and without Java no link is found.
+%   string column, and the other paths get their placeholders. Links are
+%   found as ebrains.bucket.sync.internal.isSymbolicLink finds them.
 %
 %   See also ebrains.bucket.app.internal.replaceWithPlaceholders, ebrains.bucket.createVirtualBucket
 
