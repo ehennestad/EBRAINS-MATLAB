@@ -120,16 +120,19 @@ classdef BucketLiveTest < matlab.unittest.TestCase
 
             stamp = string(datetime("now", Format="yyyyMMdd-HHmmssSSS"));
             objectName = "live-test/rename-source-" + stamp + ".txt";
+            takenName = "live-test/rename-taken-" + stamp + ".txt";
             newName = "live-test/renamed/rename-target-" + stamp + ".txt";
             testCase.addTeardown(@() deleteIfPresent(testCase.BucketName, objectName));
+            testCase.addTeardown(@() deleteIfPresent(testCase.BucketName, takenName));
             testCase.addTeardown(@() deleteIfPresent(testCase.BucketName, newName));
 
             ebrains.bucket.uploadFile(testCase.BucketName, objectName, sourceFile);
+            ebrains.bucket.uploadFile(testCase.BucketName, takenName, sourceFile);
 
             % An object that has the target name stops the rename before
-            % the request; the object itself is the simplest such target.
+            % the request.
             testCase.verifyError( ...
-                @() ebrains.bucket.renameObject(testCase.BucketName, objectName, objectName), ...
+                @() ebrains.bucket.renameObject(testCase.BucketName, objectName, takenName), ...
                 'EBRAINS:Bucket:TargetExists');
 
             ebrains.bucket.renameObject(testCase.BucketName, objectName, newName);

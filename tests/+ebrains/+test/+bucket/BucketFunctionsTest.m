@@ -298,6 +298,68 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(2, 'prefix=new/');
         end
 
+        function testMoveRefusesTheSameNameWithoutARequest(testCase, moveFunction)
+            % Overwrite would skip the target check, so the names are
+            % compared before anything is listed.
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "a.txt", "/a.txt", Overwrite=true, Client=testCase.Client), ...
+                'EBRAINS:Bucket:SameName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveRefusesAFolderPairedWithAnObjectName(testCase, moveFunction)
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "d/", "d2", Client=testCase.Client), ...
+                'EBRAINS:Bucket:FolderNameMismatch');
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "d", "d2/", Client=testCase.Client), ...
+                'EBRAINS:Bucket:FolderNameMismatch');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveRefusesATargetWithinTheSourceFolder(testCase, moveFunction)
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "a/", "a/b/", Overwrite=true, Client=testCase.Client), ...
+                'EBRAINS:Bucket:TargetWithinSource');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveAllowsATargetAboveTheSourceFolder(testCase, moveFunction)
+            % Moving a folder up one level flattens it, which is allowed.
+            testCase.Client.addResponse('OK', makePage("a/b/x.txt"));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+            testCase.Client.addResponse('OK', struct());
+
+            moveFunction("my-bucket", "a/b/", "c/", Client=testCase.Client);
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
+        end
+
+        function testRenameObjectSendsAFolderRequest(testCase)
+            testCase.Client.addResponse('OK', makePage("old folder/a.txt"));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+            testCase.Client.addResponse('OK', struct());
+
+            ebrains.bucket.renameObject("my-bucket", "old folder/", "new folder/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestMethod(3, 'PATCH');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old%20folder/?');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(3), ...
+                '{"rename":{"target_name":"new folder/"}}');
+        end
+
+        function testCopyObjectSendsAFolderRequest(testCase)
+            testCase.Client.addResponse('OK', makePage("old folder/a.txt"));
+            testCase.Client.addResponse('OK', makePage(string.empty));
+            testCase.Client.addResponse('OK', struct());
+
+            ebrains.bucket.copyObject("my-bucket", "old folder/", "new folder/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestMethod(3, 'PUT');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old%20folder%2F/copy?');
+            testCase.Client.verifyRequestURL(3, 'name=new+folder/');
+        end
+
         function testMovePassesTheMailSwitch(testCase, moveFunction)
             testCase.Client.addResponse('OK', makePage("old.txt"));
             testCase.Client.addResponse('OK', makePage(string.empty));

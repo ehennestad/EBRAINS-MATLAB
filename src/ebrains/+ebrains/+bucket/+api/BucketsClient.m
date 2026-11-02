@@ -7,8 +7,10 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %   and delete.
 %   An object name that holds "/" (a folder within the bucket) is sent with
 %   the "/" as path separators, since the proxy takes the rest of the path
-%   as the name. The temporary URLs the proxy returns are made valid URLs
-%   before they are handed back; see the local functions in this file.
+%   as the name. The copy endpoint is the exception: copyObject sends the
+%   name as one segment with every "/" encoded, which its folder form
+%   needs. The temporary URLs the proxy returns are made valid URLs before
+%   they are handed back; see the local functions in this file.
 %
 %   The functions of the ebrains.bucket namespace build on this client and
 %   are the intended entry point. Use the client directly when an endpoint
@@ -426,9 +428,9 @@ end
 function tf = isQueuedOrDone(response)
 % isQueuedOrDone - Whether the reply to a rename or copy means the proxy took the request
 %
-%   The proxy queues a rename or copy and answers 201 ("Your copy is
-%   processing") while it completes the operation in the background. The
-%   API description lists 200, so both count as success.
+%   The proxy answers 201 ("Your copy is processing") when it has queued
+%   the operation to complete in the background, and 200 when it is done
+%   within the request. Both mean the request was accepted.
     tf = response.StatusCode == "OK" || response.StatusCode == "Created";
 end
 

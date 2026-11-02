@@ -14,9 +14,12 @@ function renameObject(bucketName, objectName, targetName, options)
 %       before the request, the function checks that the object is in the
 %       bucket (error EBRAINS:Bucket:ObjectNotFound otherwise) and, unless
 %       Overwrite is true, that no object has the target name (error
-%       EBRAINS:Bucket:TargetExists otherwise). Neither check sends the
-%       rename, so a refused rename produces no mail. The object can be
-%       listed under both names until the rename has completed.
+%       EBRAINS:Bucket:TargetExists otherwise). A folder is present when
+%       any object is named below it. Two equal names, a folder name
+%       paired with an object name, and a target within the source folder
+%       are refused as well. No check sends the rename, so a refused
+%       rename produces no mail. The object can be listed under both
+%       names until the rename has completed.
 %
 %       ebrains.bucket.renameObject(..., Name=Value) sets the options below.
 %

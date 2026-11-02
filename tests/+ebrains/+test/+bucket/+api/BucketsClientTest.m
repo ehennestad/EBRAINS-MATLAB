@@ -297,8 +297,8 @@ classdef BucketsClientTest < matlab.unittest.TestCase
         end
 
         function testRenameObjectAcceptsQueuedRename(testCase)
-            % The proxy queues the rename and answers 201 rather than 200;
-            % that is success, not an error.
+            % 201 means the proxy has queued the rename; it is accepted as
+            % 200 is.
             testCase.Client.addResponse('Created', struct('status_code', 201, ...
                 'detail', 'Your rename is processing.'));
 
@@ -352,14 +352,42 @@ classdef BucketsClientTest < matlab.unittest.TestCase
         end
 
         function testCopyObjectAcceptsQueuedCopy(testCase)
-            % The proxy queues the copy and answers 201 rather than 200;
-            % that is success, not an error.
+            % 201 means the proxy has queued the copy; it is accepted as
+            % 200 is.
             testCase.Client.addResponse('Created', struct('status_code', 201, ...
                 'detail', 'Your copy is processing.'));
 
             testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
 
             testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+
+        function testCopyObjectEncodesTheTargetInTheQuery(testCase)
+            % A "+" or "&" in a target name must not reach the proxy as a
+            % space or as a parameter separator.
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "a+b&c d.txt");
+
+            testCase.Client.verifyRequestURL(1, 'name=a%2Bb%26c+d.txt');
+        end
+
+        function testCopyObjectRestoresTheBodyWarning(testCase)
+            % The body-less PUT turns the warning off for the request only,
+            % also when the request ends in an error.
+            warningId = 'MATLAB:http:BodyExpectedFor';
+            originalState = warning('query', warningId);
+            testCase.addTeardown(@() warning(originalState));
+            warning('on', warningId);
+            testCase.Client.addResponse('OK', struct());
+            testCase.Client.addResponse('NotFound', struct('detail', 'missing'));
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
+            testCase.verifyEqual(warning('query', warningId).state, 'on');
+
+            testCase.verifyError(@() testCase.Client.copyObject("my-bucket", "old.txt", "new.txt"), ...
+                'EBRAINS:Bucket:copyObject:NotFound');
+            testCase.verifyEqual(warning('query', warningId).state, 'on');
         end
 
         function testCopyObjectValidationError(testCase)

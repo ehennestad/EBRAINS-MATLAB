@@ -16,9 +16,11 @@ function copyObject(bucketName, objectName, targetName, options)
 %       EBRAINS:Bucket:ObjectNotFound otherwise) and, unless Overwrite is
 %       true, that no object has the target name (error
 %       EBRAINS:Bucket:TargetExists otherwise). A folder is present when
-%       any object is named below it. Neither check sends the copy, so a
-%       refused copy produces no mail. The copy appears in the listing
-%       once it has completed.
+%       any object is named below it. Two equal names, a folder name
+%       paired with an object name, and a target within the source folder
+%       are refused as well. No check sends the copy, so a refused copy
+%       produces no mail. The copy appears in the listing once it has
+%       completed.
 %
 %       ebrains.bucket.copyObject(..., Name=Value) sets the options below.
 %
