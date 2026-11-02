@@ -100,6 +100,33 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             testCase.verifyEqual(dir(fullfile(testCase.Folder, "sub", "deep", "new.txt")).bytes, 0);
         end
 
+        function testCreatePlaceholderFilesLeavesWhatIsInTheWay(testCase)
+            % A local file "a" sits where the folder of "a/b.txt" must go,
+            % and a folder where the placeholder "dir.dat" must go
+            writeFile(fullfile(testCase.Folder, "a"), "local");
+            writeFile(fullfile(testCase.Folder, "kept.dat"), "kept");
+            mkdir(fullfile(testCase.Folder, "dir.dat"))
+
+            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles( ...
+                testCase.Folder, ["a/b.txt", "kept.dat", "dir.dat", "new/c.txt"]);
+
+            testCase.verifyEqual(pathsWithoutPlaceholder, ["a/b.txt"; "dir.dat"]);
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a")), 'local');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "kept.dat")), 'kept');
+            testCase.verifyEqual(dir(fullfile(testCase.Folder, "new", "c.txt")).bytes, 0);
+        end
+
+        function testCreatePlaceholderFilesDoesNotFollowADanglingLink(testCase)
+            outsideFolder = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            target = fullfile(outsideFolder, "missing.dat");
+            makeLink(testCase, target, fullfile(testCase.Folder, "x.dat"));
+
+            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles(testCase.Folder, "x.dat");
+
+            testCase.verifyEqual(pathsWithoutPlaceholder, "x.dat");
+            testCase.verifyFalse(isfile(target));
+        end
+
         function testReplaceWithPlaceholdersEmptiesFiles(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             files = ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt");
@@ -132,6 +159,22 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
                 testCase.Folder, files), 'EBRAINS:Bucket:LocalFileChanged');
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "b.txt")), 'xyz');
+        end
+
+        function testReplaceWithPlaceholdersRefusesASymbolicLink(testCase)
+            % Opening the link for writing would empty the file it points to
+            outsideFolder = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            target = fullfile(outsideFolder, "precious.txt");
+            writeFile(target, "precious");
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            makeLink(testCase, target, fullfile(testCase.Folder, "link.dat"));
+            files = [ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "a.txt"); ...
+                ebrains.bucket.sync.internal.listLocalFile(testCase.Folder, "link.dat")];
+
+            testCase.verifyError(@() ebrains.bucket.app.internal.replaceWithPlaceholders( ...
+                testCase.Folder, files), 'EBRAINS:Bucket:FileIsLink');
+            testCase.verifyEqual(fileread(target), 'precious');
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a.txt")), 'abc');
         end
 
         function testReplaceWithPlaceholdersAcceptsAFileWithoutATime(testCase)
@@ -168,4 +211,13 @@ function writeFile(filePath, content)
     fileID = fopen(filePath, "w");
     fwrite(fileID, char(content));
     fclose(fileID);
+end
+
+function makeLink(testCase, target, linkPath)
+% makeLink - Create a symbolic link, which the helpers find through MATLAB or Java
+    testCase.assumeFalse(ispc, 'Symbolic links are created with ln, which Windows does not have.');
+    testCase.assumeTrue(~isMATLABReleaseOlderThan("R2024b") || usejava('jvm'), ...
+        'Before R2024b, symbolic links are found through Java.');
+    [status, output] = system("ln -s '" + target + "' '" + linkPath + "'");
+    testCase.assertEqual(status, 0, output);
 end

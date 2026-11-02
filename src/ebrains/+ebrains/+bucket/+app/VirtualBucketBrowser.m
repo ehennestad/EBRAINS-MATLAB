@@ -308,7 +308,11 @@ classdef VirtualBucketBrowser < handle
             % differs only in case from a local file has that file already
             ignoreCase = ebrains.bucket.sync.internal.isCaseInsensitive(app.LocalFolder, app.LocalFiles.Path);
             isNew = ~ismember(matchKeys(remoteFiles.Path, ignoreCase), matchKeys(app.LocalFiles.Path, ignoreCase));
-            ebrains.bucket.app.internal.createPlaceholderFiles(app.LocalFolder, remoteFiles.Path(isNew));
+            % A path that something else is in the way of gets no
+            % placeholder; the listing is recorded all the same, so the
+            % manifest knows the object and the next update tries again
+            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles( ...
+                app.LocalFolder, remoteFiles.Path(isNew));
 
             % The folder stands for the bucket, so the placeholder of an
             % object removed since the last listing stands for nothing.
@@ -332,7 +336,13 @@ classdef VirtualBucketBrowser < handle
             app.IsListed = true;
             app.IsListedInSession = true;
             app.ListedTime = listedTime;
-            app.Message = "Added placeholders for " + countText(sum(isNew), "new object") + ".";
+            nAdded = sum(isNew) - numel(pathsWithoutPlaceholder);
+            app.Message = "Added placeholders for " + countText(nAdded, "new object") + ".";
+            if ~isempty(pathsWithoutPlaceholder)
+                app.Message = app.Message + " " + countText(numel(pathsWithoutPlaceholder), "object") + ...
+                    " got no placeholder, since a file, folder or symbolic link of the folder is in " + ...
+                    "the way, for example """ + pathsWithoutPlaceholder(1) + """.";
+            end
             if any(isRemoved)
                 app.Message = app.Message + " Removed the placeholders of " + ...
                     countText(sum(isRemoved), "removed object") + ".";
