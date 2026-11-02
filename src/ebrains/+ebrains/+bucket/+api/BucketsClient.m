@@ -3,8 +3,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %
 %   Each method mirrors one endpoint under /buckets of the Data Proxy API:
 %   bucket stat, one page of the object listing, temporary download and
-%   upload URLs, the three requests of a multipart upload, rename, and
-%   delete.
+%   upload URLs, the three requests of a multipart upload, rename, copy,
+%   and delete.
 %   An object name that holds "/" (a folder within the bucket) is sent with
 %   the "/" as path separators, since the proxy takes the rest of the path
 %   as the name. The temporary URLs the proxy returns are made valid URLs
@@ -19,7 +19,7 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %       bucketStat = client.getBucketStat("my-bucket");
 %
 %   See also ebrains.bucket.listBucketObjects, ebrains.bucket.getBucketObject,
-%   ebrains.bucket.renameObject, ebrains.bucket.deleteObject
+%   ebrains.bucket.renameObject, ebrains.bucket.copyObject, ebrains.bucket.deleteObject
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:Bucket"
@@ -258,18 +258,24 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             end
         end
 
-        function renameObject(obj, bucketName, objectName, targetName)
+        function renameObject(obj, bucketName, objectName, targetName, options)
         % renameObject - Rename an object of a bucket
         %
         %   client.renameObject(bucketName, objectName, targetName) gives
         %   the object the name targetName. To rename a folder, end
-        %   objectName with "/".
+        %   objectName with "/". The proxy queues the rename and completes
+        %   it in the background; an object of the target name is replaced.
+        %
+        %   client.renameObject(..., SendSuccessEmail=true) lets the proxy
+        %   mail the account once the rename is done. The default is false.
+        %   A rename that fails is reported by mail either way.
 
             arguments
                 obj (1,1) ebrains.bucket.api.BucketsClient
                 bucketName (1,1) string {mustBeNonzeroLengthText}
                 objectName (1,1) string {mustBeNonzeroLengthText}
                 targetName (1,1) string {mustBeNonzeroLengthText}
+                options.SendSuccessEmail (1,1) logical = false
             end
 
             % The target travels in the body, where nothing changes it, but
@@ -282,15 +288,75 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             end
 
             payload = struct('rename', struct('target_name', targetName));
+            requiredParams = struct('send_success_email', options.SendSuccessEmail);
 
-            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)], requiredParams);
             request = obj.initializeRequestMessage("PATCH", JSONPayload=jsonencode(payload));
             response = obj.sendRequest(request, apiUri);
 
-            if response.StatusCode ~= "OK"
+            if ~isQueuedOrDone(response)
                 obj.throwError("renameObject", response)
             end
         end
+
+        function copyObject(obj, bucketName, objectName, targetName, options)
+        % copyObject - Copy an object of a bucket to another name in the same bucket
+        %
+        %   client.copyObject(bucketName, objectName, targetName) writes a
+        %   copy of the object under the name targetName and leaves the
+        %   object itself in place. To copy a folder with everything in it,
+        %   end objectName and targetName with "/". The proxy queues the
+        %   copy and completes it in the background; an object of the
+        %   target name is replaced.
+        %
+        %   client.copyObject(..., SendSuccessEmail=true) lets the proxy
+        %   mail the account once the copy is done. The default is false.
+        %   A copy that fails is reported by mail either way.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+                objectName (1,1) string {mustBeNonzeroLengthText}
+                targetName (1,1) string {mustBeNonzeroLengthText}
+                options.SendSuccessEmail (1,1) logical = false
+            end
+
+            % Neither name goes through the path check of buildApiUri: the
+            % source is sent as one segment (see below) and the target in
+            % the query. An object with such a name could not be reached
+            % afterwards, so both are refused here.
+            for name = [objectName, targetName]
+                if hasDotSegment(split(name, "/"))
+                    error('EBRAINS:Bucket:DotSegmentInName', ...
+                        ['The name "%s" has a "." or ".." segment, so the copied object could not be ' ...
+                         'reached by its name. Give names without "." or ".." between slashes.'], name)
+                end
+            end
+
+            requiredParams = struct('name', targetName, 'send_success_email', options.SendSuccessEmail);
+
+            % The endpoint is a PUT without a body, which MATLAB warns
+            % about on purpose. The warning is off for this request only.
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
+            % The name is sent as a single segment, with every "/" encoded
+            % as %2F, unlike for the other endpoints (see objectPathSegments).
+            % A trailing "/" marks a folder, and sent as a path separator it
+            % would stand right before the "copy" segment, where the proxy
+            % collapses the two slashes into one before it reads the name:
+            % the copy then runs on an object named like the folder, which
+            % does not exist, and fails. The copy endpoint signs no URL
+            % with the name, so the encoded form reaches it intact.
+            apiUri = obj.buildApiUri(["buckets", bucketName, objectName, "copy"], requiredParams);
+            request = obj.initializeRequestMessage("PUT");
+            response = obj.sendRequest(request, apiUri);
+
+            if ~isQueuedOrDone(response)
+                obj.throwError("copyObject", response)
+            end
+        end
+
         function deleteObject(obj, bucketName, objectName)
         % deleteObject - Delete an object of a bucket
         %
@@ -355,6 +421,15 @@ end
 function tf = hasDotSegment(segments)
 % hasDotSegment - Whether any of the path segments is "." or ".."
     tf = any(segments == "." | segments == "..");
+end
+
+function tf = isQueuedOrDone(response)
+% isQueuedOrDone - Whether the reply to a rename or copy means the proxy took the request
+%
+%   The proxy queues a rename or copy and answers 201 ("Your copy is
+%   processing") while it completes the operation in the background. The
+%   API description lists 200, so both count as success.
+    tf = response.StatusCode == "OK" || response.StatusCode == "Created";
 end
 
 function segments = objectPathSegments(objectName)
