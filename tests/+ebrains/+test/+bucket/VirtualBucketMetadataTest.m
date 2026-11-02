@@ -284,6 +284,43 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.verifyEqual(ebrains.bucket.internal.metadata.readManifest(testCase.Folder).Path, "a.txt");
         end
 
+        function testCreateVirtualBucketLeavesWhatIsInTheWay(testCase)
+            % A local file "a" sits where the folder of "a/b.txt" must go,
+            % and a folder where the placeholder "dir.dat" must go. Both
+            % are left as they are, the other object gets its placeholder
+            % and the manifest records all three, so the next run tries
+            % the two again.
+            writeFile(fullfile(testCase.Folder, "a"), "local");
+            mkdir(fullfile(testCase.Folder, "dir.dat"))
+            addListing(testCase.Client, ["a/b.txt", "dir.dat", "new.txt"], [3, 3, 3]);
+
+            testCase.verifyWarning(@() ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, ...
+                Client=testCase.Client), 'EBRAINS:Bucket:PlaceholderNotCreated');
+
+            testCase.verifyEqual(fileread(fullfile(testCase.Folder, "a")), 'local');
+            testCase.verifyTrue(isfolder(fullfile(testCase.Folder, "dir.dat")));
+            testCase.verifyTrue(isfile(fullfile(testCase.Folder, "new.txt")));
+            testCase.verifyEqual(ebrains.bucket.internal.metadata.readManifest(testCase.Folder).Path, ...
+                ["a/b.txt"; "dir.dat"; "new.txt"]);
+            testCase.verifyEqual(ebrains.bucket.internal.metadata.readBucketInfo(testCase.Folder).BucketName, ...
+                "my-bucket", 'The bucket is described although two objects got no placeholder.');
+        end
+
+        function testCreateVirtualBucketDoesNotFollowADanglingLink(testCase)
+            % Opening a dangling link for writing would create the file it
+            % points to, outside the virtual bucket
+            outsideFolder = string(testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture).Folder);
+            target = fullfile(outsideFolder, "missing.dat");
+            makeLink(testCase, target, fullfile(testCase.Folder, "x.dat"));
+            addListing(testCase.Client, "x.dat", 3);
+
+            testCase.verifyWarning(@() ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, ...
+                Client=testCase.Client), 'EBRAINS:Bucket:PlaceholderNotCreated');
+
+            testCase.verifyFalse(isfile(target));
+            testCase.verifyEqual(ebrains.bucket.internal.metadata.readManifest(testCase.Folder).Path, "x.dat");
+        end
+
         function testCreateVirtualBucketRefusesPrefixWithDrive(testCase)
             % The prefix is checked before the bucket is listed, so no
             % request is sent and no folder is created
@@ -801,4 +838,13 @@ function [wasSuccess, response] = editThenAccept(sourceFile, varargin)
 % editThenAccept - Uploader that edits the source file during the transfer, then accepts it
     writeFile(sourceFile, "xyz");
     [wasSuccess, response] = acceptUpload(sourceFile, varargin{:});
+end
+
+function makeLink(testCase, target, linkPath)
+% makeLink - Create a symbolic link, which the helpers find through MATLAB or Java
+    testCase.assumeFalse(ispc, 'Symbolic links are created with ln, which Windows does not have.');
+    testCase.assumeTrue(~isMATLABReleaseOlderThan("R2024b") || usejava('jvm'), ...
+        'Before R2024b, symbolic links are found through Java.');
+    [status, output] = system("ln -s '" + target + "' '" + linkPath + "'");
+    testCase.assertEqual(status, 0, output);
 end

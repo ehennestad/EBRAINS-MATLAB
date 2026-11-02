@@ -16,7 +16,7 @@ function replaceWithPlaceholders(rootFolder, files)
 %   row matches an unknown time at the check. Links are found as
 %   ebrains.bucket.sync.internal.isSymbolicLink finds them.
 %
-%   See also ebrains.bucket.app.internal.createPlaceholderFiles, ebrains.bucket.sync.internal.listLocalFile
+%   See also ebrains.bucket.internal.createPlaceholderFiles, ebrains.bucket.sync.internal.listLocalFile
 
     arguments
         rootFolder (1,1) string

@@ -1,7 +1,7 @@
 function pathsWithoutPlaceholder = createPlaceholderFiles(rootFolder, paths)
 % createPlaceholderFiles - Create empty placeholder files below a folder
 %
-%   pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles(rootFolder, paths)
+%   pathsWithoutPlaceholder = ebrains.bucket.internal.createPlaceholderFiles(rootFolder, paths)
 %   creates an empty file for each path, relative to rootFolder and with
 %   "/" separators, and the folders of the paths. A file that exists is
 %   kept: it may hold downloaded data.
