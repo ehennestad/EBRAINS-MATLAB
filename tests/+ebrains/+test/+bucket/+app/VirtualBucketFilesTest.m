@@ -93,7 +93,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
         function testCreatePlaceholderFilesKeepsExistingFiles(testCase)
             writeFile(fullfile(testCase.Folder, "sub", "kept.txt"), "abc");
 
-            ebrains.bucket.app.internal.createPlaceholderFiles(testCase.Folder, ["sub/kept.txt", "sub/deep/new.txt"]);
+            ebrains.bucket.internal.createPlaceholderFiles(testCase.Folder, ["sub/kept.txt", "sub/deep/new.txt"]);
 
             testCase.verifyEqual(fileread(fullfile(testCase.Folder, "sub", "kept.txt")), 'abc');
             testCase.verifyTrue(isfile(fullfile(testCase.Folder, "sub", "deep", "new.txt")));
@@ -107,7 +107,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             writeFile(fullfile(testCase.Folder, "kept.dat"), "kept");
             mkdir(fullfile(testCase.Folder, "dir.dat"))
 
-            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles( ...
+            pathsWithoutPlaceholder = ebrains.bucket.internal.createPlaceholderFiles( ...
                 testCase.Folder, ["a/b.txt", "kept.dat", "dir.dat", "new/c.txt"]);
 
             testCase.verifyEqual(pathsWithoutPlaceholder, ["a/b.txt"; "dir.dat"]);
@@ -121,7 +121,7 @@ classdef VirtualBucketFilesTest < matlab.unittest.TestCase
             target = fullfile(outsideFolder, "missing.dat");
             makeLink(testCase, target, fullfile(testCase.Folder, "x.dat"));
 
-            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles(testCase.Folder, "x.dat");
+            pathsWithoutPlaceholder = ebrains.bucket.internal.createPlaceholderFiles(testCase.Folder, "x.dat");
 
             testCase.verifyEqual(pathsWithoutPlaceholder, "x.dat");
             testCase.verifyFalse(isfile(target));

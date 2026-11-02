@@ -311,7 +311,7 @@ classdef VirtualBucketBrowser < handle
             % A path that something else is in the way of gets no
             % placeholder; the listing is recorded all the same, so the
             % manifest knows the object and the next update tries again
-            pathsWithoutPlaceholder = ebrains.bucket.app.internal.createPlaceholderFiles( ...
+            pathsWithoutPlaceholder = ebrains.bucket.internal.createPlaceholderFiles( ...
                 app.LocalFolder, remoteFiles.Path(isNew));
 
             % The folder stands for the bucket, so the placeholder of an

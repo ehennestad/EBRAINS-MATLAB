@@ -24,6 +24,12 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   placeholders of objects removed since the last listing; one that
 %   holds data by the time it is deleted is kept, with a warning.
 %
+%   An object gets no placeholder when something else is in its way: a
+%   folder or a symbolic link at its path, or a file where one of its
+%   folders must go (see ebrains.bucket.internal.createPlaceholderFiles).
+%   Such objects are counted in a warning, and the manifest records them
+%   all the same, so the next run tries again.
+%
 %   Name-Value Arguments
 %       Prefix  : Folder of the bucket to create, such as "results/". A
 %                 missing trailing "/" is added. Default is "", the whole
@@ -92,23 +98,15 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
     % relative paths below it (see ebrains.bucket.sync.internal.listRemoteFiles,
     % which warns about the others), the same files the manifest records.
     nFiles = height(listedFiles);
-    for i = 1:nFiles
-        filePath = fullfile(virtualBucketRootPath, listedFiles.Path(i));
-
-        parentFolderPath = fileparts(filePath);
-        if ~isfolder(parentFolderPath)
-            mkdir(parentFolderPath)
-        end
-
-        % A file that exists is kept: it may hold data downloaded since the
-        % bucket was first cloned, and opening it for writing would empty it.
-        if ~isfile(filePath)
-            createEmptyFile(filePath)
-        end
-
-        if options.Verbose && (mod(i, 100) == 0 || i == nFiles)
-            fprintf("Created %d/%d virtual files\n", i, nFiles)
-        end
+    pathsWithoutPlaceholder = ebrains.bucket.internal.createPlaceholderFiles( ...
+        virtualBucketRootPath, listedFiles.Path);
+    if options.Verbose
+        fprintf("Created %d/%d virtual files\n", nFiles - numel(pathsWithoutPlaceholder), nFiles)
+    end
+    if ~isempty(pathsWithoutPlaceholder)
+        warning('EBRAINS:Bucket:PlaceholderNotCreated', ...
+            ['%d object(s) got no placeholder, since a file, folder or symbolic link of the folder ' ...
+             'is in the way, for example "%s".'], numel(pathsWithoutPlaceholder), pathsWithoutPlaceholder(1));
     end
 
     ebrains.bucket.internal.metadata.writeManifest(virtualBucketRootPath, listedFiles)
@@ -133,17 +131,4 @@ function folderPaths = folderPathsOf(objects, prefix)
     folderPaths = regexprep(extractAfter(names, strlength(prefix)), "/$", "");
     folderPaths = folderPaths(ebrains.bucket.internal.isSafeRelativePath(folderPaths) ...
         & ~ebrains.bucket.internal.metadata.isMetadataPath(folderPaths));
-end
-
-function createEmptyFile(filePath)
-% createEmptyFile - Create an empty file from MATLAB
-%
-%   A shell command would need the name quoted for spaces and
-%   metacharacters, and would differ on Windows.
-    [fileID, errorMessage] = fopen(filePath, "w");
-    if fileID == -1
-        error('EBRAINS:Bucket:CouldNotCreateVirtualFile', ...
-            'Failed to create virtual file for %s with error:\n%s', filePath, errorMessage)
-    end
-    fclose(fileID);
 end
