@@ -19,7 +19,10 @@ function registry = parseRegistry(text, name)
 %   neither null nor a time written as "2024-01-02T03:04:05Z". A
 %   format_version greater than this toolbox knows is a separate error
 %   (EBRAINS:Bucket:UnknownRegistryFormat). Fields the toolbox does not
-%   know are accepted and dropped.
+%   know are accepted and dropped. jsondecode reads null and an empty
+%   list alike, so a root of [], or a buckets, folders or last_opened of
+%   null, is taken as none or empty where the ebrains-bucket-sync package
+%   refuses it; the toolbox never writes those forms.
 %
 %   See also ebrains.bucket.internal.registry.formatRegistry
 

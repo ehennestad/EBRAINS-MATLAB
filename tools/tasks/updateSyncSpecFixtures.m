@@ -19,7 +19,7 @@ function updateSyncSpecFixtures()
     % The fixtures of the registry of virtual buckets (pull request 34 of
     % the package) are not in a release yet, so the pin is the commit of
     % that pull request rather than a release tag.
-    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@109d2811421119af782be7ed8ea249c0e1573959";
+    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@f0c91673871a75c73759d6ed7925b2b1342f8f1b";
     sourceFolder = "spec/fixtures";
     targetFolder = "tests/fixtures/sync-spec";
 

@@ -5,7 +5,13 @@ function registry = recordOpen(registry, folderPath, bucketName, prefix, openedT
 %   folderPath, bucketName, prefix, openedTime) gives the entry of the
 %   folder the bucket and prefix of its bucket.json and the time, and
 %   keeps whether it is pinned. A folder without an entry gets one that is
-%   not pinned. Two paths are the same folder when they are equal as text.
+%   not pinned. The path is recorded as given, which the callers make
+%   absolute (see ebrains.bucket.internal.absoluteFolderPath); two paths
+%   are the same folder when they are equal as text. The time is recorded
+%   in UTC to the second, as the file holds it. A bucket that is "" or a
+%   prefix that is neither "" nor a folder name with a trailing "/" is
+%   an error (EBRAINS:Bucket:InvalidRegistryEntry), since the file could
+%   not be read back.
 %
 %   See also ebrains.bucket.internal.registry.setPinned,
 %   ebrains.bucket.internal.registry.removeFolder
@@ -18,7 +24,9 @@ function registry = recordOpen(registry, folderPath, bucketName, prefix, openedT
         openedTime (1,1) datetime
     end
 
+    ebrains.bucket.internal.registry.assertEntryFields(bucketName, prefix)
     openedTime.TimeZone = "UTC";
+    openedTime = dateshift(openedTime, "start", "second");
     folders = registry.Folders;
     isFolder = folders.Path == folderPath;
     if any(isFolder)

@@ -152,6 +152,65 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
                 ["/a"; "/b"], ["new"; "b"], [""; "sub/"], [true; false], [openedAt(); openedAt()]));
         end
 
+        function testOpeningRecordsTheTimeInUtcToTheSecond(testCase)
+            registry = ebrains.bucket.internal.registry.emptyRegistry();
+            oslo = datetime(2024, 1, 2, 4, 4, 5.678, TimeZone="+01:00");
+
+            registry = ebrains.bucket.internal.registry.recordOpen(registry, "/a", "a", "", oslo);
+
+            testCase.verifyEqual(registry.Folders.LastOpened, openedAt());
+            written = ebrains.bucket.internal.registry.formatRegistry(registry);
+            testCase.verifyEqual(ebrains.bucket.internal.registry.parseRegistry(written), registry);
+        end
+
+        function testABucketOrPrefixTheFileCannotHoldIsRefusedBeforeItIsRecorded(testCase)
+            registry = ebrains.bucket.internal.registry.emptyRegistry();
+            cases = {"", ""; "a", "results"; "a", "../x/"};
+
+            for i = 1:size(cases, 1)
+                testCase.verifyError(@() ebrains.bucket.internal.registry.recordOpen( ...
+                    registry, "/a", cases{i, 1}, cases{i, 2}, openedAt()), 'EBRAINS:Bucket:InvalidRegistryEntry');
+                testCase.verifyError(@() ebrains.bucket.internal.registry.setPinned( ...
+                    registry, "/a", true, Bucket=cases{i, 1}, Prefix=cases{i, 2}), ...
+                    'EBRAINS:Bucket:InvalidRegistryEntry');
+            end
+        end
+
+        function testUnpinningAnUnrecordedFolderChangesNothing(testCase)
+            registry = ebrains.bucket.internal.registry.emptyRegistry();
+
+            registry = ebrains.bucket.internal.registry.setPinned(registry, "/a", false);
+            registry = ebrains.bucket.internal.registry.setPinned(registry, "/b", false, Bucket="b", Prefix="");
+
+            testCase.verifyEmpty(registry.Folders);
+        end
+
+        function testRootWithoutSubfoldersGivesNoChildren(testCase)
+            writeFile(fullfile(testCase.Folder, "file.txt"), "")
+
+            paths = ebrains.bucket.internal.registry.rootChildren(testCase.Folder);
+
+            testCase.verifyEqual(paths, strings(0, 1));
+        end
+
+        function testConfigFolderOfThisPlatformIsAbsoluteAndNamedAfterThePackage(testCase)
+            testCase.unsetEnvironment("EBRAINS_BUCKET_SYNC_CONFIG_DIR")
+
+            folder = ebrains.bucket.internal.configFolder();
+
+            [~, name] = fileparts(folder);
+            testCase.verifyEqual(name, "ebrains-bucket-sync");
+            testCase.verifyTrue(startsWith(folder, "/") || ~isempty(regexp(folder, '^[A-Za-z]:', 'once')));
+        end
+
+        function testRootChildrenAreWrittenAsRecordedPaths(testCase)
+            mkdir(fullfile(testCase.Folder, "a"))
+
+            paths = ebrains.bucket.internal.registry.rootChildren(testCase.Folder + filesep + "." + filesep);
+
+            testCase.verifyEqual(paths, fullfile(ebrains.bucket.internal.absoluteFolderPath(testCase.Folder), "a"));
+        end
+
         function testPinningAnUnrecordedFolderNeedsItsBucketAndRecordsItWithoutATime(testCase)
             registry = ebrains.bucket.internal.registry.emptyRegistry();
 

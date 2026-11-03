@@ -43,8 +43,7 @@
               label is the user's own name for the bucket, "" for none,
               and is shown in place of the bucket name. hasList says
               whether the host can show the list of virtual buckets, in
-              which case the page offers to go back to it (showList). A
-              host that leaves label or hasList out sends "" and false.
+              which case the page offers to go back to it (showList).
     buckets   The list of the virtual buckets of the user, which the page
               shows in place of a bucket until one is opened:
                 {root, separator,
@@ -62,6 +61,8 @@
               modified or "" if never, and exists false for a recorded
               folder whose bucket.json cannot be read. A host that never
               sends buckets shows one bucket, and the page offers no list.
+              The page takes a label or hasList that is left out of state
+              as "" and false.
     busy      {busy: true|false}. The page is disabled while the host
               carries out a request.
     confirm   {id, title, message, confirmText}. Asks the user to confirm
@@ -107,9 +108,11 @@
                     with an alert when it cannot.
     chooseFolder    Ask the user for a folder with the file dialog of the
                     system and open it as a virtual bucket, as openBucket.
+                    A cancelled dialog answers nothing.
     chooseRoot      Ask the user for the folder where new virtual buckets
                     are made with the file dialog of the system, record
-                    it, and answer with buckets.
+                    it, and answer with buckets. A cancelled dialog
+                    answers nothing.
     setLabel        {bucket, label}. Give the bucket the label, or remove
                     its label with "". The host records it and answers
                     with buckets.
@@ -1091,7 +1094,8 @@ function onListKey(event, isTyping) {
     hideMenu();
     if (isTyping && list.filter) { list.filter = ""; $("listFilter").value = ""; renderList(); }
     else if (!isTyping) selectListRow(null);
-  } else if (event.key === "Enter" && list.selectedPath && !isTyping) {
+  } else if (event.key === "Enter" && list.selectedPath && !isTyping && event.target.tagName !== "BUTTON") {
+    // A focused button takes Enter itself
     openListRow(list.selectedPath);
   } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && rows.length > 0) {
     event.preventDefault();

@@ -1,0 +1,5 @@
+{
+  "description": "A file without format_version is refused.",
+  "text": "{\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": []\n}\n",
+  "expected_error": true
+}

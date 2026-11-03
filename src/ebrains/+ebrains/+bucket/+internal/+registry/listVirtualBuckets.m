@@ -24,7 +24,9 @@ function rows = listVirtualBuckets(registry, rootChildren, infoFcn)
 %   A folder below the root without a readable bucket.json is left out.
 %   Rows are ordered with pinned rows first, then by LastOpened from the
 %   latest, rows without a time after those with one, and rows that are
-%   equal so far by Path in code point order.
+%   equal so far by Path in code point order. MATLAB orders strings by
+%   UTF-16 code unit, which is code point order except between a
+%   character beyond U+FFFF and one from U+E000 to U+FFFF.
 %
 %   See also ebrains.bucket.internal.registry.readRegistry
 

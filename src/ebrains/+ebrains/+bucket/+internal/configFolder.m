@@ -8,7 +8,8 @@ function folder = configFolder(options)
 %
 %       macOS    ~/Library/Application Support/ebrains-bucket-sync
 %       Windows  %LOCALAPPDATA%\ebrains-bucket-sync, with
-%                %USERPROFILE%\AppData\Local where LOCALAPPDATA is not set
+%                %USERPROFILE%\AppData\Local where LOCALAPPDATA is not
+%                set or empty
 %       other    $XDG_CONFIG_HOME/ebrains-bucket-sync, with ~/.config
 %                where XDG_CONFIG_HOME is not set or empty
 %
@@ -18,8 +19,10 @@ function folder = configFolder(options)
 %   Name-Value Arguments
 %       Platform : "mac", "windows" or "unix". Meant for tests; the
 %                  platform of this MATLAB otherwise.
-%       Home     : The home folder of the user. Meant for tests; the
-%                  user.home property of the Java system otherwise.
+%       Home     : The home folder of the user. Meant for tests; otherwise
+%                  HOME, or USERPROFILE on Windows, as the package finds
+%                  it, and the user.home property of the Java system where
+%                  that is not set.
 %
 %   See also ebrains.bucket.internal.registry.registryPath
 
@@ -38,7 +41,7 @@ function folder = configFolder(options)
 
     home = options.Home;
     if isempty(home)
-        home = string(java.lang.System.getProperty("user.home"));
+        home = homeFolder(options.Platform);
     end
 
     switch options.Platform
@@ -56,6 +59,18 @@ function folder = configFolder(options)
                 base = fullfile(home, ".config");
             end
             folder = fullfile(base, appFolder);
+    end
+end
+
+function home = homeFolder(platform)
+% homeFolder - The home folder as Path.home() of Python finds it, so that both tools agree when HOME is overridden
+    if platform == "windows"
+        home = string(getenv("USERPROFILE"));
+    else
+        home = string(getenv("HOME"));
+    end
+    if home == ""
+        home = string(java.lang.System.getProperty("user.home"));
     end
 end
 

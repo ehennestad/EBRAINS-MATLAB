@@ -5,9 +5,12 @@ function registry = setPinned(registry, folderPath, pinned, options)
 %   folderPath, pinned) sets whether the recorded folder is pinned.
 %
 %   registry = ebrains.bucket.internal.registry.setPinned(...,
-%   Bucket=NAME, Prefix=PREFIX) also records a folder that has no entry,
-%   without a time, as a folder of that bucket and prefix. Without them, a
-%   folder that is not recorded is an error (EBRAINS:Bucket:NotRecorded).
+%   Bucket=NAME, Prefix=PREFIX) also records a folder that has no entry
+%   when it is pinned, without a time, as a folder of that bucket and
+%   prefix, checked as for ebrains.bucket.internal.registry.recordOpen.
+%   Without them, pinning a folder that is not recorded is an error
+%   (EBRAINS:Bucket:NotRecorded). Unpinning a folder that is not
+%   recorded changes nothing.
 %
 %   See also ebrains.bucket.internal.registry.recordOpen
 
@@ -22,10 +25,14 @@ function registry = setPinned(registry, folderPath, pinned, options)
     folders = registry.Folders;
     isFolder = folders.Path == folderPath;
     if ~any(isFolder)
+        if ~pinned
+            return
+        end
         if isempty(options.Bucket) || isempty(options.Prefix)
             error('EBRAINS:Bucket:NotRecorded', ...
                 '"%s" is not recorded. Give its bucket and prefix to pin it.', folderPath)
         end
+        ebrains.bucket.internal.registry.assertEntryFields(options.Bucket, options.Prefix)
         folders = [folders; ebrains.bucket.internal.registry.makeFolderTable( ...
             folderPath, options.Bucket, options.Prefix, false, NaT(TimeZone="UTC"))];
         isFolder = folders.Path == folderPath;

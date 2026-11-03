@@ -220,6 +220,11 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
             written = ebrains.bucket.internal.registry.formatRegistry(registry);
             testCase.verifyEqual(ebrains.bucket.internal.registry.parseRegistry(written), registry, ...
                 "Reading the text that writing the registry gives, the same registry. " + fixture.description);
+            % jsondecode reads one object and a list of one object alike,
+            % so the text itself must show the lists
+            testCase.verifyTrue(~isempty(regexp(written, '"buckets":\s*\[', 'once')) ...
+                && ~isempty(regexp(written, '"folders":\s*\[', 'once')), ...
+                "The written buckets and folders are lists. " + fixture.description);
         end
 
         function testRegistryListFixture(testCase, RegistryListFixture)

@@ -23,15 +23,17 @@ function text = formatRegistry(registry)
     if registry.Root ~= ""
         data.root = registry.Root;
     end
-    data.buckets = struct("bucket", cellstr(labels.Bucket), "label", cellstr(labels.Label));
+    % A cell of structs is written as a list also for one entry, where a
+    % scalar struct would be written as one object, and an empty cell as
+    % [], the empty list of the schema
+    data.buckets = num2cell(reshape(struct( ...
+        "bucket", cellstr(labels.Bucket), "label", cellstr(labels.Label)), [], 1));
     lastOpened = num2cell(nan(height(folders), 1));
     isOpened = ~isnat(folders.LastOpened);
     lastOpened(isOpened) = cellstr(ebrains.bucket.internal.metadata.formatTimes(folders.LastOpened(isOpened)));
-    data.folders = struct("path", cellstr(folders.Path), "bucket", cellstr(folders.Bucket), ...
-        "prefix", cellstr(folders.Prefix), "pinned", num2cell(folders.Pinned), "last_opened", lastOpened);
-
-    % An empty struct array is written as [], the empty list of the schema
-    data.buckets = reshape(data.buckets, [], 1);
-    data.folders = reshape(data.folders, [], 1);
+    data.folders = num2cell(reshape(struct( ...
+        "path", cellstr(folders.Path), "bucket", cellstr(folders.Bucket), ...
+        "prefix", cellstr(folders.Prefix), "pinned", num2cell(folders.Pinned), ...
+        "last_opened", lastOpened), [], 1));
     text = string(jsonencode(data, PrettyPrint=true)) + newline;
 end
