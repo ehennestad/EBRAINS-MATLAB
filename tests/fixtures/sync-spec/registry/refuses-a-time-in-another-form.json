@@ -1,0 +1,5 @@
+{
+  "description": "last_opened is null or a time written as 2024-01-02T03:04:05Z.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": [\n    {\n      \"path\": \"/a\",\n      \"bucket\": \"b\",\n      \"prefix\": \"\",\n      \"pinned\": false,\n      \"last_opened\": \"2024-01-02 03:04\"\n    }\n  ]\n}\n",
+  "expected_error": true
+}

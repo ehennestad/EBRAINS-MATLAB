@@ -1,0 +1,32 @@
+{
+  "description": "A folder both below the root and recorded is one row. When its bucket.json cannot be read, the row keeps the bucket and prefix of its entry with exists false; a child of the root that is neither readable nor recorded is left out.",
+  "registry": {
+    "root": "/r",
+    "buckets": [],
+    "folders": [
+      {
+        "path": "/r/broken",
+        "bucket": "b",
+        "prefix": "sub/",
+        "pinned": true,
+        "last_opened": "2024-01-02T03:04:05Z"
+      }
+    ]
+  },
+  "root_children": [
+    "/r/broken",
+    "/r/plain"
+  ],
+  "present": [],
+  "expected": [
+    {
+      "path": "/r/broken",
+      "bucket": "b",
+      "prefix": "sub/",
+      "label": null,
+      "pinned": true,
+      "last_opened": "2024-01-02T03:04:05Z",
+      "exists": false
+    }
+  ]
+}

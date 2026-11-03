@@ -1,0 +1,5 @@
+{
+  "description": "format_version is a whole number; true is refused.",
+  "text": "{\n  \"format_version\": true,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": []\n}\n",
+  "expected_error": true
+}

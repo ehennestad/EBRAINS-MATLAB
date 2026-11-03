@@ -18,8 +18,10 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 %   The folder .ebrains at the root records the bucket, the prefix and the
 %   objects of the listing (see ebrains.bucket.internal.metadata.folderName),
 %   which ebrains.bucket.app.VirtualBucketBrowser and the sync functions
-%   read. A folder that is a virtual bucket already must be one of the same
-%   bucket and prefix. Files that exist are kept, so running the function
+%   read. The folder is also recorded in the list of virtual buckets of
+%   the user (see ebrains.bucket.listVirtualBuckets). A folder that is a
+%   virtual bucket already must be one of the same bucket and prefix.
+%   Files that exist are kept, so running the function
 %   again adds placeholders for new objects. It also deletes the empty
 %   placeholders of objects removed since the last listing; one that
 %   holds data by the time it is deleted is kept, with a warning.
@@ -111,6 +113,7 @@ function createVirtualBucket(bucketName, virtualBucketRootPath, options)
 
     ebrains.bucket.internal.metadata.writeManifest(virtualBucketRootPath, listedFiles)
     ebrains.bucket.internal.metadata.writeBucketInfo(virtualBucketRootPath, bucketName, prefix, listedTime)
+    ebrains.bucket.internal.registry.recordFolderOpened(virtualBucketRootPath, bucketName, prefix)
 end
 
 function folderPaths = folderPathsOf(objects, prefix)

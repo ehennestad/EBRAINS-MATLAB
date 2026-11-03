@@ -1,0 +1,5 @@
+{
+  "description": "root, buckets and folders are all required.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": []\n}\n",
+  "expected_error": true
+}

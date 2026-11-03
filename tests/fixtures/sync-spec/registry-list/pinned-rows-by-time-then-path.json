@@ -1,0 +1,119 @@
+{
+  "description": "Among pinned rows, as among the others, a row with a time comes before one without, the latest time first, and rows equal so far are ordered by path.",
+  "registry": {
+    "root": null,
+    "buckets": [],
+    "folders": [
+      {
+        "path": "/p-notime",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": true,
+        "last_opened": null
+      },
+      {
+        "path": "/p-old",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": true,
+        "last_opened": "2023-01-01T00:00:00Z"
+      },
+      {
+        "path": "/p-new",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": true,
+        "last_opened": "2024-01-01T00:00:00Z"
+      },
+      {
+        "path": "/u-b",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": "2024-01-01T00:00:00Z"
+      },
+      {
+        "path": "/u-a",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": "2024-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "root_children": [],
+  "present": [
+    {
+      "path": "/p-notime",
+      "bucket": "a",
+      "prefix": ""
+    },
+    {
+      "path": "/p-old",
+      "bucket": "a",
+      "prefix": ""
+    },
+    {
+      "path": "/p-new",
+      "bucket": "a",
+      "prefix": ""
+    },
+    {
+      "path": "/u-b",
+      "bucket": "a",
+      "prefix": ""
+    },
+    {
+      "path": "/u-a",
+      "bucket": "a",
+      "prefix": ""
+    }
+  ],
+  "expected": [
+    {
+      "path": "/p-new",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": true,
+      "last_opened": "2024-01-01T00:00:00Z",
+      "exists": true
+    },
+    {
+      "path": "/p-old",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": true,
+      "last_opened": "2023-01-01T00:00:00Z",
+      "exists": true
+    },
+    {
+      "path": "/p-notime",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": true,
+      "last_opened": null,
+      "exists": true
+    },
+    {
+      "path": "/u-a",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": "2024-01-01T00:00:00Z",
+      "exists": true
+    },
+    {
+      "path": "/u-b",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": "2024-01-01T00:00:00Z",
+      "exists": true
+    }
+  ]
+}

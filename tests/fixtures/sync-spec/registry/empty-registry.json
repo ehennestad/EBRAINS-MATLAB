@@ -1,0 +1,9 @@
+{
+  "description": "A registry without a root, labels or folders.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": []\n}\n",
+  "registry": {
+    "root": null,
+    "buckets": [],
+    "folders": []
+  }
+}

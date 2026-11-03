@@ -5,7 +5,10 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % downloader, so no request reaches the Data Proxy. The requests of
     % the page are sent to the callback of its uihtml component, as the
     % page sends them. A confirmation dialog waits for a user, so the
-    % browser is given a Confirmer that records the question and refuses.
+    % browser is given a Confirmer that records the question and refuses,
+    % and a FolderChooser that answers with ChosenFolder in place of a
+    % folder dialog. The registry of virtual buckets is kept in the
+    % folder of each test.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -17,6 +20,12 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % Confirmations - Titles and messages of the confirmations the browser asked for, one row each
         Confirmations (:,2) string = strings(0, 2)
+
+        % ChosenFolder - What the folder chooser answers; empty for a cancelled dialog
+        ChosenFolder string = string.empty
+
+        % ChooserTitles - Titles of the folder dialogs the browser asked for
+        ChooserTitles (1,:) string = string.empty(1, 0)
     end
 
     methods (TestClassSetup)
@@ -35,6 +44,12 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.Client = ebrains.mocks.MockBucketsClient();
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             testCase.Folder = string(folderFixture.Folder);
+            % The browser records the folders it opens in the registry of
+            % the user, which the test keeps in a folder of its own, apart
+            % from the folders it opens as virtual buckets
+            configFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+                "EBRAINS_BUCKET_SYNC_CONFIG_DIR", fullfile(configFixture.Folder, "config")));
         end
     end
 
@@ -521,11 +536,284 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
     end
 
+    methods (Test)
+        %% List of virtual buckets
+        function testOpeningWithoutAFolderShowsTheRecordedFolders(testCase)
+            recorded = testCase.makeVirtualBucketFolder("recorded", "other-bucket");
+            ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                ebrains.bucket.internal.registry.recordOpen(registry, recorded, "other-bucket", "", ...
+                datetime(2024, 1, 2, TimeZone="UTC")));
+
+            testCase.openList();
+            sendListRequest("ready")
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyEqual(testCase.App.ListedBuckets.Path, recorded);
+            testCase.verifyEqual(testCase.App.ListedBuckets.Bucket, "other-bucket");
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+            testCase.verifyNotEmpty(findall(groot, "Type", "figure", "Name", "Virtual buckets"));
+        end
+
+        function testListShowsTheVirtualBucketsBelowTheRoot(testCase)
+            rootFolder = fullfile(testCase.Folder, "root");
+            scanned = testCase.makeVirtualBucketFolder(fullfile("root", "d-1"), "d-1");
+            mkdir(fullfile(rootFolder, "notes"))
+            ebrains.bucket.setVirtualBucketRoot(rootFolder)
+
+            testCase.openList();
+
+            testCase.verifyEqual(testCase.App.ListedBuckets.Path, scanned);
+            testCase.verifyEqual(testCase.App.ListedBuckets.Exists, true);
+        end
+
+        function testOpeningABucketFromTheListRecordsIt(testCase)
+            folder = testCase.makeVirtualBucketFolder("vb", "my-bucket");
+            writeFile(fullfile(folder, "a.txt"), "abc");
+            testCase.openList();
+
+            sendListRequest("openBucket", struct("path", folder))
+
+            testCase.verifyEqual(testCase.App.LocalFolder, folder);
+            testCase.verifyEqual(testCase.App.BucketName, "my-bucket");
+            testCase.verifyEqual(testCase.App.Files.Path, "a.txt");
+            testCase.verifyNotEmpty(findall(groot, "Type", "figure", "Name", "Virtual bucket - my-bucket"));
+            folders = ebrains.bucket.internal.registry.readRegistry().Folders;
+            testCase.verifyEqual(folders.Path, folder);
+            testCase.verifyFalse(isnat(folders.LastOpened));
+        end
+
+        function testNewBucketFromTheListCreatesAndFillsTheFolder(testCase)
+            target = fullfile(testCase.Folder, "new");
+            addListing(testCase.Client, ["a.txt", "sub/b.txt"], [3, 3]);
+            testCase.openList();
+
+            sendListRequest("newBucket", struct("bucket", "my-bucket", "prefix", "", "folder", target))
+
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "online_only"]);
+            testCase.verifyEqual(dir(fullfile(target, "sub", "b.txt")).bytes, 0);
+            folders = ebrains.bucket.internal.registry.readRegistry().Folders;
+            testCase.verifyEqual(folders.Path, ebrains.bucket.internal.absoluteFolderPath(target));
+            testCase.verifyEqual(folders.Bucket, "my-bucket");
+        end
+
+        function testNewBucketOfAnotherBucketThanTheFolderIsRefused(testCase)
+            folder = testCase.makeVirtualBucketFolder("vb", "other-bucket");
+            testCase.openList();
+
+            sendListRequest("newBucket", struct("bucket", "my-bucket", "prefix", "", "folder", folder))
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "", "The list stays, and the page is told why.");
+            testCase.verifyEqual(ebrains.bucket.internal.metadata.readBucketInfo(folder).BucketName, "other-bucket");
+            testCase.verifyEmpty(ebrains.bucket.internal.registry.readRegistry().Folders);
+        end
+
+        function testNewBucketNeedsAnAbsoluteFolder(testCase)
+            testCase.openList();
+
+            sendListRequest("newBucket", struct("bucket", "my-bucket", "prefix", "", "folder", "relative"))
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyFalse(isfolder("relative"));
+            testCase.verifyEmpty(ebrains.bucket.internal.registry.readRegistry().Folders);
+        end
+
+        function testOpeningAFolderThatIsNotInTheListLeavesIt(testCase)
+            testCase.openList();
+
+            sendListRequest("openBucket", struct("path", fullfile(testCase.Folder, "missing")))
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyEmpty(ebrains.bucket.internal.registry.readRegistry().Folders);
+        end
+
+        function testAFolderThatFailsAfterValidationLeavesTheList(testCase)
+            folder = testCase.makeVirtualBucketFolder("vb", "my-bucket");
+            writeFile(fullfile(folder, ".ebrains", "manifest.csv"), "not,a,manifest");
+            testCase.openList();
+
+            sendListRequest("openBucket", struct("path", folder))
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "", "The manifest is refused, and the browser is as it was.");
+            testCase.verifyEqual(testCase.App.BucketName, "");
+            testCase.verifyNotEmpty(findall(groot, "Type", "figure", "Name", "Virtual buckets"));
+        end
+
+        function testBucketViewCarriesTheLabelOfTheBucket(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                ebrains.bucket.internal.registry.setLabel(registry, "my-bucket", "Mouse V1"));
+
+            testCase.openApp(testCase.Folder);
+
+            testCase.verifyEqual(testCase.App.Label, "Mouse V1");
+            sendPageEvent("showList")
+            testCase.verifyEqual(testCase.App.Label, "");
+        end
+
+        function testAnUnreadableRegistryGivesAnEmptyList(testCase)
+            registryFile = ebrains.bucket.internal.registry.registryPath();
+            writeFile(registryFile, "{");
+
+            testCase.openList();
+
+            testCase.verifyEmpty(testCase.App.ListedBuckets);
+            sendListRequest("setLabel", struct("bucket", "my-bucket", "label", "x"))
+            testCase.verifyEqual(fileread(registryFile), '{', "A registry that cannot be read is not written over.");
+        end
+
+        function testBucketsEventWritesTheRowsAsAList(testCase)
+            noRows = ebrains.bucket.listVirtualBuckets();
+            testCase.assertEmpty(noRows);
+            folder = testCase.makeVirtualBucketFolder("vb", "my-bucket");
+            ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                ebrains.bucket.internal.registry.recordOpen(registry, folder, "my-bucket", "", ...
+                datetime(2024, 1, 2, TimeZone="UTC")));
+            oneRow = ebrains.bucket.listVirtualBuckets();
+
+            textOfNone = ebrains.bucket.app.VirtualBucketBrowser.bucketsEventData(noRows, "");
+            textOfOne = ebrains.bucket.app.VirtualBucketBrowser.bucketsEventData(oneRow, "/root");
+
+            testCase.verifySubstring(textOfNone, '"rows":[]');
+            testCase.verifySubstring(textOfOne, '"rows":[{"path":');
+            testCase.verifySubstring(textOfOne, '"exists":true}]');
+            testCase.verifySubstring(textOfOne, '"root":"/root"');
+        end
+
+        function testBackToTheListClosesTheBucket(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            testCase.openApp(testCase.Folder);
+
+            sendPageEvent("showList")
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyEqual(testCase.App.BucketName, "");
+            testCase.verifyEmpty(testCase.App.Files);
+            testCase.verifyEqual(testCase.App.ListedBuckets.Bucket, "my-bucket", ...
+                "The folder that was open is in the list, since opening it recorded it.");
+            testCase.verifyNotEmpty(findall(groot, "Type", "figure", "Name", "Virtual buckets"));
+            testCase.verifyError(@() testCase.App.updateFromBucket(), 'EBRAINS:Bucket:NoBucketOpen');
+        end
+
+        function testOpeningAFolderRecordsItInTheList(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
+            before = datetime("now", TimeZone="UTC");
+
+            testCase.openApp(testCase.Folder);
+
+            folders = ebrains.bucket.internal.registry.readRegistry().Folders;
+            testCase.verifyEqual(folders.Path, testCase.App.LocalFolder);
+            testCase.verifyEqual(folders.Bucket, "my-bucket");
+            testCase.verifyGreaterThanOrEqual(folders.LastOpened, before - seconds(1));
+        end
+
+        function testLabelPinAndRemoveChangeTheList(testCase)
+            folder = testCase.makeVirtualBucketFolder("vb", "my-bucket");
+            ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                ebrains.bucket.internal.registry.recordOpen(registry, folder, "my-bucket", "", ...
+                datetime(2024, 1, 2, TimeZone="UTC")));
+            testCase.openList();
+
+            sendListRequest("setLabel", struct("bucket", "my-bucket", "label", "Mouse V1"))
+            testCase.verifyEqual(testCase.App.ListedBuckets.Label, "Mouse V1");
+            sendListRequest("setPinned", struct("path", folder, "pinned", true))
+            testCase.verifyEqual(testCase.App.ListedBuckets.Pinned, true);
+            sendListRequest("setLabel", struct("bucket", "my-bucket", "label", ""))
+            testCase.verifyEqual(testCase.App.ListedBuckets.Label, "");
+            sendListRequest("removeFolder", struct("path", folder))
+            testCase.verifyEmpty(testCase.App.ListedBuckets);
+            testCase.verifyTrue(isfolder(folder), "The folder itself is left as it is.");
+        end
+
+        function testPinningAFolderBelowTheRootRecordsItWithoutATime(testCase)
+            rootFolder = fullfile(testCase.Folder, "root");
+            scanned = testCase.makeVirtualBucketFolder(fullfile("root", "d-1"), "d-1");
+            ebrains.bucket.setVirtualBucketRoot(rootFolder)
+            testCase.openList();
+
+            sendListRequest("setPinned", struct("path", scanned, "pinned", true))
+
+            folders = ebrains.bucket.internal.registry.readRegistry().Folders;
+            testCase.verifyEqual(folders.Path, scanned);
+            testCase.verifyEqual(folders.Bucket, "d-1");
+            testCase.verifyTrue(folders.Pinned);
+            testCase.verifyTrue(isnat(folders.LastOpened));
+        end
+
+        function testChooseRootRecordsTheChosenFolder(testCase)
+            rootFolder = fullfile(testCase.Folder, "root");
+            scanned = testCase.makeVirtualBucketFolder(fullfile("root", "d-1"), "d-1");
+            testCase.ChosenFolder = rootFolder;
+            testCase.openList();
+            testCase.assertEmpty(testCase.App.ListedBuckets);
+
+            sendListRequest("chooseRoot")
+
+            testCase.verifyEqual(ebrains.bucket.getVirtualBucketRoot(), ...
+                ebrains.bucket.internal.absoluteFolderPath(rootFolder));
+            testCase.verifyEqual(testCase.App.ListedBuckets.Path, scanned);
+        end
+
+        function testChooseFolderOpensTheChosenVirtualBucket(testCase)
+            folder = testCase.makeVirtualBucketFolder("vb", "my-bucket");
+            testCase.ChosenFolder = folder;
+            testCase.openList();
+
+            sendListRequest("chooseFolder")
+
+            testCase.verifyEqual(testCase.App.LocalFolder, folder);
+        end
+
+        function testCancelledFolderDialogLeavesTheList(testCase)
+            testCase.openList();
+
+            sendListRequest("chooseFolder")
+            sendListRequest("chooseRoot")
+
+            testCase.verifyEqual(testCase.ChooserTitles, ["Choose the folder of a virtual bucket", ...
+                "Choose the folder where new virtual buckets are made"]);
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyEqual(ebrains.bucket.getVirtualBucketRoot(), "");
+        end
+
+        function testChoosingAFolderThatIsNotAVirtualBucketSaysSo(testCase)
+            plain = fullfile(testCase.Folder, "plain");
+            mkdir(plain)
+            testCase.ChosenFolder = plain;
+            testCase.openList();
+
+            sendListRequest("chooseFolder")
+
+            testCase.verifyEqual(testCase.App.LocalFolder, "");
+            testCase.verifyFalse(isfile(fullfile(plain, ".ebrains", "bucket.json")));
+        end
+
+        function testEmptyFolderArgumentIsRefused(testCase)
+            testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser("", Client=testCase.Client), ...
+                'EBRAINS:Bucket:InvalidFolder');
+        end
+    end
+
     methods (Access = private)
         function openApp(testCase, folder)
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
                 Client=testCase.Client, Downloader=@writeAbc, ...
                 Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+        end
+
+        function openList(testCase)
+        % openList - Open the browser without a folder, on the list of virtual buckets
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser( ...
+                Client=testCase.Client, Downloader=@writeAbc, ...
+                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title), ...
+                FolderChooser=@(~, title) chooseRecordedFolder(testCase, title));
+        end
+
+        function folder = makeVirtualBucketFolder(testCase, name, bucketName)
+        % makeVirtualBucketFolder - Make a folder of the test a virtual bucket that was never listed
+            folder = fullfile(testCase.Folder, name);
+            mkdir(folder)
+            ebrains.bucket.internal.metadata.writeBucketInfo(folder, bucketName, "")
+            folder = ebrains.bucket.internal.absoluteFolderPath(folder);
         end
 
         function target = openWithDownloadedFile(testCase)
@@ -554,15 +842,35 @@ function assumeCaseInsensitive(testCase)
 end
 
 function sendPageEvent(name, paths)
-% sendPageEvent - Send a request to the browser as its page does
+% sendPageEvent - Send a request about files to the browser of the bucket, as its page does
     arguments
         name (1,1) string
         paths string = strings(1, 0)
     end
-    browserFigure = findall(groot, "Type", "figure", "Name", "Virtual bucket - my-bucket");
+    sendRequest("Virtual bucket - my-bucket", name, struct("paths", {cellstr(paths)}))
+end
+
+function sendListRequest(name, data)
+% sendListRequest - Send a request about the list of virtual buckets to the browser, as its page does
+    arguments
+        name (1,1) string
+        data (1,1) struct = struct()
+    end
+    sendRequest("Virtual buckets", name, data)
+end
+
+function sendRequest(figureName, name, data)
+% sendRequest - Send a request to the page of the figure of the name, with its data as JSON text
+%
+%   A browser left open by an earlier run has a figure of the same
+%   name, so the lookup refuses more than one match rather than pick one.
+    browserFigure = findall(groot, "Type", "figure", "Name", figureName);
+    if numel(browserFigure) ~= 1
+        error('EBRAINS:Test:AmbiguousBrowser', ...
+            '%d figures are named "%s"; close the browsers of earlier runs.', numel(browserFigure), figureName)
+    end
     page = findall(browserFigure, "Type", "uihtml");
-    data = jsonencode(struct("paths", {cellstr(paths)}));
-    page.HTMLEventReceivedFcn(page, struct("HTMLEventName", name, "HTMLEventData", data));
+    page.HTMLEventReceivedFcn(page, struct("HTMLEventName", name, "HTMLEventData", jsonencode(data)));
 end
 
 function addListing(client, names, bytes, hashes)
@@ -607,6 +915,12 @@ function editThenWrite(localFile, target)
 % editThenWrite - Downloader that edits the local file during the transfer, then delivers the download
     writeFile(localFile, "xyz");
     writeFile(target, "abc");
+end
+
+function folder = chooseRecordedFolder(testCase, title)
+% chooseRecordedFolder - Folder chooser that records the title and answers with ChosenFolder
+    testCase.ChooserTitles(end+1) = title;
+    folder = testCase.ChosenFolder;
 end
 
 function recordURL(testCase, url)

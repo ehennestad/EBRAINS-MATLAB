@@ -1,0 +1,5 @@
+{
+  "description": "A path appears at most once in folders.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": [\n    {\n      \"path\": \"/a\",\n      \"bucket\": \"b\",\n      \"prefix\": \"\",\n      \"pinned\": false,\n      \"last_opened\": null\n    },\n    {\n      \"path\": \"/a\",\n      \"bucket\": \"c\",\n      \"prefix\": \"\",\n      \"pinned\": true,\n      \"last_opened\": null\n    }\n  ]\n}\n",
+  "expected_error": true
+}

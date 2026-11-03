@@ -41,6 +41,12 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             testCase.Client = ebrains.mocks.MockBucketsClient();
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             testCase.Folder = string(folderFixture.Folder);
+            % createVirtualBucket records the folder in the registry of
+            % the user, which the test keeps in a folder of its own, apart
+            % from the folders it makes virtual buckets
+            configFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+                "EBRAINS_BUCKET_SYNC_CONFIG_DIR", fullfile(configFixture.Folder, "config")));
         end
     end
 
@@ -253,6 +259,21 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             manifest = ebrains.bucket.internal.metadata.readManifest(testCase.Folder);
             testCase.verifyEqual(manifest.Path, ["a.txt"; "sub/b.txt"]);
             testCase.verifyEqual(manifest.Bytes, [3; 4]);
+        end
+
+        function testCreateVirtualBucketRecordsTheFolderInTheList(testCase)
+            addListing(testCase.Client, "set/a.txt", 3);
+            before = datetime("now", TimeZone="UTC");
+
+            ebrains.bucket.createVirtualBucket("my-bucket", testCase.Folder, Prefix="set", ...
+                Client=testCase.Client);
+
+            rows = ebrains.bucket.listVirtualBuckets();
+            testCase.verifyEqual(rows.Path, ebrains.bucket.internal.absoluteFolderPath(testCase.Folder));
+            testCase.verifyEqual(rows.Bucket, "my-bucket");
+            testCase.verifyEqual(rows.Prefix, "set/");
+            testCase.verifyTrue(rows.Exists);
+            testCase.verifyGreaterThanOrEqual(rows.LastOpened, before - seconds(1));
         end
 
         function testCreateVirtualBucketSkipsMetadataObjects(testCase)

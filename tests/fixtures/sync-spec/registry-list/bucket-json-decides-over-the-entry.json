@@ -1,0 +1,44 @@
+{
+  "description": "For a folder whose bucket.json can be read, the bucket and prefix come from the file, not from the entry, which recorded what the folder stood for when it was last opened. The label follows the bucket of the file.",
+  "registry": {
+    "root": null,
+    "buckets": [
+      {
+        "bucket": "new",
+        "label": "New label"
+      },
+      {
+        "bucket": "old",
+        "label": "Old label"
+      }
+    ],
+    "folders": [
+      {
+        "path": "/x",
+        "bucket": "old",
+        "prefix": "a/",
+        "pinned": true,
+        "last_opened": "2024-01-02T03:04:05Z"
+      }
+    ]
+  },
+  "root_children": [],
+  "present": [
+    {
+      "path": "/x",
+      "bucket": "new",
+      "prefix": ""
+    }
+  ],
+  "expected": [
+    {
+      "path": "/x",
+      "bucket": "new",
+      "prefix": "",
+      "label": "New label",
+      "pinned": true,
+      "last_opened": "2024-01-02T03:04:05Z",
+      "exists": true
+    }
+  ]
+}

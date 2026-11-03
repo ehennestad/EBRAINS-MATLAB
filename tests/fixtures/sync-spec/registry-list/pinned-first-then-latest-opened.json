@@ -1,0 +1,117 @@
+{
+  "description": "Pinned rows come first, then rows by last_opened from the latest, then rows without a time by path. A folder below the root is listed whether or not it is recorded, a child of the root that is not a virtual bucket is left out, and a recorded folder whose bucket.json cannot be read keeps the bucket and prefix of its entry with exists false.",
+  "registry": {
+    "root": "/r",
+    "buckets": [
+      {
+        "bucket": "d-1",
+        "label": "Label one"
+      }
+    ],
+    "folders": [
+      {
+        "path": "/r/d-1",
+        "bucket": "d-1",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": "2024-01-02T03:04:05Z"
+      },
+      {
+        "path": "/elsewhere/old",
+        "bucket": "old-bucket",
+        "prefix": "",
+        "pinned": true,
+        "last_opened": "2023-06-01T00:00:00Z"
+      },
+      {
+        "path": "/gone",
+        "bucket": "gone-bucket",
+        "prefix": "sub/",
+        "pinned": false,
+        "last_opened": "2024-05-06T07:08:09Z"
+      },
+      {
+        "path": "/r/d-2",
+        "bucket": "d-2",
+        "prefix": "results/",
+        "pinned": false,
+        "last_opened": null
+      }
+    ]
+  },
+  "root_children": [
+    "/r/d-1",
+    "/r/d-2",
+    "/r/d-3",
+    "/r/notes"
+  ],
+  "present": [
+    {
+      "path": "/r/d-1",
+      "bucket": "d-1",
+      "prefix": ""
+    },
+    {
+      "path": "/r/d-2",
+      "bucket": "d-2",
+      "prefix": "results/"
+    },
+    {
+      "path": "/r/d-3",
+      "bucket": "d-3",
+      "prefix": ""
+    },
+    {
+      "path": "/elsewhere/old",
+      "bucket": "old-bucket",
+      "prefix": ""
+    }
+  ],
+  "expected": [
+    {
+      "path": "/elsewhere/old",
+      "bucket": "old-bucket",
+      "prefix": "",
+      "label": null,
+      "pinned": true,
+      "last_opened": "2023-06-01T00:00:00Z",
+      "exists": true
+    },
+    {
+      "path": "/gone",
+      "bucket": "gone-bucket",
+      "prefix": "sub/",
+      "label": null,
+      "pinned": false,
+      "last_opened": "2024-05-06T07:08:09Z",
+      "exists": false
+    },
+    {
+      "path": "/r/d-1",
+      "bucket": "d-1",
+      "prefix": "",
+      "label": "Label one",
+      "pinned": false,
+      "last_opened": "2024-01-02T03:04:05Z",
+      "exists": true
+    },
+    {
+      "path": "/r/d-2",
+      "bucket": "d-2",
+      "prefix": "results/",
+      "label": null,
+      "pinned": false,
+      "last_opened": null,
+      "exists": true
+    },
+    {
+      "path": "/r/d-3",
+      "bucket": "d-3",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": null,
+      "exists": true
+    }
+  ]
+}

@@ -13,8 +13,9 @@ classdef VirtualBucketBrowser < handle
 %       virtual bucket in localFolder. Its folder .ebrains says which
 %       bucket it stands for (see ebrains.bucket.internal.metadata.folderName).
 %
-%       ebrains.bucket.app.VirtualBucketBrowser() asks for the folder
-%       first. Cancelling the dialog opens no browser.
+%       ebrains.bucket.app.VirtualBucketBrowser() opens the list of the
+%       virtual buckets of the user instead, from which one is opened (see
+%       below).
 %
 %       ebrains.bucket.app.VirtualBucketBrowser(localFolder, BucketName=NAME)
 %       also makes localFolder a virtual bucket of the bucket NAME if it is
@@ -47,6 +48,19 @@ classdef VirtualBucketBrowser < handle
 %   the transfer (see ebrains.bucket.sync.internal.isTransferLeftover). A
 %   file given such a name on purpose is not shown either.
 %
+%   The list of virtual buckets shows the folders directly below the root
+%   folder (see ebrains.bucket.setVirtualBucketRoot) and the folders that
+%   were opened before, as ebrains.bucket.listVirtualBuckets returns them,
+%   with a filter, pinned folders first, and the label the user gave each
+%   bucket in place of its name, which is often a UUID. "New virtual
+%   bucket" asks for a bucket and an optional folder of it, proposes a
+%   folder below the root, and makes and opens it; "Open folder" opens a
+%   virtual bucket that is not in the list. A bucket view goes back to the
+%   list with the arrow in its header. Opening a folder, here or with the
+%   folder argument, records it in the list with the time. The list and
+%   the labels are kept in the registry of the user, shared with the
+%   ebrains-bucket-sync package (see ebrains.bucket.listVirtualBuckets).
+%
 %   The browser is a web page in a uihtml component, and requires MATLAB
 %   R2023a or later.
 %
@@ -75,21 +89,34 @@ classdef VirtualBucketBrowser < handle
 %                    Confirmer(message, title, confirmText) and returning
 %                    true to go on. Meant for tests; UICONFIRM asks
 %                    otherwise.
+%       FolderChooser : Function that asks for a folder, called as
+%                    FolderChooser(startFolder, title) and returning the
+%                    folder as a string, or an empty string array when
+%                    the user cancels. Meant for tests; UIGETDIR asks
+%                    otherwise.
 %
 %   Example:
+%       ebrains.bucket.app.VirtualBucketBrowser()
 %       ebrains.bucket.app.VirtualBucketBrowser("temp_data", ...
 %           BucketName="d-ca602c23-364a-4c9b-943b-87d1b09a5821")
 %       ebrains.bucket.app.VirtualBucketBrowser("temp_data")
 %
-%   See also ebrains.bucket.createVirtualBucket, ebrains.bucket.downloadFile,
+%   See also ebrains.bucket.createVirtualBucket, ebrains.bucket.listVirtualBuckets,
+%   ebrains.bucket.setVirtualBucketRoot, ebrains.bucket.downloadFile,
 %   ebrains.bucket.sync.fromBucket
 
     properties (SetAccess = private)
-        % BucketName - Name of the bucket
+        % BucketName - Name of the bucket, "" while the list of virtual buckets is shown
         BucketName (1,1) string
 
-        % LocalFolder - Absolute path of the folder of the virtual bucket
+        % LocalFolder - Absolute path of the folder of the virtual bucket, "" while the list is shown
         LocalFolder (1,1) string
+
+        % ListedBuckets - Rows of the list of virtual buckets as last shown, as ebrains.bucket.listVirtualBuckets returns them
+        ListedBuckets table
+
+        % Label - The label the user gave the bucket, "" for none or while the list is shown
+        Label (1,1) string
 
         % Prefix - Folder of the bucket that the virtual bucket holds
         Prefix (1,1) string
@@ -115,6 +142,7 @@ classdef VirtualBucketBrowser < handle
         Downloader function_handle
         Opener function_handle
         Confirmer function_handle
+        FolderChooser function_handle
 
         % LocalFiles - File table of the local folder, from the last scan
         LocalFiles table
@@ -154,20 +182,17 @@ classdef VirtualBucketBrowser < handle
     methods
         function app = VirtualBucketBrowser(localFolder, options)
             arguments
-                localFolder string {mustBeScalarOrEmpty} = chooseFolder()
+                localFolder string {mustBeScalarOrEmpty} = string.empty
                 options.BucketName (1,1) string = ""
                 options.Prefix string {mustBeScalarOrEmpty} = string.empty
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
                 options.Opener (1,1) function_handle = @web
                 options.Confirmer function_handle {mustBeScalarOrEmpty} = function_handle.empty
+                options.FolderChooser (1,1) function_handle = @chooseFolderWithDialog
             end
 
-            % The folder dialog was cancelled: there is nothing to open
-            if isempty(localFolder)
-                return
-            end
-            if localFolder == ""
+            if ~isempty(localFolder) && localFolder == ""
                 error('EBRAINS:Bucket:InvalidFolder', 'Give the folder of the virtual bucket.')
             end
 
@@ -179,6 +204,106 @@ classdef VirtualBucketBrowser < handle
                     'The virtual bucket browser requires MATLAB R2023a or later.')
             end
 
+            app.Client = options.Client;
+            app.Downloader = options.Downloader;
+            app.Opener = options.Opener;
+            app.Confirmer = options.Confirmer;
+            app.FolderChooser = options.FolderChooser;
+            app.createComponents()
+
+            % Without a folder the list of virtual buckets is shown. It is
+            % made now, and sent to the page once that has loaded. A folder
+            % that is refused leaves no window behind.
+            try
+                if isempty(localFolder)
+                    app.sendBuckets()
+                else
+                    isNewFolder = app.openFolder(localFolder, options.BucketName, options.Prefix);
+                    if isNewFolder
+                        app.updateFromBucket()
+                    end
+                end
+            catch exception
+                delete(app)
+                rethrow(exception)
+            end
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        function delete(app)
+            if ~isempty(app.UIFigure) && isvalid(app.UIFigure)
+                delete(app.UIFigure)
+            end
+        end
+
+        function refresh(app)
+        % refresh - Read the local folder again and show the files as they are now
+            app.assertBucketIsOpen()
+            app.scanLocalFolder()
+            app.sendState()
+        end
+
+        function showList(app)
+        % showList - Show the list of virtual buckets in place of the bucket
+        %
+        %   The bucket is closed: its files are read again when it is
+        %   opened from the list.
+            app.clearBucket()
+            app.UIFigure.Name = "Virtual buckets";
+            app.sendBuckets()
+        end
+    end
+
+    methods (Static, Hidden)
+        function text = bucketsEventData(rows, rootFolder)
+        % bucketsEventData - The JSON text of the buckets event, as the page's protocol describes it
+        %
+        %   text = ebrains.bucket.app.VirtualBucketBrowser.bucketsEventData(rows,
+        %   rootFolder) encodes the rows of ebrains.bucket.listVirtualBuckets
+        %   and the root folder ("" for none). Hidden: the tests check the
+        %   shape, which jsonencode gets wrong for one row unless cared for.
+            arguments
+                rows table
+                rootFolder (1,1) string
+            end
+
+            % A cell of structs is written as a list also for one row,
+            % where a struct array would be written as one object
+            rowStructs = struct( ...
+                "path", cellstr(rows.Path), ...
+                "bucket", cellstr(rows.Bucket), ...
+                "prefix", cellstr(rows.Prefix), ...
+                "label", cellstr(rows.Label), ...
+                "pinned", num2cell(rows.Pinned), ...
+                "lastOpened", cellstr(formatLocalTime(rows.LastOpened)), ...
+                "exists", num2cell(rows.Exists));
+            data = struct( ...
+                "root", rootFolder, ...
+                "separator", string(filesep), ...
+                "rows", {num2cell(reshape(rowStructs, [], 1))});
+            text = jsonencode(data);
+        end
+    end
+
+    methods (Access = private) % Opening a folder
+        function isNewFolder = openFolder(app, localFolder, bucketName, prefix)
+        % openFolder - Show a folder as a virtual bucket, making it one if needed
+        %
+        %   isNewFolder says whether the folder was created, in which case
+        %   the caller lists the bucket to fill it. bucketName may be ""
+        %   and prefix empty for a folder that is a virtual bucket already;
+        %   see the constructor for the rules.
+            arguments
+                app
+                localFolder (1,1) string
+                bucketName (1,1) string = ""
+                prefix string {mustBeScalarOrEmpty} = string.empty
+            end
+
+            options = struct("BucketName", bucketName, "Prefix", prefix);
             bucketInfo = ebrains.bucket.internal.metadata.readBucketInfo(localFolder);
             isNewVirtualBucket = isempty(bucketInfo);
             if isNewVirtualBucket
@@ -216,14 +341,27 @@ classdef VirtualBucketBrowser < handle
                 mkdir(localFolder)
             end
 
+            % A folder that cannot be read once it is validated leaves the
+            % browser as it was, on the list, rather than half opened
+            try
+                app.showFolder(localFolder, bucketInfo, isNewVirtualBucket)
+            catch exception
+                app.clearBucket()
+                rethrow(exception)
+            end
+        end
+
+        function showFolder(app, localFolder, bucketInfo, isNewVirtualBucket)
+        % showFolder - Take a validated folder as the bucket shown, and send its files
             app.BucketName = bucketInfo.BucketName;
-            app.LocalFolder = getAbsolutePath(localFolder);
+            app.LocalFolder = ebrains.bucket.internal.absoluteFolderPath(localFolder);
             app.Prefix = bucketInfo.Prefix;
             app.ListedTime = bucketInfo.ListedTime;
-            app.Client = options.Client;
-            app.Downloader = options.Downloader;
-            app.Opener = options.Opener;
-            app.Confirmer = options.Confirmer;
+            app.IsListed = false;
+            app.IsListedInSession = false;
+            app.RemoteFiles = [];
+            app.ChecksumCache = [];
+            app.Message = "";
 
             % A folder that is not a virtual bucket yet becomes one. One that
             % is already is only read, so that it can be on a read-only
@@ -246,29 +384,62 @@ classdef VirtualBucketBrowser < handle
             end
 
             app.scanLocalFolder()
-            app.createComponents()
-
-            if isNewFolder
-                app.updateFromBucket()
-            end
-
-            if nargout == 0
-                clear app
-            end
-        end
-
-        function delete(app)
-            if ~isempty(app.UIFigure) && isvalid(app.UIFigure)
-                delete(app.UIFigure)
-            end
-        end
-
-        function refresh(app)
-        % refresh - Read the local folder again and show the files as they are now
-            app.scanLocalFolder()
+            ebrains.bucket.internal.registry.recordFolderOpened(app.LocalFolder, app.BucketName, app.Prefix)
+            app.Label = app.labelOfBucket();
+            app.UIFigure.Name = "Virtual bucket - " + app.BucketName;
             app.sendState()
         end
 
+        function clearBucket(app)
+        % clearBucket - Forget the bucket shown, so that the list is what the browser holds
+            app.BucketName = "";
+            app.LocalFolder = "";
+            app.Prefix = "";
+            app.Label = "";
+            app.Files = table();
+            app.IsListed = false;
+            app.ListedTime = NaT(TimeZone="UTC");
+            app.IsListedInSession = false;
+            app.LocalFiles = table();
+            app.RemoteFiles = [];
+            app.ChecksumCache = [];
+            app.Message = "";
+        end
+
+        function openFolderFromList(app, localFolder, bucketName, prefix)
+        % openFolderFromList - Open a folder chosen in the list, and fill a new one from the bucket
+        %
+        %   A folder that is not a virtual bucket is refused with the
+        %   words of the list, where "New virtual bucket" makes one.
+            arguments
+                app
+                localFolder (1,1) string
+                bucketName (1,1) string = ""
+                prefix string {mustBeScalarOrEmpty} = string.empty
+            end
+            try
+                isNewFolder = app.openFolder(localFolder, bucketName, prefix);
+            catch exception
+                if exception.identifier == "EBRAINS:Bucket:NotAVirtualBucket"
+                    error('EBRAINS:Bucket:NotAVirtualBucket', ...
+                        '"%s" is not a virtual bucket. Use "New virtual bucket" to make it one.', localFolder)
+                end
+                rethrow(exception)
+            end
+            if isNewFolder
+                app.updateFromBucket()
+            end
+        end
+
+        function assertBucketIsOpen(app)
+            if app.LocalFolder == ""
+                error('EBRAINS:Bucket:NoBucketOpen', ...
+                    'No virtual bucket is open. Open one from the list first.')
+            end
+        end
+    end
+
+    methods
         function updateFromBucket(app)
         % updateFromBucket - List the bucket, add placeholders for new objects and compare
         %
@@ -277,6 +448,7 @@ classdef VirtualBucketBrowser < handle
         %   last listing are deleted, each read again right before, so
         %   that one written into since the last scan is kept. Local files
         %   with data that the bucket does not have are kept.
+            app.assertBucketIsOpen()
             restoreControls = app.setBusy();  %#ok<NASGU>
             progressDialog = uiprogressdlg(app.UIFigure, Title="Update from bucket", ...
                 Message=sprintf("Counting the objects of bucket ""%s""...", app.BucketName), ...
@@ -661,7 +833,7 @@ classdef VirtualBucketBrowser < handle
 
     methods (Access = private) % Page
         function createComponents(app)
-            app.UIFigure = uifigure(Name="Virtual bucket - " + app.BucketName, ...
+            app.UIFigure = uifigure(Name="Virtual buckets", ...
                 Position=[100 100 1100 680], CloseRequestFcn=@(~, ~) delete(app));
             grid = uigridlayout(app.UIFigure, [1 1], Padding=0);
 
@@ -675,7 +847,8 @@ classdef VirtualBucketBrowser < handle
         %
         %   The page sends its requests as JSON text: an object with the
         %   field "paths", the paths of the files or the folder the request
-        %   is about.
+        %   is about, or the fields of a request about the list of virtual
+        %   buckets, as the protocol in its header describes.
         %
         %   The page can also draw confirm, alert and progress dialogs for
         %   a host that has none (see the protocol in its header). MATLAB
@@ -691,7 +864,47 @@ classdef VirtualBucketBrowser < handle
                 switch event.HTMLEventName
                     case "ready"
                         app.IsPageReady = true;
-                        app.sendState()
+                        if app.LocalFolder == ""
+                            app.sendBuckets()
+                        else
+                            app.sendState()
+                        end
+                    case "showList"
+                        app.showList()
+                    case "openBucket"
+                        app.openFolderFromList(string(request.path))
+                    case "newBucket"
+                        folder = string(request.folder);
+                        if ~isAbsolutePath(folder)
+                            error('EBRAINS:Bucket:InvalidFolder', ...
+                                ['Give the absolute path of the folder of the new virtual bucket, ' ...
+                                 'such as one below the root folder.'])
+                        end
+                        app.openFolderFromList(folder, string(request.bucket), string(request.prefix))
+                    case "chooseFolder"
+                        folder = app.FolderChooser(app.startFolder(), "Choose the folder of a virtual bucket");
+                        if ~isempty(folder)
+                            app.openFolderFromList(folder)
+                        end
+                    case "chooseRoot"
+                        folder = app.FolderChooser(app.startFolder(), ...
+                            "Choose the folder where new virtual buckets are made");
+                        if ~isempty(folder)
+                            ebrains.bucket.setVirtualBucketRoot(folder)
+                            app.sendBuckets()
+                        end
+                    case "setLabel"
+                        ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                            ebrains.bucket.internal.registry.setLabel(registry, ...
+                            string(request.bucket), string(request.label)));
+                        app.sendBuckets()
+                    case "setPinned"
+                        app.pinFolder(string(request.path), logical(request.pinned))
+                        app.sendBuckets()
+                    case "removeFolder"
+                        ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                            ebrains.bucket.internal.registry.removeFolder(registry, string(request.path)));
+                        app.sendBuckets()
                     case "refresh"
                         app.Message = "";
                         app.refresh()
@@ -733,10 +946,12 @@ classdef VirtualBucketBrowser < handle
                 "bucketName", app.BucketName, ...
                 "localFolder", app.LocalFolder, ...
                 "prefix", app.Prefix, ...
+                "label", app.Label, ...
                 "isListed", app.IsListed, ...
                 "listedAt", formatLocalTime(app.ListedTime), ...
                 "revealLabel", revealActionName(), ...
                 "message", app.Message, ...
+                "hasList", true, ...
                 "files", struct( ...
                     "path", {cellstr(app.Files.Path)}, ...
                     "state", {cellstr(app.Files.State)}, ...
@@ -744,6 +959,68 @@ classdef VirtualBucketBrowser < handle
                     "remoteBytes", {num2cell(app.Files.RemoteBytes)}, ...
                     "modified", {cellstr(modifiedTexts)}));
             sendEventToHTMLSource(app.Page, "state", jsonencode(state))
+        end
+
+        function sendBuckets(app)
+        % sendBuckets - Send the list of virtual buckets to the page, which shows it in place of a bucket
+        %
+        %   A registry that cannot be read is reported, and the list is
+        %   shown empty, so that the page is usable all the same.
+            try
+                rows = ebrains.bucket.listVirtualBuckets();
+                rootFolder = ebrains.bucket.getVirtualBucketRoot();
+            catch exception
+                rows = ebrains.bucket.internal.registry.listVirtualBuckets( ...
+                    ebrains.bucket.internal.registry.emptyRegistry(), strings(0, 1), @(~) []);
+                rootFolder = "";
+                uialert(app.UIFigure, exception.message, "Could not read the list of virtual buckets")
+            end
+            app.ListedBuckets = rows;
+            if ~app.IsPageReady
+                return
+            end
+            sendEventToHTMLSource(app.Page, "buckets", ...
+                ebrains.bucket.app.VirtualBucketBrowser.bucketsEventData(rows, rootFolder))
+        end
+
+        function pinFolder(app, folderPath, pinned)
+        % pinFolder - Pin or unpin a folder of the list, recording one that is not recorded yet
+        %
+        %   A folder below the root that was never opened has no entry
+        %   in the registry; its bucket and prefix come from the list
+        %   as last shown.
+            row = app.ListedBuckets(app.ListedBuckets.Path == folderPath, :);
+            if isempty(row)
+                error('EBRAINS:Bucket:NotRecorded', '"%s" is not in the list of virtual buckets.', folderPath)
+            end
+            ebrains.bucket.internal.registry.updateRegistry(@(registry) ...
+                ebrains.bucket.internal.registry.setPinned(registry, folderPath, pinned, ...
+                Bucket=row.Bucket(1), Prefix=row.Prefix(1)));
+        end
+
+        function label = labelOfBucket(app)
+        % labelOfBucket - The label the user gave the bucket, "" for none
+        %
+        %   A registry that cannot be read leaves the bucket unlabelled;
+        %   the list reports the problem when it is shown.
+            label = "";
+            try
+                registry = ebrains.bucket.internal.registry.readRegistry();
+            catch
+                return
+            end
+            isBucket = registry.Labels.Bucket == app.BucketName;
+            if any(isBucket)
+                label = registry.Labels.Label(find(isBucket, 1));
+            end
+        end
+
+        function folder = startFolder(app) %#ok<MANU>
+        % startFolder - Where a folder dialog starts: the root folder, or the current folder without one
+            folder = ebrains.bucket.getVirtualBucketRoot();
+            if folder == ""
+                folder = string(pwd);
+            end
         end
 
         function restoreControls = setBusy(app)
@@ -760,20 +1037,19 @@ classdef VirtualBucketBrowser < handle
     end
 end
 
-function folder = chooseFolder()
-% chooseFolder - Ask for the folder of a virtual bucket; empty if the dialog is cancelled
-    folder = uigetdir(pwd, "Choose the folder of the virtual bucket");
+function tf = isAbsolutePath(path)
+% isAbsolutePath - Whether a path starts at a root: "/" on POSIX, a drive or a UNC share on Windows
+    tf = startsWith(path, "/") || ~isempty(regexp(path, '^[A-Za-z]:[\\/]', 'once')) || startsWith(path, "\\\\");
+end
+
+function folder = chooseFolderWithDialog(startFolder, title)
+% chooseFolderWithDialog - Ask for a folder with the dialog of the system; empty if it is cancelled
+    folder = uigetdir(startFolder, title);
     if isequal(folder, 0)
         folder = string.empty;
     else
         folder = string(folder);
     end
-end
-
-function absolutePath = getAbsolutePath(folder)
-% getAbsolutePath - Absolute path of an existing folder
-    listing = dir(folder);
-    absolutePath = string(listing(strcmp({listing.name}, '.')).folder);
 end
 
 function text = formatBytes(bytes)
@@ -806,9 +1082,7 @@ function text = formatLocalTime(time)
 % formatLocalTime - Time in the local time zone, as the page shows it, or "" for NaT
     time.TimeZone = "local";
     text = string(time, "yyyy-MM-dd HH:mm");
-    if ismissing(text)
-        text = "";
-    end
+    text(ismissing(text)) = "";
 end
 
 function keys = matchKeys(paths, ignoreCase)
