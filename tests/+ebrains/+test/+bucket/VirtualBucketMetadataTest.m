@@ -45,7 +45,7 @@ classdef VirtualBucketMetadataTest < matlab.unittest.TestCase
             % the user, which the test keeps in a folder of its own, apart
             % from the folders it makes virtual buckets
             configFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture( ...
                 "EBRAINS_BUCKET_SYNC_CONFIG_DIR", fullfile(configFixture.Folder, "config")));
         end
     end

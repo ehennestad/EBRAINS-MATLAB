@@ -29,6 +29,13 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     end
 
     methods (TestClassSetup)
+        function requireRelease(testCase)
+            % The browser refuses to open before R2023a, which the toolbox
+            % supports otherwise (EBRAINS:Bucket:UnsupportedRelease)
+            testCase.assumeFalse(isMATLABReleaseOlderThan("R2023a"), ...
+                "The browser needs MATLAB R2023a or later.")
+        end
+
         function requireDisplay(testCase)
             try
                 figureHandle = uifigure(Visible="off");
@@ -48,7 +55,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             % the user, which the test keeps in a folder of its own, apart
             % from the folders it opens as virtual buckets
             configFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture( ...
                 "EBRAINS_BUCKET_SYNC_CONFIG_DIR", fullfile(configFixture.Folder, "config")));
         end
     end

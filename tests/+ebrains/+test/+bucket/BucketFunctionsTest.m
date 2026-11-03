@@ -61,7 +61,7 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         % createVirtualBucket records the folder in the registry of the
         % user, which the test keeps in a folder of its own
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture( ...
                 "EBRAINS_BUCKET_SYNC_CONFIG_DIR", fullfile(folderFixture.Folder, "config")));
         end
     end

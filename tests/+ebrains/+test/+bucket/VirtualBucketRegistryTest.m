@@ -18,7 +18,7 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             testCase.Folder = string(folderFixture.Folder);
             testCase.ConfigFolder = fullfile(testCase.Folder, "config");
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture( ...
                 "EBRAINS_BUCKET_SYNC_CONFIG_DIR", testCase.ConfigFolder));
         end
     end
@@ -39,8 +39,8 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
 
         function testConfigFolderUsesTheFoldersOfTheEnvironment(testCase)
             testCase.unsetEnvironment("EBRAINS_BUCKET_SYNC_CONFIG_DIR")
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture("XDG_CONFIG_HOME", "/xdg"));
-            testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture("LOCALAPPDATA", "C:\local"));
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture("XDG_CONFIG_HOME", "/xdg"));
+            testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture("LOCALAPPDATA", "C:\local"));
             home = fullfile(testCase.Folder, "home");
 
             testCase.verifyEqual(ebrains.bucket.internal.configFolder(Platform="unix", Home=home), ...
@@ -54,7 +54,7 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
 
         function testARelativeEnvironmentVariableIsRefused(testCase)
             for value = ["relative/config", "~/config"]
-                testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+                testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture( ...
                     "EBRAINS_BUCKET_SYNC_CONFIG_DIR", value));
                 testCase.verifyError(@() ebrains.bucket.internal.configFolder(), ...
                     'EBRAINS:Bucket:InvalidConfigFolder');
@@ -359,7 +359,7 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
         function unsetEnvironment(testCase, names)
         % unsetEnvironment - Make the variables unset for the test, as an empty value counts as unset
             for name = names
-                testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture(name, ""));
+                testCase.applyFixture(ebrains.test.fixtures.EnvironmentVariableFixture(name, ""));
             end
         end
     end
