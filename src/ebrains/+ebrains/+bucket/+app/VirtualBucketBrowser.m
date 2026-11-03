@@ -94,6 +94,16 @@ classdef VirtualBucketBrowser < handle
 %                    folder as a string, or an empty string array when
 %                    the user cancels. Meant for tests; UIGETDIR asks
 %                    otherwise.
+%       Alerter    : Function that shows a message, called as UIALERT is:
+%                    Alerter(figure, message, title, Icon=icon). Meant
+%                    for tests; UIALERT shows it otherwise.
+%       ProgressDialog : Function that opens a progress dialog, called as
+%                    UIPROGRESSDLG is and returning a handle object with
+%                    its Message, Value, Indeterminate and CancelRequested
+%                    properties, deleted when the work is done. Meant for
+%                    tests; UIPROGRESSDLG opens it otherwise.
+%       Visible    : Whether the window is shown, "on" (default) or
+%                    "off". Meant for tests, which run without a window.
 %
 %   Example:
 %       ebrains.bucket.app.VirtualBucketBrowser()
@@ -143,6 +153,8 @@ classdef VirtualBucketBrowser < handle
         Opener function_handle
         Confirmer function_handle
         FolderChooser function_handle
+        Alerter function_handle
+        ProgressDialog function_handle
 
         % LocalFiles - File table of the local folder, from the last scan
         LocalFiles table
@@ -190,6 +202,9 @@ classdef VirtualBucketBrowser < handle
                 options.Opener (1,1) function_handle = @web
                 options.Confirmer function_handle {mustBeScalarOrEmpty} = function_handle.empty
                 options.FolderChooser (1,1) function_handle = @chooseFolderWithDialog
+                options.Alerter (1,1) function_handle = @uialert
+                options.ProgressDialog (1,1) function_handle = @uiprogressdlg
+                options.Visible (1,1) matlab.lang.OnOffSwitchState = "on"
             end
 
             if ~isempty(localFolder) && localFolder == ""
@@ -209,7 +224,9 @@ classdef VirtualBucketBrowser < handle
             app.Opener = options.Opener;
             app.Confirmer = options.Confirmer;
             app.FolderChooser = options.FolderChooser;
-            app.createComponents()
+            app.Alerter = options.Alerter;
+            app.ProgressDialog = options.ProgressDialog;
+            app.createComponents(options.Visible)
 
             % Without a folder the list of virtual buckets is shown. It is
             % made now, and sent to the page once that has loaded. A folder
@@ -450,7 +467,7 @@ classdef VirtualBucketBrowser < handle
         %   with data that the bucket does not have are kept.
             app.assertBucketIsOpen()
             restoreControls = app.setBusy();  %#ok<NASGU>
-            progressDialog = uiprogressdlg(app.UIFigure, Title="Update from bucket", ...
+            progressDialog = app.ProgressDialog(app.UIFigure, Title="Update from bucket", ...
                 Message=sprintf("Counting the objects of bucket ""%s""...", app.BucketName), ...
                 Indeterminate="on", Cancelable="on");
             closeDialog = onCleanup(@() delete(progressDialog));
@@ -470,7 +487,7 @@ classdef VirtualBucketBrowser < handle
             catch exception
                 delete(closeDialog)
                 if exception.identifier ~= "EBRAINS:Bucket:ListingCancelled"
-                    uialert(app.UIFigure, exception.message, "Could not list the bucket")
+                    app.alert(exception.message, "Could not list the bucket")
                 end
                 return
             end
@@ -631,7 +648,7 @@ classdef VirtualBucketBrowser < handle
             files = app.Files(ismember(app.Files.Path, paths), :);
             files = files(files.State == "online_only" | files.State == "differs", :);
             if isempty(files)
-                uialert(app.UIFigure, "The selected files are downloaded already.", ...
+                app.alert("The selected files are downloaded already.", ...
                     "Nothing to download", Icon="info")
                 return
             end
@@ -675,9 +692,9 @@ classdef VirtualBucketBrowser < handle
             end
             app.refresh()
             if isCancelled
-                uialert(app.UIFigure, app.Message, "Download cancelled", Icon="info")
+                app.alert(app.Message, "Download cancelled", Icon="info")
             elseif any(isFailed)
-                uialert(app.UIFigure, failureReport(files.Path(isFailed), failureMessages(isFailed), nFiles), ...
+                app.alert(failureReport(files.Path(isFailed), failureMessages(isFailed), nFiles), ...
                     "Some files were not downloaded")
             end
         end
@@ -736,7 +753,7 @@ classdef VirtualBucketBrowser < handle
                 else
                     message = 'The selected files are online only already.';
                 end
-                uialert(app.UIFigure, message, "Nothing to make online only", Icon="info")
+                app.alert(message, "Nothing to make online only", Icon="info")
                 return
             end
 
@@ -781,7 +798,7 @@ classdef VirtualBucketBrowser < handle
                 ebrains.bucket.app.internal.replaceWithPlaceholders(app.LocalFolder, judgedFiles);
             catch exception
                 app.refresh()
-                uialert(app.UIFigure, exception.message, "Could not make the files online only")
+                app.alert(exception.message, "Could not make the files online only")
                 return
             end
 
@@ -831,9 +848,22 @@ classdef VirtualBucketBrowser < handle
         end
     end
 
+    methods (Access = private) % Dialogs
+        function alert(app, message, title, options)
+        % alert - Show a message on the browser's window
+            arguments
+                app
+                message (1,1) string
+                title (1,1) string
+                options.Icon (1,1) string = "error"
+            end
+            app.Alerter(app.UIFigure, message, title, Icon=options.Icon)
+        end
+    end
+
     methods (Access = private) % Page
-        function createComponents(app)
-            app.UIFigure = uifigure(Name="Virtual buckets", ...
+        function createComponents(app, visible)
+            app.UIFigure = uifigure(Name="Virtual buckets", Visible=visible, ...
                 Position=[100 100 1100 680], CloseRequestFcn=@(~, ~) delete(app));
             grid = uigridlayout(app.UIFigure, [1 1], Padding=0);
 
@@ -927,7 +957,7 @@ classdef VirtualBucketBrowser < handle
                         % The page sends no other requests to MATLAB
                 end
             catch exception
-                uialert(app.UIFigure, exception.message, "Something went wrong")
+                app.alert(exception.message, "Something went wrong")
             end
         end
 
@@ -976,7 +1006,7 @@ classdef VirtualBucketBrowser < handle
                 rows = ebrains.bucket.internal.registry.listVirtualBuckets( ...
                     ebrains.bucket.internal.registry.emptyRegistry(), strings(0, 1), @(~) []);
                 rootFolder = "";
-                uialert(app.UIFigure, exception.message, "Could not read the list of virtual buckets")
+                app.alert(exception.message, "Could not read the list of virtual buckets")
             end
             app.ListedBuckets = rows;
             if ~app.IsPageReady
