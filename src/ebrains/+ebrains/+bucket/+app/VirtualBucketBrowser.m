@@ -906,7 +906,10 @@ classdef VirtualBucketBrowser < handle
                             ebrains.bucket.internal.registry.removeFolder(registry, string(request.path)));
                         app.sendBuckets()
                     case "refresh"
-                        app.Message = "";
+                        % The time changes with every press, so a refresh
+                        % that finds nothing new still shows that it ran
+                        app.Message = "Read the local folder at " + ...
+                            string(datetime("now"), "HH:mm:ss") + ".";
                         app.refresh()
                     case "update"
                         app.updateFromBucket()

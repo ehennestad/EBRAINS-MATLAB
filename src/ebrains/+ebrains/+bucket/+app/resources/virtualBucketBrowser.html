@@ -151,12 +151,14 @@
     --bg: #ffffff;
     --bg-subtle: #f6f7f9;
     --bg-hover: #f0f2f5;
+    --bg-active: #e2e6eb;
     --bg-selected: #e6effd;
     --border: #e3e6ea;
     --text: #1d2228;
     --text-muted: #67707b;
     --accent: #2563eb;
     --accent-hover: #1d4fd8;
+    --accent-active: #1a43b5;
     --accent-text: #ffffff;
     --online: #2563eb;
     --online-bg: #e8f0fe;
@@ -175,12 +177,14 @@
       --bg: #1c1f24;
       --bg-subtle: #23272d;
       --bg-hover: #2a2f36;
+      --bg-active: #353b44;
       --bg-selected: #233656;
       --border: #333941;
       --text: #e6e8eb;
       --text-muted: #9aa3ad;
       --accent: #4f8cff;
       --accent-hover: #6b9dff;
+      --accent-active: #3a76e8;
       --online: #7aa7ff;
       --online-bg: #1f2d47;
       --downloaded: #5cc27f;
@@ -232,9 +236,13 @@
     border: 1px solid var(--border); background: var(--bg); color: var(--text);
   }
   button:hover:not(:disabled) { background: var(--bg-hover); }
+  /* A pressed button darkens and moves down a pixel, so a click shows
+     even where the action changes nothing on the page */
+  button:active:not(:disabled) { background: var(--bg-active); transform: translateY(1px); }
   button:disabled { opacity: 0.45; cursor: default; }
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.primary:active:not(:disabled) { background: var(--accent-active); border-color: var(--accent-active); }
   button.icon-only { padding: 0 8px; }
   [hidden] { display: none !important; }
   .title .subtitle { color: var(--text-muted); font-size: 12px; white-space: nowrap;
