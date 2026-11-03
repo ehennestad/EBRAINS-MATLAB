@@ -16,10 +16,11 @@ function updateSyncSpecFixtures()
 
     projectRootDirectory = ebtools.projectdir();
 
-    % The fixtures of the registry of virtual buckets (pull request 34 of
-    % the package) are not in a release yet, so the pin is the commit of
-    % that pull request rather than a release tag.
-    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@f0c91673871a75c73759d6ed7925b2b1342f8f1b";
+    % The fixtures of the registry of virtual buckets (pull requests 34 and
+    % 35 of the package) are on its main branch but not in a release yet,
+    % so the pin is the merge commit of pull request 35 rather than a
+    % release tag.
+    sourceUri = "https://github.com/ehennestad/ebrains-bucket-sync@5e120fb4007e0e83708c70d0bd450ba77eaf6a9a";
     sourceFolder = "spec/fixtures";
     targetFolder = "tests/fixtures/sync-spec";
 
