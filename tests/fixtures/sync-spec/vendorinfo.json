@@ -1,7 +1,7 @@
 {
   "Source": "https://github.com/ehennestad/ebrains-bucket-sync",
-  "Reference": "f0c91673871a75c73759d6ed7925b2b1342f8f1b",
-  "CommitID": "f0c91673871a75c73759d6ed7925b2b1342f8f1b",
+  "Reference": "5e120fb4007e0e83708c70d0bd450ba77eaf6a9a",
+  "CommitID": "5e120fb4007e0e83708c70d0bd450ba77eaf6a9a",
   "SourceFolder": "spec/fixtures",
   "SourceNamespace": "",
   "TargetNamespace": "",
