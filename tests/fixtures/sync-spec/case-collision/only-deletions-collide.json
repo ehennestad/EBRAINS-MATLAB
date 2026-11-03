@@ -1,0 +1,9 @@
+{
+  "description": "Only a deletion can collide: an extraneous object kept without delete, and a copy, do not.",
+  "plan": [
+    { "path": "Data.txt", "action": "none", "reason": "extraneous", "bytes": 5 },
+    { "path": "data.txt", "action": "copy", "reason": "new", "bytes": 1 }
+  ],
+  "local_paths": ["data.txt"],
+  "expected": []
+}

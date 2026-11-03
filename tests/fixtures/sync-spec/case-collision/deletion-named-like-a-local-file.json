@@ -1,0 +1,14 @@
+{
+  "description": "A deletion whose path is that of a local file in another case collides with it, in a folder name too. A deletion without such a file does not.",
+  "plan": [
+    { "path": "Data.txt", "action": "delete", "reason": "extraneous", "bytes": 5 },
+    { "path": "RAW/a.dat", "action": "delete", "reason": "extraneous", "bytes": 1 },
+    { "path": "data.txt", "action": "none", "reason": "unchanged", "bytes": 1 },
+    { "path": "extra.txt", "action": "delete", "reason": "extraneous", "bytes": 1 }
+  ],
+  "local_paths": ["data.txt", "raw/a.dat"],
+  "expected": [
+    { "path": "Data.txt", "local_path": "data.txt" },
+    { "path": "RAW/a.dat", "local_path": "raw/a.dat" }
+  ]
+}

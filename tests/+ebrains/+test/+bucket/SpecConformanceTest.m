@@ -22,11 +22,14 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
         ExcludeFixture = fixtureFiles("exclude")
         ExcludeFileFixture = fixtureFiles("exclude-file")
         RefusalFixture = fixtureFiles("refusal")
+        CaseCollisionFixture = fixtureFiles("case-collision")
         ManifestFixture = fixtureFiles("manifest")
         FileStateFixture = fixtureFiles("file-state")
         PlaceholderFixture = fixtureFiles("placeholder")
         ManifestUpdateFixture = fixtureFiles("manifest-update")
         NeverSyncedFixture = fixtureFiles("never-synced")
+        RegistryFixture = fixtureFiles("registry")
+        RegistryListFixture = fixtureFiles("registry-list")
     end
 
     methods (Test)
@@ -87,6 +90,22 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
                 toPlanTable(fixture.plan), fixture.n_source_files, maxDelete);
 
             testCase.verifyEqual(identifier, expectedIdentifier, fixture.description);
+        end
+
+        function testCaseCollisionFixture(testCase, CaseCollisionFixture)
+            fixture = readFixture(CaseCollisionFixture);
+            plan = toPlanTable(fixture.plan);
+            localPaths = toStringColumn(fixture.local_paths);
+            localFiles = ebrains.bucket.sync.internal.makeFileTable(localPaths, ones(size(localPaths)));
+
+            [isCollision, collidingPaths] = ebrains.bucket.sync.internal.caseCollidingDeletions(plan, localFiles);
+
+            expected = toCell(fixture.expected);
+            collisions = table(plan.Path(isCollision), collidingPaths(isCollision), ...
+                'VariableNames', ["Path", "LocalPath"]);
+            expectedCollisions = table(fieldColumn(expected, "path"), fieldColumn(expected, "local_path"), ...
+                'VariableNames', ["Path", "LocalPath"]);
+            testCase.verifyEqual(collisions, expectedCollisions, fixture.description);
         end
 
         function testManifestFixture(testCase, ManifestFixture)
@@ -176,6 +195,78 @@ classdef SpecConformanceTest < matlab.unittest.TestCase
 
             testCase.verifyEqual(manifest, toFileTable(fixture.expected), fixture.description);
         end
+
+        function testRegistryFixture(testCase, RegistryFixture)
+            fixture = readFixture(RegistryFixture);
+            text = string(fixture.text);
+
+            if isfield(fixture, "expected_error") && fixture.expected_error
+                exception = MException.empty;
+                try
+                    ebrains.bucket.internal.registry.parseRegistry(text);
+                catch exception
+                end
+                testCase.assertNotEmpty(exception, "The text is refused. " + fixture.description);
+                testCase.verifyTrue(ismember(exception.identifier, ...
+                    ["EBRAINS:Bucket:InvalidRegistry", "EBRAINS:Bucket:UnknownRegistryFormat"]), ...
+                    sprintf('The error is a refusal of the registry: "%s". %s', ...
+                    exception.identifier, fixture.description));
+                return
+            end
+            registry = toRegistry(fixture.registry);
+
+            testCase.verifyEqual(ebrains.bucket.internal.registry.parseRegistry(text), registry, ...
+                "Reading the text gives the registry. " + fixture.description);
+            written = ebrains.bucket.internal.registry.formatRegistry(registry);
+            testCase.verifyEqual(ebrains.bucket.internal.registry.parseRegistry(written), registry, ...
+                "Reading the text that writing the registry gives, the same registry. " + fixture.description);
+        end
+
+        function testRegistryListFixture(testCase, RegistryListFixture)
+            fixture = readFixture(RegistryListFixture);
+            registry = toRegistry(fixture.registry);
+            present = toCell(fixture.present);
+            presentPaths = fieldColumn(present, "path");
+
+            rows = ebrains.bucket.internal.registry.listVirtualBuckets(registry, ...
+                toStringColumn(fixture.root_children), @(path) presentInfo(path, present, presentPaths));
+
+            expected = toCell(fixture.expected);
+            expectedRows = table(fieldColumn(expected, "path"), fieldColumn(expected, "bucket"), ...
+                fieldColumn(expected, "prefix", ""), fieldColumn(expected, "label", ""), ...
+                fieldColumn(expected, "pinned", false), parseTimes(fieldColumn(expected, "last_opened", "")), ...
+                fieldColumn(expected, "exists", false), ...
+                'VariableNames', ["Path", "Bucket", "Prefix", "Label", "Pinned", "LastOpened", "Exists"]);
+            testCase.verifyEqual(rows, expectedRows, fixture.description);
+        end
+    end
+end
+
+function registry = toRegistry(data)
+% toRegistry - Registry struct of the registry of a fixture
+%
+%   A null root is [] after jsondecode, as an empty list is, and the
+%   registry of a fixture has a nonempty root or none.
+    registry = ebrains.bucket.internal.registry.emptyRegistry();
+    if ~isempty(data.root)
+        registry.Root = string(data.root);
+    end
+    buckets = toCell(data.buckets);
+    registry.Labels = table(fieldColumn(buckets, "bucket"), fieldColumn(buckets, "label"), ...
+        'VariableNames', ["Bucket", "Label"]);
+    folders = toCell(data.folders);
+    registry.Folders = ebrains.bucket.internal.registry.makeFolderTable( ...
+        fieldColumn(folders, "path"), fieldColumn(folders, "bucket"), fieldColumn(folders, "prefix", ""), ...
+        fieldColumn(folders, "pinned", false), parseTimes(fieldColumn(folders, "last_opened", "")));
+end
+
+function info = presentInfo(path, present, presentPaths)
+% presentInfo - The bucket and prefix of a path of the present list of a fixture, or empty
+    info = struct("BucketName", {}, "Prefix", {});
+    index = find(presentPaths == path, 1);
+    if ~isempty(index)
+        info(1).BucketName = string(present{index}.bucket);
+        info(1).Prefix = string(present{index}.prefix);
     end
 end
 

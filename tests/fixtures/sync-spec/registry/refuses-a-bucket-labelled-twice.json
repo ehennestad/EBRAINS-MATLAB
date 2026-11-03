@@ -1,0 +1,5 @@
+{
+  "description": "A bucket appears at most once in buckets.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [\n    {\n      \"bucket\": \"b\",\n      \"label\": \"one\"\n    },\n    {\n      \"bucket\": \"b\",\n      \"label\": \"two\"\n    }\n  ],\n  \"folders\": []\n}\n",
+  "expected_error": true
+}

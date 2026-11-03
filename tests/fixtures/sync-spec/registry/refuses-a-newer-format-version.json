@@ -1,0 +1,5 @@
+{
+  "description": "A format_version greater than 1 is refused, since the implementation cannot tell what it may change in the file.",
+  "text": "{\n  \"format_version\": 2,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": []\n}\n",
+  "expected_error": true
+}

@@ -1,0 +1,5 @@
+{
+  "description": "A prefix is in the form of bucket.json: \"\" or a folder name with a trailing \"/\".",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": [\n    {\n      \"path\": \"/a\",\n      \"bucket\": \"b\",\n      \"prefix\": \"results\",\n      \"pinned\": false,\n      \"last_opened\": null\n    }\n  ]\n}\n",
+  "expected_error": true
+}

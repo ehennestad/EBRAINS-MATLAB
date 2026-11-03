@@ -1,0 +1,5 @@
+{
+  "description": "pinned is true or false, not a number.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [],\n  \"folders\": [\n    {\n      \"path\": \"/a\",\n      \"bucket\": \"b\",\n      \"prefix\": \"\",\n      \"pinned\": 1,\n      \"last_opened\": null\n    }\n  ]\n}\n",
+  "expected_error": true
+}

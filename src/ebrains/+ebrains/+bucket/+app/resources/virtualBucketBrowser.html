@@ -18,10 +18,12 @@
 
   Events from the host
     state     The bucket, the folder and every file with its state:
-                {bucketName, localFolder, prefix, isListed, listedAt,
-                 revealLabel, message,
+                {bucketName, localFolder, prefix, label, isListed, listedAt,
+                 revealLabel, message, hasList,
                  files: {path: [], state: [], localBytes: [], remoteBytes: [],
                          modified: []}}
+              The page shows the bucket in place of the list of virtual
+              buckets, if that was shown.
               The lists under files have one entry per file, in one order.
                 path        - path of the file
                 state       - "online_only", "downloaded", "differs" or
@@ -38,6 +40,28 @@
               modified or "" if never. revealLabel is the label of the
               action that shows a file in the file manager, such as "Show
               in Finder". message is a note on the last action, "" for none.
+              label is the user's own name for the bucket, "" for none,
+              and is shown in place of the bucket name. hasList says
+              whether the host can show the list of virtual buckets, in
+              which case the page offers to go back to it (showList). A
+              host that leaves label or hasList out sends "" and false.
+    buckets   The list of the virtual buckets of the user, which the page
+              shows in place of a bucket until one is opened:
+                {root, separator,
+                 rows: [{path, bucket, prefix, label, pinned, lastOpened,
+                         exists}]}
+              root is the folder where new virtual buckets are made, ""
+              when none is set, and separator the path separator of the
+              system ("/" or "\"), with which the page proposes the folder
+              of a new virtual bucket. The rows are in the order of the
+              list (spec/README.md#listing-virtual-buckets of
+              ebrains-bucket-sync): path is the absolute path of the
+              folder, bucket and prefix are as in its bucket.json, label is
+              that of the bucket or "", pinned whether the user pinned the
+              folder, lastOpened when it was last opened in the format of
+              modified or "" if never, and exists false for a recorded
+              folder whose bucket.json cannot be read. A host that never
+              sends buckets shows one bucket, and the page offers no list.
     busy      {busy: true|false}. The page is disabled while the host
               carries out a request.
     confirm   {id, title, message, confirmText}. Asks the user to confirm
@@ -70,6 +94,31 @@
     openOnline      Open the page of the bucket in the Collaboratory,
                     https://wiki.ebrains.eu/bin/view/Collabs/<bucket>/Bucket,
                     with the web browser of the system.
+    showList        Show the list of virtual buckets. The host answers with
+                    buckets. Sent only when the host offers the list.
+    openBucket      {path}. Open the folder, an absolute path of the list,
+                    as a virtual bucket. The host answers with state, or
+                    with an alert when it cannot.
+    newBucket       {bucket, prefix, folder}. Make the folder, an absolute
+                    path, a virtual bucket of the bucket and the prefix
+                    ("" for the whole bucket), creating it and filling it
+                    with placeholders from a listing when it does not
+                    exist, and open it: the host answers with state, or
+                    with an alert when it cannot.
+    chooseFolder    Ask the user for a folder with the file dialog of the
+                    system and open it as a virtual bucket, as openBucket.
+    chooseRoot      Ask the user for the folder where new virtual buckets
+                    are made with the file dialog of the system, record
+                    it, and answer with buckets.
+    setLabel        {bucket, label}. Give the bucket the label, or remove
+                    its label with "". The host records it and answers
+                    with buckets.
+    setPinned       {path, pinned}. Pin the folder to the top of the list,
+                    or unpin it. The host records it and answers with
+                    buckets.
+    removeFolder    {path}. Remove the folder from the list. The folder
+                    itself is left as it is. The host records it and
+                    answers with buckets.
     confirmed       {id, confirmed}. The answer to a confirm event.
     progressCancel  {id}. The user pressed Cancel in a progress dialog.
 
@@ -183,6 +232,9 @@
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   button.primary:hover:not(:disabled) { background: var(--accent-hover); }
   button.icon-only { padding: 0 8px; }
+  [hidden] { display: none !important; }
+  .title .subtitle { color: var(--text-muted); font-size: 12px; white-space: nowrap;
+                     overflow: hidden; text-overflow: ellipsis; }
 
   /* Body */
   .content { flex: 1; display: flex; min-height: 0; }
@@ -307,14 +359,94 @@
   .progress-bar.indeterminate div { width: 30%; animation: progress-slide 1.2s ease-in-out infinite; }
   @keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(334%); } }
 
-  body.busy header, body.busy .content, body.busy footer { pointer-events: none; opacity: 0.6; }
+  body.busy header, body.busy .content, body.busy footer, body.busy #listView { pointer-events: none; opacity: 0.6; }
   body.busy { cursor: progress; }
+
+  /* List of virtual buckets, shown in place of a bucket until one is opened */
+  body.list-mode > header, body.list-mode > .content, body.list-mode > footer,
+  body.list-mode > .message { display: none; }
+  #listView { display: none; flex: 1; flex-direction: column; min-height: 0; }
+  body.list-mode #listView { display: flex; }
+  .root-line {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    color: var(--text-muted); font-size: 12px; border-bottom: 1px solid var(--border);
+  }
+  .root-line .root-path { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden;
+                          text-overflow: ellipsis; direction: rtl; text-align: left; color: var(--text); }
+  .root-line a { color: var(--accent); cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .root-line a:hover { text-decoration: underline; }
+  .bucket-list { flex: 1; overflow: auto; }
+  .bucket-head, .bucket-row {
+    display: grid; grid-template-columns: 32px minmax(0, 1.3fr) minmax(0, 1fr) 120px 64px;
+    align-items: center; gap: 12px; padding: 0 16px;
+  }
+  .bucket-head { height: 32px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border);
+                 position: sticky; top: 0; background: var(--bg); z-index: 1; }
+  .bucket-row { height: 48px; border-bottom: 1px solid var(--border); cursor: default; }
+  .bucket-row:hover { background: var(--bg-hover); }
+  .bucket-row.selected { background: var(--bg-selected); }
+  .bucket-row.missing .main, .bucket-row.missing .folder { opacity: 0.5; }
+  .bucket-row .pin, .bucket-row .actions button {
+    height: 26px; width: 26px; padding: 0; justify-content: center; border: 0; background: none;
+    color: var(--text-muted); border-radius: 6px;
+  }
+  .bucket-row .pin:hover, .bucket-row .actions button:hover { background: var(--bg); color: var(--text); }
+  .bucket-row .pin.on { color: var(--differs); }
+  .bucket-row .pin.on svg { fill: currentColor; }
+  .bucket-row .main { min-width: 0; }
+  .bucket-row .label { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bucket-row .bucket { color: var(--text-muted); font-size: 12px; white-space: nowrap;
+                        overflow: hidden; text-overflow: ellipsis; }
+  .bucket-row .folder { color: var(--text-muted); font-size: 12px; white-space: nowrap;
+                        overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+  .bucket-row .opened { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
+                        white-space: nowrap; }
+  .bucket-row .actions { display: flex; gap: 2px; justify-content: flex-end; visibility: hidden; }
+  .bucket-row:hover .actions, .bucket-row.selected .actions { visibility: visible; }
+
+  /* Form dialogs: text fields above the buttons */
+  .dialog p:empty { display: none; }
+  .dialog .field { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .dialog .field label { font-size: 12px; color: var(--text-muted); }
+  .dialog .field input {
+    font: inherit; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text);
+  }
+  .dialog .field input:focus { outline: 0; border-color: var(--accent); }
+  .dialog .field .hint { font-size: 11px; color: var(--text-muted); }
+  .dialog .form-error { color: var(--error); font-size: 12px; margin-top: 8px; min-height: 16px; }
 </style>
 </head>
 <body>
+  <div id="listView">
+    <header>
+      <div class="title">
+        <h1>Virtual buckets</h1>
+        <div class="subtitle">Folders that stand for a bucket, with empty placeholders for the files that are online only</div>
+      </div>
+      <label class="search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input id="listFilter" type="text" placeholder="Filter by label, bucket or folder" spellcheck="false">
+      </label>
+      <button id="chooseFolder" title="Open a virtual bucket that is not in the list">
+        <svg class="icon"><use href="#i-folder-open"/></svg>Open folder…
+      </button>
+      <button id="newBucket" class="primary" title="Make a folder a virtual bucket of a bucket and open it">
+        <svg class="icon"><use href="#i-plus"/></svg>New virtual bucket…
+      </button>
+    </header>
+    <div class="root-line" id="rootLine"></div>
+    <div class="bucket-list" id="bucketList"></div>
+    <div class="message" id="listMessage"></div>
+  </div>
+
   <header>
+    <button id="showList" class="icon-only" title="Back to the list of virtual buckets" hidden>
+      <svg class="icon"><use href="#i-back"/></svg>
+    </button>
     <div class="title">
       <h1 id="bucketName">&nbsp;</h1>
+      <div class="subtitle" id="bucketSubtitle" hidden></div>
       <div class="path" id="localFolder">&nbsp;</div>
     </div>
     <label class="search">
@@ -369,6 +501,11 @@
 
   <svg width="0" height="0" style="position:absolute">
     <defs>
+      <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8Z"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"/><path d="m13.5 8.5 3 3"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12"/><path d="m18 6-12 12"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
       <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.7-4.3L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.7 4.3L21 15"/><path d="M21 20v-5h-5"/></symbol>
       <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 0 1-.9-9.9A6 6 0 0 1 17.6 9 4.5 4.5 0 0 1 17.5 18Z"/></symbol>
@@ -403,7 +540,11 @@ const STATE_INFO = {
   local_only: { label: "Not in bucket", icon: "i-disk", order: 3 },
 };
 
-let meta = { bucketName: "", localFolder: "", prefix: "", isListed: false, listedAt: "", message: "" };
+let meta = { bucketName: "", localFolder: "", prefix: "", label: "", isListed: false, listedAt: "", message: "", hasList: false };
+
+// The list of virtual buckets, shown until one is opened. hasList says
+// whether the host has sent it, so that a bucket view can go back to it.
+const list = { root: "", separator: "/", rows: [], hasList: false, filter: "", selectedPath: null };
 let files = [];
 let folders = new Map();
 const view = {
@@ -447,7 +588,8 @@ function nameOf(path) {
 // ---------------------------------------------------------------- Model
 
 function receiveState(state) {
-  meta = state;
+  meta = { label: "", hasList: false, ...state };
+  showBucketView();
   const f = state.files;
   files = f.path.map((path, i) => ({
     path,
@@ -591,7 +733,11 @@ function selectedFiles() {
 // ---------------------------------------------------------------- Rendering
 
 function renderAll() {
-  $("bucketName").textContent = meta.prefix ? `${meta.bucketName} / ${meta.prefix}` : meta.bucketName;
+  const bucketTitle = meta.prefix ? `${meta.bucketName} / ${meta.prefix}` : meta.bucketName;
+  $("bucketName").textContent = meta.label || bucketTitle;
+  $("bucketSubtitle").textContent = bucketTitle;
+  $("bucketSubtitle").hidden = !meta.label;
+  $("showList").hidden = !(meta.hasList || list.hasList);
   // The path is cut at the start when it is too long, which the right-to-left
   // direction of its element does. The marks keep its slashes in place.
   $("localFolder").textContent = "\u200E" + meta.localFolder + "\u200E";
@@ -740,6 +886,222 @@ function renderFooter() {
     listingNote = "Compared with the last listing of the bucket.";
   }
   $("message").textContent = meta.message ? `${meta.message} ${listingNote}` : listingNote;
+}
+
+// ---------------------------------------------------------------- List of virtual buckets
+
+function receiveBuckets(data) {
+  list.root = data.root || "";
+  list.separator = data.separator || "/";
+  list.rows = data.rows || [];
+  list.hasList = true;
+  if (!list.rows.some((row) => row.path === list.selectedPath)) list.selectedPath = null;
+  document.body.classList.add("list-mode");
+  hideMenu();
+  renderList();
+}
+
+function showBucketView() {
+  document.body.classList.remove("list-mode");
+  hideMenu();
+}
+
+function listRowOf(path) {
+  return list.rows.find((row) => row.path === path);
+}
+
+function rowMatchesListFilter(row) {
+  const text = list.filter.trim().toLowerCase();
+  if (text === "") return true;
+  return [row.label, row.bucket, row.prefix, row.path].some((value) => (value || "").toLowerCase().includes(text));
+}
+
+function filteredListRows() {
+  return list.rows.filter(rowMatchesListFilter);
+}
+
+// A folder directly below the root is listed because it is there, so
+// removing it from the list would change nothing; the others are entries
+// of the registry that the user can forget.
+function isBelowRoot(path) {
+  if (!list.root || !path.startsWith(list.root + list.separator)) return false;
+  return !path.slice(list.root.length + 1).includes(list.separator);
+}
+
+function renderList() {
+  const rootLine = $("rootLine");
+  if (list.root) {
+    rootLine.innerHTML = `<span>New virtual buckets are made in</span>` +
+      `<span class="root-path" title="${escapeHtml(list.root)}">\u200E${escapeHtml(list.root)}\u200E</span>` +
+      `<a data-action="chooseRoot">Change…</a>`;
+  } else {
+    rootLine.innerHTML = `<span>No root folder is set. With one, a new virtual bucket needs only the name of its bucket.</span>` +
+      `<span class="root-path"></span><a data-action="chooseRoot">Set root folder…</a>`;
+  }
+
+  const rows = filteredListRows();
+  const head = `<div class="bucket-head"><span></span><span>Bucket</span><span>Folder</span><span>Last opened</span><span></span></div>`;
+  const html = rows.map((row) => {
+    const classes = ["bucket-row", row.path === list.selectedPath ? "selected" : "", row.exists ? "" : "missing"].join(" ");
+    const prefixText = row.prefix ? ` / ${row.prefix}` : "";
+    const main = row.label
+      ? `<div class="label" title="${escapeHtml(row.label)}">${escapeHtml(row.label)}</div>` +
+        `<div class="bucket" title="${escapeHtml(row.bucket + prefixText)}">${escapeHtml(row.bucket + prefixText)}</div>`
+      : `<div class="label" title="${escapeHtml(row.bucket)}">${escapeHtml(row.bucket)}</div>` +
+        `<div class="bucket">${escapeHtml(prefixText.slice(3))}</div>`;
+    const removeButton = !row.exists || !isBelowRoot(row.path)
+      ? `<button data-action="remove" title="Remove from the list">${icon("i-close")}</button>` : "";
+    return `<div class="${classes}" data-path="${escapeHtml(row.path)}">` +
+      `<button class="pin ${row.pinned ? "on" : ""}" data-action="pin" title="${row.pinned ? "Unpin" : "Pin to the top of the list"}">${icon("i-star")}</button>` +
+      `<div class="main">${main}</div>` +
+      `<div class="folder" title="${escapeHtml(row.path)}">\u200E${escapeHtml(row.path)}\u200E</div>` +
+      `<div class="opened">${row.exists ? escapeHtml(row.lastOpened || "") : "Not found"}</div>` +
+      `<div class="actions"><button data-action="label" title="Set the label of the bucket">${icon("i-pencil")}</button>${removeButton}</div>` +
+      `</div>`;
+  });
+  let note = "";
+  if (list.rows.length === 0) {
+    note = `<div class="empty">No virtual buckets yet. Make one with "New virtual bucket…", or open a folder that is one.</div>`;
+  } else if (rows.length === 0) {
+    note = `<div class="empty">No virtual buckets match the filter.</div>`;
+  }
+  $("bucketList").innerHTML = head + html.join("") + note;
+  $("listMessage").textContent = "Double-click a virtual bucket to open it. The star keeps it at the top of the list.";
+}
+
+function selectListRow(path) {
+  list.selectedPath = path;
+  renderList();
+}
+
+function openListRow(path) {
+  const row = listRowOf(path);
+  if (!row) return;
+  if (!row.exists) {
+    dialogs.alert({ title: "Folder not found", icon: "warning",
+      message: `"${row.path}" is not a virtual bucket any more, or is on a disk that is not mounted. ` +
+        `Remove it from the list, or open it again once it is back.` });
+    return;
+  }
+  host.send("openBucket", { path });
+}
+
+function openLabelDialog(row) {
+  dialogs.form({
+    title: "Label of the bucket",
+    fields: [{ name: "label", label: `Label shown for ${row.bucket}`, value: row.label || "",
+               placeholder: "Such as the name of the dataset", focus: true,
+               hint: "The label applies to every folder of the bucket. Leave it empty to remove it." }],
+    confirmText: "Save",
+    onSubmit: (values) => host.send("setLabel", { bucket: row.bucket, label: values.label.trim() }),
+  });
+}
+
+// The folder of a new virtual bucket is proposed below the root from the
+// bucket and the prefix, until the user edits it
+function proposeFolder(bucket, prefix) {
+  const name = bucket.trim();
+  if (!list.root || !name) return "";
+  const prefixName = prefix.trim().replace(/^\/+|\/+$/g, "");
+  return list.root + list.separator + name + (prefixName ? "__" + prefixName.replace(/\//g, "__") : "");
+}
+
+function openNewBucketDialog() {
+  let folderEdited = false;
+  dialogs.form({
+    title: "New virtual bucket",
+    fields: [
+      { name: "bucket", label: "Bucket", placeholder: "Name of the bucket, such as d-4f3a2b1c-…", focus: true },
+      { name: "prefix", label: "Folder of the bucket (optional)", placeholder: "Such as results, for that folder of the bucket only" },
+      { name: "folder", label: "Local folder",
+        placeholder: list.root ? "" : "Absolute path of the folder",
+        hint: list.root ? "Proposed below the root folder. A folder that does not exist is created and filled with placeholders."
+                        : "Set a root folder in the list to have one proposed." },
+    ],
+    confirmText: "Create and open",
+    onChange: (values, changed, setValue) => {
+      if (changed === "folder") folderEdited = values.folder !== "";
+      else if (!folderEdited) setValue("folder", proposeFolder(values.bucket, values.prefix));
+    },
+    validate: (values) => {
+      if (!values.bucket.trim()) return "Give the name of the bucket.";
+      if (!values.folder.trim()) return "Give the local folder of the virtual bucket.";
+      return "";
+    },
+    onSubmit: (values) => host.send("newBucket", {
+      bucket: values.bucket.trim(), prefix: values.prefix.trim(), folder: values.folder.trim() }),
+  });
+}
+
+function listMenuItems(row) {
+  return [
+    { label: "Open", icon: "i-open", disabled: !row.exists, run: () => openListRow(row.path) },
+    { label: row.pinned ? "Unpin" : "Pin to the top", icon: "i-star",
+      run: () => host.send("setPinned", { path: row.path, pinned: !row.pinned }) },
+    { label: "Set label…", icon: "i-pencil", run: () => openLabelDialog(row) },
+    "-",
+    { label: "Remove from the list", icon: "i-close", disabled: row.exists && isBelowRoot(row.path),
+      run: () => host.send("removeFolder", { path: row.path }) },
+  ];
+}
+
+function wireListEvents() {
+  $("bucketList").addEventListener("click", (event) => {
+    const rowElement = event.target.closest(".bucket-row");
+    if (!rowElement) return;
+    const row = listRowOf(rowElement.dataset.path);
+    const button = event.target.closest("button[data-action]");
+    if (!button) { selectListRow(row.path); return; }
+    switch (button.dataset.action) {
+      case "pin": host.send("setPinned", { path: row.path, pinned: !row.pinned }); break;
+      case "label": openLabelDialog(row); break;
+      case "remove": host.send("removeFolder", { path: row.path }); break;
+      default: break;
+    }
+  });
+  $("bucketList").addEventListener("dblclick", (event) => {
+    const rowElement = event.target.closest(".bucket-row");
+    if (rowElement && !event.target.closest("button")) openListRow(rowElement.dataset.path);
+  });
+  $("bucketList").addEventListener("contextmenu", (event) => {
+    const rowElement = event.target.closest(".bucket-row");
+    if (!rowElement) return;
+    event.preventDefault();
+    selectListRow(rowElement.dataset.path);
+    showMenu(event.clientX, event.clientY, listMenuItems(listRowOf(rowElement.dataset.path)));
+  });
+  $("rootLine").addEventListener("click", (event) => {
+    if (event.target.closest("a[data-action=chooseRoot]")) host.send("chooseRoot");
+  });
+  $("listFilter").addEventListener("input", (event) => {
+    list.filter = event.target.value;
+    renderList();
+  });
+  $("chooseFolder").addEventListener("click", () => host.send("chooseFolder"));
+  $("newBucket").addEventListener("click", openNewBucketDialog);
+  $("showList").addEventListener("click", () => host.send("showList"));
+}
+
+// Keys in the list: Enter opens the selected row, the arrows move the
+// selection, and Escape clears the filter or the selection
+function onListKey(event, isTyping) {
+  const rows = filteredListRows();
+  const index = rows.findIndex((row) => row.path === list.selectedPath);
+  if (event.key === "Escape") {
+    hideMenu();
+    if (isTyping && list.filter) { list.filter = ""; $("listFilter").value = ""; renderList(); }
+    else if (!isTyping) selectListRow(null);
+  } else if (event.key === "Enter" && list.selectedPath && !isTyping) {
+    openListRow(list.selectedPath);
+  } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && rows.length > 0) {
+    event.preventDefault();
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    const next = Math.min(Math.max(index + step, 0), rows.length - 1);
+    selectListRow(rows[next].path);
+  } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    $("listFilter").focus();
+  }
 }
 
 // ---------------------------------------------------------------- Host bridge
@@ -1030,6 +1392,10 @@ function wireEvents() {
     // The host takes no requests while it is busy, as with pointer events
     if (document.body.classList.contains("busy")) return;
     const isTyping = event.target.tagName === "INPUT" && event.target.type === "text";
+    if (document.body.classList.contains("list-mode")) {
+      onListKey(event, isTyping);
+      return;
+    }
     if (event.key === "Escape") {
       hideMenu();
       if (!isTyping) { view.selected.clear(); renderTable(); renderFooter(); }
@@ -1133,6 +1499,40 @@ const dialogs = (() => {
     show(dialog);
   }
 
+  // A form asks for text in one or more fields. onChange(values, changed,
+  // setValue) runs as the user types, validate(values) returns the text of
+  // a problem or "", and onSubmit(values) runs once the form is confirmed.
+  function form({ title, fields, confirmText, onChange, validate, onSubmit }) {
+    const dialog = {};
+    const fieldsHtml = fields.map((field) =>
+      `<div class="field"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>` +
+      `<input id="field-${escapeHtml(field.name)}" type="text" data-field="${escapeHtml(field.name)}" ` +
+      `value="${escapeHtml(field.value || "")}" placeholder="${escapeHtml(field.placeholder || "")}" ` +
+      `spellcheck="false" autocomplete="off" ${field.focus ? "data-focus" : ""}>` +
+      (field.hint ? `<div class="hint">${escapeHtml(field.hint)}</div>` : "") + `</div>`).join("");
+    dialog.element = build("form", { title, message: "", extraHtml: fieldsHtml + `<div class="form-error"></div>`,
+      buttonsHtml: `<button data-action="cancel">Cancel</button>` +
+        `<button class="primary" data-action="confirm">${escapeHtml(confirmText)}</button>` });
+    const input = (name) => dialog.element.querySelector(`[data-field="${name}"]`);
+    const values = () => Object.fromEntries(fields.map((field) => [field.name, input(field.name).value]));
+    const setValue = (name, value) => { input(name).value = value; };
+    dialog.element.addEventListener("input", (event) => {
+      const name = event.target.dataset.field;
+      if (name && onChange) onChange(values(), name, setValue);
+    });
+    const submit = () => {
+      const problem = validate ? validate(values()) : "";
+      dialog.element.querySelector(".form-error").textContent = problem;
+      if (problem) return;
+      close(dialog);
+      onSubmit(values());
+    };
+    onButton(dialog.element, (action) => (action === "confirm" ? submit() : close(dialog)));
+    dialog.onEscape = () => close(dialog);
+    dialog.onEnter = submit;
+    show(dialog);
+  }
+
   function progress(data) {
     let dialog = progressById.get(data.id);
     if (!dialog) {
@@ -1177,13 +1577,17 @@ const dialogs = (() => {
   }
 
   // Keys while a dialog is open go to it: Escape closes it, Tab stays among
-  // its buttons, and the focused button takes Enter itself.
+  // its fields and buttons, Enter in a field submits a form, and the
+  // focused button takes Enter itself.
   function onKey(event) {
     const dialog = top();
     if (event.key === "Escape") {
       if (dialog.onEscape) dialog.onEscape();
+    } else if (event.key === "Enter" && dialog.onEnter && event.target.tagName === "INPUT") {
+      event.preventDefault();
+      dialog.onEnter();
     } else if (event.key === "Tab") {
-      const buttons = [...dialog.element.querySelectorAll("button")]
+      const buttons = [...dialog.element.querySelectorAll("input, button")]
         .filter((button) => !button.disabled && button.style.display !== "none");
       if (buttons.length === 0) return;
       event.preventDefault();
@@ -1193,7 +1597,7 @@ const dialogs = (() => {
     }
   }
 
-  return { confirm, alert, progress, closeProgress, onKey, isOpen: () => stack.length > 0 };
+  return { confirm, alert, form, progress, closeProgress, onKey, isOpen: () => stack.length > 0 };
 })();
 
 // ---------------------------------------------------------------- Hosts
@@ -1222,12 +1626,14 @@ function attachPywebview() {
 }
 
 host.on("state", receiveState);
+host.on("buckets", receiveBuckets);
 host.on("busy", (data) => setBusy(data.busy));
 host.on("confirm", dialogs.confirm);
 host.on("alert", dialogs.alert);
 host.on("progress", dialogs.progress);
 host.on("progressClose", (data) => dialogs.closeProgress(data.id));
 wireEvents();
+wireListEvents();
 if (window.pywebview?.api?.request) attachPywebview();
 else window.addEventListener("pywebviewready", attachPywebview, { once: true });
 </script>

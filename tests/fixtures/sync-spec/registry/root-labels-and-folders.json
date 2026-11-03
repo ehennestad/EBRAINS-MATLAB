@@ -1,0 +1,29 @@
+{
+  "description": "A root, a labelled bucket, a pinned folder opened once and a folder recorded without being opened. Folders are written sorted by path, and the label of a bucket is not repeated in its folders.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": \"/home/ada/EBRAINS buckets\",\n  \"buckets\": [\n    {\n      \"bucket\": \"d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b\",\n      \"label\": \"Mouse V1 recordings\"\n    }\n  ],\n  \"folders\": [\n    {\n      \"path\": \"/data/shared/results\",\n      \"bucket\": \"my-collab\",\n      \"prefix\": \"results/\",\n      \"pinned\": false,\n      \"last_opened\": null\n    },\n    {\n      \"path\": \"/home/ada/EBRAINS buckets/d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b\",\n      \"bucket\": \"d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b\",\n      \"prefix\": \"\",\n      \"pinned\": true,\n      \"last_opened\": \"2024-01-02T03:04:05Z\"\n    }\n  ]\n}\n",
+  "registry": {
+    "root": "/home/ada/EBRAINS buckets",
+    "buckets": [
+      {
+        "bucket": "d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+        "label": "Mouse V1 recordings"
+      }
+    ],
+    "folders": [
+      {
+        "path": "/data/shared/results",
+        "bucket": "my-collab",
+        "prefix": "results/",
+        "pinned": false,
+        "last_opened": null
+      },
+      {
+        "path": "/home/ada/EBRAINS buckets/d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+        "bucket": "d-4f3a2b1c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+        "prefix": "",
+        "pinned": true,
+        "last_opened": "2024-01-02T03:04:05Z"
+      }
+    ]
+  }
+}

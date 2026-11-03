@@ -1,0 +1,72 @@
+{
+  "description": "Without a root, the list holds the recorded folders alone. Rows without a time are ordered by path in code point order, so an uppercase name comes before a lowercase one.",
+  "registry": {
+    "root": null,
+    "buckets": [],
+    "folders": [
+      {
+        "path": "/b",
+        "bucket": "b",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": null
+      },
+      {
+        "path": "/B",
+        "bucket": "b",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": null
+      },
+      {
+        "path": "/a",
+        "bucket": "a",
+        "prefix": "",
+        "pinned": false,
+        "last_opened": "2024-01-02T03:04:05Z"
+      }
+    ]
+  },
+  "root_children": [],
+  "present": [
+    {
+      "path": "/a",
+      "bucket": "a",
+      "prefix": ""
+    },
+    {
+      "path": "/b",
+      "bucket": "b",
+      "prefix": ""
+    }
+  ],
+  "expected": [
+    {
+      "path": "/a",
+      "bucket": "a",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": "2024-01-02T03:04:05Z",
+      "exists": true
+    },
+    {
+      "path": "/B",
+      "bucket": "b",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": null,
+      "exists": false
+    },
+    {
+      "path": "/b",
+      "bucket": "b",
+      "prefix": "",
+      "label": null,
+      "pinned": false,
+      "last_opened": null,
+      "exists": true
+    }
+  ]
+}

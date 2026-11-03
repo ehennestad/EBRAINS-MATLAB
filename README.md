@@ -74,6 +74,15 @@ ebrains.bucket.sync.toBucket("results", "my-bucket", Prefix="results", Delete=tr
 actions = ebrains.bucket.sync.fromBucket("my-bucket", "data", Exclude=["*.tmp", ".git"]);
 ```
 
+A virtual bucket is a local folder that stands for a bucket, with an empty placeholder for each file that is online only. The browser opens on the list of your virtual buckets, where a bucket can be given a label in place of its name and pinned to the top, and makes a new one from a bucket name alone once a root folder is set:
+```matlab
+ebrains.bucket.setVirtualBucketRoot("~/EBRAINS buckets");
+ebrains.bucket.app.VirtualBucketBrowser();                 % the list of virtual buckets
+ebrains.bucket.app.VirtualBucketBrowser("temp_data");      % one virtual bucket
+rows = ebrains.bucket.listVirtualBuckets();                % the list as a table
+```
+The list is kept in `virtual-buckets.json` in the configuration folder of the user, shared with the [ebrains-bucket-sync](https://github.com/ehennestad/ebrains-bucket-sync) package: `~/Library/Application Support/ebrains-bucket-sync` on macOS, `%LOCALAPPDATA%\ebrains-bucket-sync` on Windows and `~/.config/ebrains-bucket-sync` elsewhere, or the folder `EBRAINS_BUCKET_SYNC_CONFIG_DIR` names.
+
 ### 3) Download Knowledge Graph metadata
 ```matlab
 kgClient = ebrains.kg.api.InstancesClient();

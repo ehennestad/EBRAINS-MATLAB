@@ -1,0 +1,5 @@
+{
+  "description": "A label is text of at least one character; an entry without a label is removed instead.",
+  "text": "{\n  \"format_version\": 1,\n  \"root\": null,\n  \"buckets\": [\n    {\n      \"bucket\": \"b\",\n      \"label\": \"\"\n    }\n  ],\n  \"folders\": []\n}\n",
+  "expected_error": true
+}
