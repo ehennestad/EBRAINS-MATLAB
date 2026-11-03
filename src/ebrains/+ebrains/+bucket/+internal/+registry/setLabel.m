@@ -4,6 +4,8 @@ function registry = setLabel(registry, bucketName, label)
 %   registry = ebrains.bucket.internal.registry.setLabel(registry,
 %   bucketName, label) records label as the user's own name for the
 %   bucket, kept as given. A label of "" removes the entry of the bucket.
+%   A bucket of "" is an error (EBRAINS:Bucket:InvalidRegistryEntry),
+%   since the file could not be read back.
 %
 %   See also ebrains.bucket.internal.registry.recordOpen
 
@@ -13,6 +15,7 @@ function registry = setLabel(registry, bucketName, label)
         label (1,1) string
     end
 
+    ebrains.bucket.internal.registry.assertEntryFields(bucketName, "")
     labels = registry.Labels;
     isBucket = labels.Bucket == bucketName;
     if label == ""

@@ -223,6 +223,13 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
                 "/a", "a", "", false, NaT(TimeZone="UTC")));
         end
 
+        function testALabelOfABucketWithoutANameIsRefused(testCase)
+            registry = ebrains.bucket.internal.registry.emptyRegistry();
+
+            testCase.verifyError(@() ebrains.bucket.internal.registry.setLabel(registry, "", "x"), ...
+                'EBRAINS:Bucket:InvalidRegistryEntry');
+        end
+
         function testEmptyLabelRemovesTheLabel(testCase)
             registry = ebrains.bucket.internal.registry.emptyRegistry();
             registry = ebrains.bucket.internal.registry.setLabel(registry, "d-1", "Mouse V1");
