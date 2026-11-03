@@ -2,8 +2,10 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
     % BucketFunctionsTest - Unit tests for the functions of the ebrains.bucket namespace
     %
     % Every function receives a MockBucketsClient through its Client
-    % option, so no request reaches the Data Proxy. Page fixtures are
-    % column struct arrays, the shape jsondecode gives a JSON array.
+    % option, so no request reaches the Data Proxy. The mock answers the
+    % requests in the order the responses were queued, so response k is
+    % the reply to request k. Page fixtures are column struct arrays, the
+    % shape jsondecode gives a JSON array.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -35,6 +37,14 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
         NestedObjectName = struct( ...
             "NestedName", "a/b.txt", ...
             "LeadingSlash", "/a/b.txt")
+
+        % The functions that ask the proxy to rename or copy an object.
+        % Both list the source, then the target unless Overwrite is true,
+        % and send the request only when the source is there and the
+        % target is free.
+        moveFunction = struct( ...
+            "renameObject", @ebrains.bucket.renameObject, ...
+            "copyObject", @ebrains.bucket.copyObject)
     end
 
     methods (TestMethodSetup)
@@ -190,22 +200,178 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
                 'EBRAINS:Bucket:getBucketStat:NotFound');
         end
 
-        %% renameObject
+        %% renameObject and copyObject
+        % Both functions list the source name and the target name before
+        % the request, so the proxy is never asked to rename or copy what
+        % it would only report on by mail. The listing of a file name also
+        % returns longer names, which must not count as the object.
         function testRenameObjectIgnoresLeadingSlashes(testCase)
-            testCase.Client.addResponse('OK', struct());
+            testCase.Client.addResponse('OK', makePage("old.txt"));      % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                 % the rename is accepted
 
             ebrains.bucket.renameObject("my-bucket", "/old.txt", "/sub/new.txt", Client=testCase.Client);
 
-            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/old.txt');
-            testCase.verifyEqual(testCase.Client.getRequestPayload(1), ...
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket?prefix=old.txt');
+            testCase.Client.verifyRequestURL(2, '/buckets/my-bucket?prefix=sub/new.txt');
+            testCase.Client.verifyRequestMethod(3, 'PATCH');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old.txt?');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(3), ...
                 '{"rename":{"target_name":"sub/new.txt"}}');
         end
 
         function testRenameObjectErrorPropagates(testCase)
-            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid'));
+            testCase.Client.addResponse('OK', makePage("old.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid'));   % the rename is refused
             testCase.verifyError(...
                 @() ebrains.bucket.renameObject("my-bucket", "old.txt", "new.txt", Client=testCase.Client), ...
                 'EBRAINS:Bucket:renameObject:UnprocessableEntity');
+        end
+
+        function testCopyObjectIgnoresLeadingSlashes(testCase)
+            testCase.Client.addResponse('OK', makePage("old.txt"));      % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                 % the copy is accepted
+
+            ebrains.bucket.copyObject("my-bucket", "/old.txt", "/sub/new.txt", Client=testCase.Client);
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket?prefix=old.txt');
+            testCase.Client.verifyRequestURL(2, '/buckets/my-bucket?prefix=sub/new.txt');
+            testCase.Client.verifyRequestMethod(3, 'PUT');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old.txt/copy?');
+            testCase.Client.verifyRequestURL(3, 'name=sub/new.txt');
+        end
+
+        function testCopyObjectErrorPropagates(testCase)
+            testCase.Client.addResponse('OK', makePage("old.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid'));   % the copy is refused
+            testCase.verifyError(...
+                @() ebrains.bucket.copyObject("my-bucket", "old.txt", "new.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:copyObject:UnprocessableEntity');
+        end
+
+        function testMoveRefusesAMissingSourceWithoutARequest(testCase, moveFunction)
+            testCase.Client.addResponse('OK', makePage("old.txt.bak"));   % source listing: the source is missing
+
+            testCase.verifyError(@() moveFunction("my-bucket", "old.txt", "new.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:ObjectNotFound');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+
+        function testMoveRefusesATakenTargetWithoutARequest(testCase, moveFunction)
+            testCase.Client.addResponse('OK', makePage("old.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage("new.txt"));   % target listing: the target is taken
+
+            testCase.verifyError(@() moveFunction("my-bucket", "old.txt", "new.txt", Client=testCase.Client), ...
+                'EBRAINS:Bucket:TargetExists');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+        end
+
+        function testMoveTakesALongerNameForAFreeTarget(testCase, moveFunction)
+            testCase.Client.addResponse('OK', makePage("old.txt"));       % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage("new.txt.bak"));   % target listing: a longer name only
+            testCase.Client.addResponse('OK', struct());                  % the request is accepted
+
+            moveFunction("my-bucket", "old.txt", "new.txt", Client=testCase.Client);
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
+        end
+
+        function testMoveWithOverwriteDoesNotListTheTarget(testCase, moveFunction)
+            testCase.Client.addResponse('OK', makePage("old.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', struct());              % the request is accepted
+
+            moveFunction("my-bucket", "old.txt", "new.txt", Overwrite=true, Client=testCase.Client);
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 2);
+            testCase.Client.verifyRequestURL(2, '/buckets/my-bucket/old.txt');
+        end
+
+        function testMoveOfAFolderCountsAnyObjectBelowIt(testCase, moveFunction)
+            % A folder is present when any object is named below it; one
+            % listed object is enough to tell, so the listing asks for one.
+            testCase.Client.addResponse('OK', makePage("old/a.txt"));   % source listing: an object below the folder
+            testCase.Client.addResponse('OK', makePage("new/b.txt"));   % target listing: an object below the folder
+
+            testCase.verifyError(@() moveFunction("my-bucket", "old/", "new/", Client=testCase.Client), ...
+                'EBRAINS:Bucket:TargetExists');
+            testCase.Client.verifyRequestURL(1, 'prefix=old/');
+            testCase.Client.verifyRequestURL(1, 'limit=1');
+            testCase.Client.verifyRequestURL(2, 'prefix=new/');
+        end
+
+        function testMoveRefusesTheSameNameWithoutARequest(testCase, moveFunction)
+            % Overwrite would skip the target check, so the names are
+            % compared before anything is listed.
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "a.txt", "/a.txt", Overwrite=true, Client=testCase.Client), ...
+                'EBRAINS:Bucket:SameName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveRefusesAFolderPairedWithAnObjectName(testCase, moveFunction)
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "d/", "d2", Client=testCase.Client), ...
+                'EBRAINS:Bucket:FolderNameMismatch');
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "d", "d2/", Client=testCase.Client), ...
+                'EBRAINS:Bucket:FolderNameMismatch');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveRefusesATargetWithinTheSourceFolder(testCase, moveFunction)
+            testCase.verifyError(...
+                @() moveFunction("my-bucket", "a/", "a/b/", Overwrite=true, Client=testCase.Client), ...
+                'EBRAINS:Bucket:TargetWithinSource');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testMoveAllowsATargetAboveTheSourceFolder(testCase, moveFunction)
+            % Moving a folder up one level flattens it, which is allowed.
+            testCase.Client.addResponse('OK', makePage("a/b/x.txt"));    % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                 % the request is accepted
+
+            moveFunction("my-bucket", "a/b/", "c/", Client=testCase.Client);
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 3);
+        end
+
+        function testRenameObjectSendsAFolderRequest(testCase)
+            testCase.Client.addResponse('OK', makePage("old folder/a.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));         % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                       % the rename is accepted
+
+            ebrains.bucket.renameObject("my-bucket", "old folder/", "new folder/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestMethod(3, 'PATCH');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old%20folder/?');
+            testCase.verifyEqual(testCase.Client.getRequestPayload(3), ...
+                '{"rename":{"target_name":"new folder/"}}');
+        end
+
+        function testCopyObjectSendsAFolderRequest(testCase)
+            testCase.Client.addResponse('OK', makePage("old folder/a.txt"));   % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));         % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                       % the copy is accepted
+
+            ebrains.bucket.copyObject("my-bucket", "old folder/", "new folder/", Client=testCase.Client);
+
+            testCase.Client.verifyRequestMethod(3, 'PUT');
+            testCase.Client.verifyRequestURL(3, '/buckets/my-bucket/old%20folder%2F/copy?');
+            testCase.Client.verifyRequestURL(3, 'name=new+folder/');
+        end
+
+        function testMovePassesTheMailSwitch(testCase, moveFunction)
+            testCase.Client.addResponse('OK', makePage("old.txt"));      % source listing: the source exists
+            testCase.Client.addResponse('OK', makePage(string.empty));   % target listing: the target is free
+            testCase.Client.addResponse('OK', struct());                 % the request is accepted
+
+            moveFunction("my-bucket", "old.txt", "new.txt", SendSuccessEmail=true, Client=testCase.Client);
+
+            testCase.Client.verifyRequestURL(3, 'send_success_email=1');
         end
 
         %% deleteObject

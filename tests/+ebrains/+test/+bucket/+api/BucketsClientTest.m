@@ -26,6 +26,7 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             "getDownloadUrl", @(client, bucket, name) client.getDownloadUrl(bucket, name), ...
             "getUploadUrl", @(client, bucket, name) client.getUploadUrl(bucket, name), ...
             "renameObject", @(client, bucket, name) client.renameObject(bucket, name, "new.txt"), ...
+            "copyObject", @(client, bucket, name) client.copyObject(bucket, name, "new.txt"), ...
             "deleteObject", @(client, bucket, name) client.deleteObject(bucket, name))
         % Each endpoint method called with a name that has a ".." segment
         endpointCallWithDotSegment = struct( ...
@@ -34,6 +35,7 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             "getDownloadUrl", @(client) client.getDownloadUrl("my-bucket", "a/../b.txt"), ...
             "getUploadUrl", @(client) client.getUploadUrl("my-bucket", "a/../b.txt"), ...
             "renameObject", @(client) client.renameObject("my-bucket", "a/../b.txt", "new.txt"), ...
+            "copyObject", @(client) client.copyObject("my-bucket", "a/../b.txt", "new.txt"), ...
             "deleteObject", @(client) client.deleteObject("my-bucket", "a/../b.txt"))
     end
 
@@ -276,15 +278,122 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.renameObject("my-bucket", "old.txt", "new.txt");
 
             testCase.Client.verifyRequestMethod(1, 'PATCH');
-            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/old.txt');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/old.txt?');
             testCase.verifyEqual(testCase.Client.getRequestPayload(1), ...
                 '{"rename":{"target_name":"new.txt"}}');
+        end
+
+        function testRenameObjectTurnsOffTheSuccessMailUnlessAsked(testCase)
+            % The proxy mails the account for every finished rename unless
+            % the request says otherwise.
+            testCase.Client.addResponse('OK', struct());
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.renameObject("my-bucket", "old.txt", "new.txt");
+            testCase.Client.renameObject("my-bucket", "old.txt", "new.txt", SendSuccessEmail=true);
+
+            testCase.Client.verifyRequestURL(1, 'send_success_email=0');
+            testCase.Client.verifyRequestURL(2, 'send_success_email=1');
+        end
+
+        function testRenameObjectAcceptsQueuedRename(testCase)
+            % 201 means the proxy has queued the rename; it is accepted as
+            % 200 is.
+            testCase.Client.addResponse('Created', struct('status_code', 201, ...
+                'detail', 'Your rename is processing.'));
+
+            testCase.Client.renameObject("my-bucket", "old.txt", "new.txt");
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
         end
 
         function testRenameObjectValidationError(testCase)
             testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid name'));
             testCase.verifyError(@() testCase.Client.renameObject("my-bucket", "old.txt", "new.txt"), ...
                 'EBRAINS:Bucket:renameObject:UnprocessableEntity');
+        end
+
+        %% copyObject
+        function testCopyObjectSendsPutWithTargetInQueryAndNoBody(testCase)
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.copyObject("my-bucket", "sub dir/old.txt", "new dir/new.txt");
+
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-bucket/sub%20dir%2Fold.txt/copy?');
+            testCase.Client.verifyRequestURL(1, 'name=new+dir/new.txt');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testCopyObjectSendsFolderNameAsOneSegment(testCase)
+            % The trailing "/" of a folder name must reach the proxy as part
+            % of the name; as a path separator before "copy" it would be
+            % collapsed away and the request would copy a single object.
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.copyObject("my-bucket", "old folder/", "new folder/");
+
+            testCase.Client.verifyRequestURL(1, '/buckets/my-bucket/old%20folder%2F/copy?');
+            testCase.Client.verifyRequestURL(1, 'name=new+folder/');
+        end
+
+        function testCopyObjectTurnsOffTheSuccessMailUnlessAsked(testCase)
+            % The proxy mails the account for every finished copy unless
+            % the request says otherwise.
+            testCase.Client.addResponse('OK', struct());
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
+            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt", SendSuccessEmail=true);
+
+            testCase.Client.verifyRequestURL(1, 'send_success_email=0');
+            testCase.Client.verifyRequestURL(2, 'send_success_email=1');
+        end
+
+        function testCopyObjectAcceptsQueuedCopy(testCase)
+            % 201 means the proxy has queued the copy; it is accepted as
+            % 200 is.
+            testCase.Client.addResponse('Created', struct('status_code', 201, ...
+                'detail', 'Your copy is processing.'));
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
+
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 1);
+        end
+
+        function testCopyObjectEncodesTheTargetInTheQuery(testCase)
+            % A "+" or "&" in a target name must not reach the proxy as a
+            % space or as a parameter separator.
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "a+b&c d.txt");
+
+            testCase.Client.verifyRequestURL(1, 'name=a%2Bb%26c+d.txt');
+        end
+
+        function testCopyObjectRestoresTheBodyWarning(testCase)
+            % The body-less PUT turns the warning off for the request only,
+            % also when the request ends in an error.
+            warningId = 'MATLAB:http:BodyExpectedFor';
+            originalState = warning('query', warningId);
+            testCase.addTeardown(@() warning(originalState));
+            warning('on', warningId);
+            testCase.Client.addResponse('OK', struct());
+            testCase.Client.addResponse('NotFound', struct('detail', 'missing'));
+
+            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
+            testCase.verifyEqual(warning('query', warningId).state, 'on');
+
+            testCase.verifyError(@() testCase.Client.copyObject("my-bucket", "old.txt", "new.txt"), ...
+                'EBRAINS:Bucket:copyObject:NotFound');
+            testCase.verifyEqual(warning('query', warningId).state, 'on');
+        end
+
+        function testCopyObjectValidationError(testCase)
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid name'));
+            testCase.verifyError(@() testCase.Client.copyObject("my-bucket", "old.txt", "new.txt"), ...
+                'EBRAINS:Bucket:copyObject:UnprocessableEntity');
         end
 
         %% deleteObject
@@ -334,6 +443,13 @@ classdef BucketsClientTest < matlab.unittest.TestCase
         function testRenameTargetWithDotSegmentIsRefused(testCase, dotSegmentName)
             testCase.verifyError( ...
                 @() testCase.Client.renameObject("my-bucket", "old.txt", dotSegmentName), ...
+                'EBRAINS:Bucket:DotSegmentInName');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testCopyTargetWithDotSegmentIsRefused(testCase, dotSegmentName)
+            testCase.verifyError( ...
+                @() testCase.Client.copyObject("my-bucket", "old.txt", dotSegmentName), ...
                 'EBRAINS:Bucket:DotSegmentInName');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
