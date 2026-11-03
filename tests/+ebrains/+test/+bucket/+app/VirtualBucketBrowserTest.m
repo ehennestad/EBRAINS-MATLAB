@@ -4,11 +4,14 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % The browser runs with a MockBucketsClient and a stand-in for the
     % downloader, so no request reaches the Data Proxy. The requests of
     % the page are sent to the callback of its uihtml component, as the
-    % page sends them. A confirmation dialog waits for a user, so the
-    % browser is given a Confirmer that records the question and refuses,
-    % and a FolderChooser that answers with ChosenFolder in place of a
-    % folder dialog. The registry of virtual buckets is kept in the
-    % folder of each test.
+    % page sends them. The browser is opened through openApp, which
+    % replaces every dialog: a Confirmer that records the question and
+    % refuses, a FolderChooser that answers with ChosenFolder, an Alerter
+    % that records the alert and a FakeProgressDialog. A confirmation or
+    % folder dialog would wait for a user, and on some releases uialert
+    % and uiprogressdlg never return on a virtual display. The window is
+    % hidden, so no test shows one. The registry of virtual buckets is
+    % kept in the folder of each test.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -20,6 +23,9 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % Confirmations - Titles and messages of the confirmations the browser asked for, one row each
         Confirmations (:,2) string = strings(0, 2)
+
+        % Alerts - Titles and messages of the alerts the browser showed, one row each
+        Alerts (:,2) string = strings(0, 2)
 
         % ChosenFolder - What the folder chooser answers; empty for a cancelled dialog
         ChosenFolder string = string.empty
@@ -133,6 +139,15 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(4, '/buckets/my-bucket/sub/b.txt');
         end
 
+        function testDownloadOfDownloadedFilesSaysSo(testCase)
+            target = testCase.openWithDownloadedFile();
+
+            sendPageEvent("download", "a.txt")
+
+            testCase.verifyEqual(testCase.Alerts, ["Nothing to download", "The selected files are downloaded already."]);
+            testCase.verifyEqual(fileread(fullfile(target, "a.txt")), 'abc');
+        end
+
         function testDownloadGoesOnPastAFileThatFails(testCase)
             % Before a listing, an empty file that is no object counts as
             % a placeholder, and its failed download must not stop the rest
@@ -167,8 +182,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             % object by its full name.
             target = fullfile(testCase.Folder, "virtual");
             addListing(testCase.Client, ["set/a.txt", "set/sub/b.txt"], [3, 3]);
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
-                Prefix="set", Client=testCase.Client, Downloader=@writeAbc);
+            testCase.openApp(target, Prefix="set");
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
 
             sendPageEvent("download", "sub/b.txt")
@@ -188,8 +202,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             delete(testCase.App)
             nRequests = testCase.Client.getRequestCount();
 
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, ...
-                Client=testCase.Client, Downloader=@writeAbc);
+            testCase.openApp(target, BucketName=string.empty);
 
             testCase.verifyEqual(testCase.App.BucketName, "my-bucket");
             testCase.verifyTrue(testCase.App.IsListed);
@@ -234,12 +247,10 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         function testBucketNameWithoutPrefixOpensPrefixedBucket(testCase)
             target = fullfile(testCase.Folder, "virtual");
             addListing(testCase.Client, "set/a.txt", 3);
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
-                Prefix="set", Client=testCase.Client, Downloader=@writeAbc);
+            testCase.openApp(target, Prefix="set");
             delete(testCase.App)
 
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@writeAbc);
+            testCase.openApp(target);
 
             testCase.verifyEqual(testCase.App.Prefix, "set/");
             testCase.verifyError(@() ebrains.bucket.app.VirtualBucketBrowser(target, ...
@@ -256,8 +267,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             oldTime = datetime(2000, 1, 1, TimeZone="UTC");
             java.io.File(char(bucketFile)).setLastModified(round(posixtime(oldTime) * 1000));
 
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, ...
-                Client=testCase.Client, Downloader=@writeAbc);
+            testCase.openApp(testCase.Folder, BucketName=string.empty);
 
             modifiedTime = datetime(java.io.File(char(bucketFile)).lastModified() / 1000, ...
                 ConvertFrom="posixtime", TimeZone="UTC");
@@ -443,9 +453,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             target = fullfile(testCase.Folder, "virtual");
             localFile = fullfile(target, "a.txt");
             addListing(testCase.Client, "a.txt", 3);
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(target, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@(file, varargin) editThenWrite(localFile, file), ...
-                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+            testCase.openApp(target, Downloader=@(file, varargin) editThenWrite(localFile, file));
             testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
 
             sendPageEvent("download", "a.txt")
@@ -481,8 +489,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
     methods (Test) % The page of the bucket
         function testOpenOnlineShowsThePageOfTheBucket(testCase)
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(testCase.Folder, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@writeAbc, Opener=@(url) recordURL(testCase, url));
+            testCase.openApp(testCase.Folder, Opener=@(url) recordURL(testCase, url));
 
             sendPageEvent("openOnline")
 
@@ -516,7 +523,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
 
         function testProgressShowsCountAndTimeLeft(testCase)
-            progress = ebrains.bucket.app.internal.ListingProgress(makeDialogStub(), 20481, true);
+            progress = ebrains.bucket.app.internal.ListingProgress(ebrains.mocks.FakeProgressDialog([]), 20481, true);
 
             progress.update(4000)
 
@@ -526,7 +533,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
 
         function testProgressOfFolderShowsNoFraction(testCase)
-            progress = ebrains.bucket.app.internal.ListingProgress(makeDialogStub(), 20481, false);
+            progress = ebrains.bucket.app.internal.ListingProgress(ebrains.mocks.FakeProgressDialog([]), 20481, false);
 
             progress.update(1000)
 
@@ -535,7 +542,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
         end
 
         function testCancelStopsTheListing(testCase)
-            dialog = makeDialogStub();
+            dialog = ebrains.mocks.FakeProgressDialog([]);
             dialog.CancelRequested = true;
             progress = ebrains.bucket.app.internal.ListingProgress(dialog, 10, true);
 
@@ -801,18 +808,37 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     end
 
     methods (Access = private)
-        function openApp(testCase, folder)
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, BucketName="my-bucket", ...
-                Client=testCase.Client, Downloader=@writeAbc, ...
-                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title));
+        function openApp(testCase, folder, options)
+        % openApp - Open the browser on a folder, with the mock client and every dialog replaced
+        %
+        %   The bucket is "my-bucket" unless BucketName says otherwise;
+        %   an empty BucketName leaves it to the folder. The options are
+        %   passed as one cell, since Name=Value syntax cannot be mixed
+        %   with comma-separated name-value pairs in a call.
+            arguments
+                testCase
+                folder string {mustBeScalarOrEmpty} = string.empty
+                options.BucketName string {mustBeScalarOrEmpty} = "my-bucket"
+                options.Prefix (1,1) string
+                options.Downloader (1,1) function_handle = @writeAbc
+                options.Opener (1,1) function_handle = @web
+            end
+            if isempty(options.BucketName)
+                options = rmfield(options, "BucketName");
+            end
+            options.Client = testCase.Client;
+            options.Confirmer = @(message, title, ~) refuseConfirmation(testCase, message, title);
+            options.FolderChooser = @(~, title) chooseRecordedFolder(testCase, title);
+            options.Alerter = @(~, message, title, varargin) recordAlert(testCase, message, title);
+            options.ProgressDialog = @ebrains.mocks.FakeProgressDialog;
+            options.Visible = "off";
+            optionPairs = namedargs2cell(options);
+            testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, optionPairs{:});
         end
 
         function openList(testCase)
         % openList - Open the browser without a folder, on the list of virtual buckets
-            testCase.App = ebrains.bucket.app.VirtualBucketBrowser( ...
-                Client=testCase.Client, Downloader=@writeAbc, ...
-                Confirmer=@(message, title, ~) refuseConfirmation(testCase, message, title), ...
-                FolderChooser=@(~, title) chooseRecordedFolder(testCase, title));
+            testCase.openApp(BucketName=string.empty);
         end
 
         function folder = makeVirtualBucketFolder(testCase, name, bucketName)
@@ -900,14 +926,6 @@ function addListing(client, names, bytes, hashes)
     client.addResponse('OK', struct('objects', []));
 end
 
-function dialog = makeDialogStub()
-% makeDialogStub - Stand-in for a uiprogressdlg, with the properties ListingProgress uses
-%
-%   uiprogressdlg needs a visible figure. ListingProgress keeps the struct
-%   in its Dialog property, where a test reads what it set.
-    dialog = struct("CancelRequested", false, "Indeterminate", "on", "Value", 0, "Message", "");
-end
-
 function giveTimeOfListedObjects(filePath)
 % giveTimeOfListedObjects - Give a file the time that addListing gives every object, as a download does
     setFileTime(filePath, datetime(2000, 1, 1, TimeZone="UTC"));
@@ -933,6 +951,11 @@ end
 function recordURL(testCase, url)
 % recordURL - Opener that records the address instead of showing it
     testCase.OpenedURL(end+1) = url;
+end
+
+function recordAlert(testCase, message, title)
+% recordAlert - Alerter that records the alert instead of showing it
+    testCase.Alerts(end+1, :) = [title, message];
 end
 
 function tf = refuseConfirmation(testCase, message, title)
