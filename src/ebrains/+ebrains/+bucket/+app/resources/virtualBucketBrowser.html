@@ -970,7 +970,7 @@ function renderList() {
     note = `<div class="empty">No virtual buckets match the filter.</div>`;
   }
   $("bucketList").innerHTML = head + html.join("") + note;
-  $("listMessage").textContent = "Double-click a virtual bucket to open it. The star keeps it at the top of the list.";
+  $("listMessage").textContent = "Click a virtual bucket to open it. The star keeps it at the top of the list.";
 }
 
 function selectListRow(path) {
@@ -1055,17 +1055,14 @@ function wireListEvents() {
     if (!rowElement) return;
     const row = listRowOf(rowElement.dataset.path);
     const button = event.target.closest("button[data-action]");
-    if (!button) { selectListRow(row.path); return; }
+    // A click on the row opens it; the buttons on the row act on it instead
+    if (!button) { openListRow(row.path); return; }
     switch (button.dataset.action) {
       case "pin": host.send("setPinned", { path: row.path, pinned: !row.pinned }); break;
       case "label": openLabelDialog(row); break;
       case "remove": host.send("removeFolder", { path: row.path }); break;
       default: break;
     }
-  });
-  $("bucketList").addEventListener("dblclick", (event) => {
-    const rowElement = event.target.closest(".bucket-row");
-    if (rowElement && !event.target.closest("button")) openListRow(rowElement.dataset.path);
   });
   $("bucketList").addEventListener("contextmenu", (event) => {
     const rowElement = event.target.closest(".bucket-row");
