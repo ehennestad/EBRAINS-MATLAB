@@ -14,7 +14,10 @@ function folder = configFolder(options)
 %                where XDG_CONFIG_HOME is not set or empty
 %
 %   The environment variable EBRAINS_BUCKET_SYNC_CONFIG_DIR, when set and
-%   not empty, names the folder instead. The folder need not exist.
+%   not empty, names the folder instead, as an absolute path; a relative
+%   one is an error (EBRAINS:Bucket:InvalidConfigFolder), since each
+%   process would read it against its own current folder. The folder
+%   need not exist.
 %
 %   Name-Value Arguments
 %       Platform : "mac", "windows" or "unix". Meant for tests; the
@@ -35,6 +38,12 @@ function folder = configFolder(options)
 
     override = string(getenv("EBRAINS_BUCKET_SYNC_CONFIG_DIR"));
     if override ~= ""
+        isAbsolute = startsWith(override, "/") || ~isempty(regexp(override, '^[A-Za-z]:[\\/]', 'once')) ...
+            || startsWith(override, "\\\\");
+        if ~isAbsolute
+            error('EBRAINS:Bucket:InvalidConfigFolder', ...
+                'EBRAINS_BUCKET_SYNC_CONFIG_DIR must be an absolute path, not "%s".', override)
+        end
         folder = override;
         return
     end

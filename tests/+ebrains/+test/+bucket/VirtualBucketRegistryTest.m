@@ -52,6 +52,15 @@ classdef VirtualBucketRegistryTest < matlab.unittest.TestCase
                 "The environment folders of the other platforms do not apply on macOS.");
         end
 
+        function testARelativeEnvironmentVariableIsRefused(testCase)
+            for value = ["relative/config", "~/config"]
+                testCase.applyFixture(matlab.unittest.fixtures.EnvironmentVariableFixture( ...
+                    "EBRAINS_BUCKET_SYNC_CONFIG_DIR", value));
+                testCase.verifyError(@() ebrains.bucket.internal.configFolder(), ...
+                    'EBRAINS:Bucket:InvalidConfigFolder');
+            end
+        end
+
         function testTheEnvironmentVariableNamesTheConfigFolderOnEveryPlatform(testCase)
             for platform = ["mac", "windows", "unix"]
                 testCase.verifyEqual(ebrains.bucket.internal.configFolder(Platform=platform), testCase.ConfigFolder);
