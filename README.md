@@ -1,3 +1,11 @@
+<a href="/resources/images/toolbox_logo_light.gif">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/resources/images/toolbox_logo_dark.gif">
+    <source media="(prefers-color-scheme: light)" srcset="/resources/images/toolbox_logo_light.gif">
+    <img alt="EBRAINS Services Toolbox logo" src="/resources/images/toolbox_logo_light.gif" title="EBRAINS Services Toolbox" align="right" height="105" width="140">
+  </picture>
+</a>
+
 # EBRAINS Services Toolbox for MATLAB
 
 [![Version Number](https://img.shields.io/github/v/release/ehennestad/EBRAINS-MATLAB?label=version)](https://github.com/ehennestad/EBRAINS-MATLAB/releases/latest)
