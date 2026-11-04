@@ -1,5 +1,6 @@
 {
     "Namespace" : "ebrains",
+    "RootFilesToPackage": ["LICENSE", "README.md"],
     "ToolboxOptions": {
         "Identifier": "9de25e88-1616-4674-8c39-65ed257bbe22",
         "ToolboxName": "EBRAINS Services Toolbox",
