@@ -1,11 +1,3 @@
-<a href="/resources/images/toolbox_logo_light.gif">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/resources/images/toolbox_logo_dark.gif">
-    <source media="(prefers-color-scheme: light)" srcset="/resources/images/toolbox_logo_light.gif">
-    <img alt="EBRAINS Services Toolbox logo" src="/resources/images/toolbox_logo_light.gif" title="EBRAINS Services Toolbox" align="right" height="105" width="140">
-  </picture>
-</a>
-
 # EBRAINS Services Toolbox for MATLAB
 
 [![Version Number](https://img.shields.io/github/v/release/ehennestad/EBRAINS-MATLAB?label=version)](https://github.com/ehennestad/EBRAINS-MATLAB/releases/latest)
@@ -16,6 +8,11 @@
 [![Run Codespell](https://github.com/ehennestad/EBRAINS-MATLAB/actions/workflows/run-codespell.yml/badge.svg)](https://github.com/ehennestad/EBRAINS-MATLAB/actions/workflows/run-codespell.yml)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/ehennestad/EBRAINS-MATLAB/graphs/commit-activity)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="/resources/images/toolbox_banner_dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="/resources/images/toolbox_banner_light.gif">
+  <img alt="EBRAINS Services Toolbox for MATLAB" src="/resources/images/toolbox_banner_light.gif" width="100%">
+</picture>
 
 Lightweight MATLAB helpers and API clients for working with EBRAINS services: authentication, Data Proxy buckets, the Knowledge Graph (KG), and the Collaboratory.
 
