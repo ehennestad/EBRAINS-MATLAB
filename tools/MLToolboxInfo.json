@@ -13,5 +13,6 @@
         "MaximumMatlabRelease": "",
         "ToolboxImageFile": "resources/images/toolbox_logo_dark.gif",
         "ToolboxGettingStartedGuide": ""
-    }
+    },
+    "MltbxFileName": "EBRAINS-MATLAB"
 }
