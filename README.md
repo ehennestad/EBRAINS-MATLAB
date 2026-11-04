@@ -8,6 +8,11 @@
 [![Run Codespell](https://github.com/ehennestad/EBRAINS-MATLAB/actions/workflows/run-codespell.yml/badge.svg)](https://github.com/ehennestad/EBRAINS-MATLAB/actions/workflows/run-codespell.yml)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/ehennestad/EBRAINS-MATLAB/graphs/commit-activity)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="/resources/images/toolbox_banner_dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="/resources/images/toolbox_banner_light.gif">
+  <img alt="EBRAINS Services Toolbox for MATLAB" src="/resources/images/toolbox_banner_light.gif" width="100%">
+</picture>
 
 Lightweight MATLAB helpers and API clients for working with EBRAINS services: authentication, Data Proxy buckets, the Knowledge Graph (KG), and the Collaboratory.
 
@@ -120,6 +125,8 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for how to run the tests.
 
 ## License
 Released under the [MIT License](LICENSE). The bundled transfer package in [`src/ebrains/external/+ebrains/+external/+webprogress`](src/ebrains/external/+ebrains/+external/+webprogress) is distributed under its own MIT License, in the `LICENSE` file beside it, whose notice has to be kept with any copy of that package.
+
+The banner of this README and the toolbox image contain the EBRAINS logo, credited to EBRAINS and used unaltered under the [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/) licence of the logo files.
 
 ## Acknowledgements
 The Device Flow authentication was inspired by and modified from:

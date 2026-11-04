@@ -11,7 +11,7 @@
         "Description": "Lightweight MATLAB helpers and API clients for working with EBRAINS services: authentication, Data Proxy buckets, the Knowledge Graph (KG), and the Collaboratory.",
         "MinimumMatlabRelease": "R2022b",
         "MaximumMatlabRelease": "",
-        "ToolboxImageFile": "",
+        "ToolboxImageFile": "resources/images/toolbox_logo_dark.gif",
         "ToolboxGettingStartedGuide": ""
     }
 }
