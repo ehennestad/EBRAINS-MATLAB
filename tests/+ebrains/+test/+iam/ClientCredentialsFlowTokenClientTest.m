@@ -124,8 +124,8 @@ classdef ClientCredentialsFlowTokenClientTest < ebrains.test.iam.TokenClientTest
             intClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("int-id", "int-secret");
 
             testCase.verifyNotSameHandle(intClient, prodClient);
-            testCase.verifyEqual(prodClient.Environment, "prod");
-            testCase.verifyEqual(intClient.Environment, "int");
+            testCase.verifyEqual(prodClient.Environment, ebrains.common.enum.Environment.PROD);
+            testCase.verifyEqual(intClient.Environment, ebrains.common.enum.Environment.INT);
 
             ebrains.useEnvironment("prod")
             testCase.verifyTrue(isvalid(prodClient));

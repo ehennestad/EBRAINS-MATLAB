@@ -27,7 +27,11 @@ function factoryTree = createFactoryTree()
         FactoryValue=true, Hidden=false, ...
         ValidationFcn=@matlab.settings.mustBeLogicalScalar);
 
+    % The setting holds the name of a member of
+    % ebrains.common.enum.Environment. Converting a value to the
+    % enumeration raises an error unless it names a member, which is what
+    % a validation function has to do.
     addSetting(factoryTree, "Environment", ...
         FactoryValue="prod", Hidden=false, ...
-        ValidationFcn=@ebrains.internal.mustBeEnvironmentName);
+        ValidationFcn=@ebrains.common.enum.Environment);
 end

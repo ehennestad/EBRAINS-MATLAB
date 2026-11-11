@@ -50,7 +50,7 @@ classdef PreferencesTest < matlab.unittest.TestCase
         function testDefaultsComeFromTheFactoryValues(testCase)
             testCase.verifyFalse(ebrains.getpref("AutoLogin"));
             testCase.verifyTrue(ebrains.getpref("AutoRenew"));
-            testCase.verifyEqual(ebrains.getpref("Environment"), "prod");
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.PROD);
             testCase.verifyFalse(testCase.SettingsGroup.AutoLogin.hasPersonalValue());
         end
 
@@ -176,7 +176,17 @@ classdef PreferencesTest < matlab.unittest.TestCase
 
         function testSetprefRejectsUnknownEnvironment(testCase)
             testCase.verifyError(@() ebrains.setpref(Environment="bogus"), ...
-                'EBRAINS:Common:UnknownEnvironment');
+                'MATLAB:validation:UnableToConvert');
+        end
+
+        function testEnvironmentIsSavedAsItsName(testCase)
+            % The setting holds text, whichever way the preference is set.
+            ebrains.setpref(Environment=ebrains.common.enum.Environment.INT);
+            testCase.verifyEqual(testCase.SettingsGroup.Environment.PersonalValue, "int");
+
+            ebrains.setpref(Environment="prod", Scope="temporary");
+            testCase.verifyEqual(testCase.SettingsGroup.Environment.TemporaryValue, "prod");
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.PROD);
         end
 
         function testSettingRejectsUnknownEnvironment(testCase)

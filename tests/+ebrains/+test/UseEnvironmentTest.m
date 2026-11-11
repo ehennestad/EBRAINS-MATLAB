@@ -15,7 +15,13 @@ classdef UseEnvironmentTest < matlab.unittest.TestCase
         function testSetsTheEnvironmentPreference(testCase)
             ebrains.useEnvironment("int")
 
-            testCase.verifyEqual(ebrains.getpref("Environment"), "int");
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.INT);
+        end
+
+        function testAcceptsAMemberOfTheEnumeration(testCase)
+            ebrains.useEnvironment(ebrains.common.enum.Environment.INT)
+
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.INT);
         end
 
         function testLeavesTheSavedValueAsItIs(testCase)
@@ -31,12 +37,12 @@ classdef UseEnvironmentTest < matlab.unittest.TestCase
 
             ebrains.useEnvironment("prod")
 
-            testCase.verifyEqual(ebrains.getpref("Environment"), "prod");
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.PROD);
         end
 
         function testRejectsUnknownEnvironment(testCase)
             testCase.verifyError(@() ebrains.useEnvironment("bogus"), ...
-                'EBRAINS:Common:UnknownEnvironment');
+                'MATLAB:validation:UnableToConvert');
         end
     end
 end

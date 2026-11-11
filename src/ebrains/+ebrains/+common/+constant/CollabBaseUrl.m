@@ -7,19 +7,20 @@ function url = CollabBaseUrl(options)
 %   URL = ebrains.common.constant.CollabBaseUrl(Environment=ENVIRONMENT)
 %   also specifies the environment. ENVIRONMENT must be "prod" or "int".
 %
-%   See also CollabApiBaseUrl, ebrains.useEnvironment
+%   See also CollabApiBaseUrl, ebrains.useEnvironment,
+%   ebrains.common.enum.Environment
 
     arguments
-        options.Environment (1,1) string {ebrains.internal.mustBeEnvironmentName} = ...
+        options.Environment (1,1) ebrains.common.enum.Environment = ...
             ebrains.getpref("Environment")
     end
 
     switch options.Environment
-        case "prod"
+        case ebrains.common.enum.Environment.PROD
             url = "https://wiki.ebrains.eu";
-        case "int"
+        case ebrains.common.enum.Environment.INT
             url = "https://wiki-int.ebrains.eu";
         otherwise
-            % Not reached: mustBeEnvironmentName accepts no other name.
+            % Not reached: the enumeration has no other member.
     end
 end
