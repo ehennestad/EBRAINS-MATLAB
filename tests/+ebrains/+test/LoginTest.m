@@ -39,15 +39,38 @@ classdef LoginTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyEqual(client.TokenRequests{1}{2}, "refresh_token");
         end
 
-        function testDeviceFlowWarnsWhenASecretIsGiven(testCase)
-            client = ebrains.mocks.MockDeviceFlowTokenClient("my-client");
-            client.seedTokens("access-0", "refresh-0", 7200);
-            testCase.installSingleton(testCase.DeviceFlowSingletonName, client);
-
-            testCase.verifyWarning(...
+        function testDeviceFlowRejectsASecret(testCase)
+            testCase.verifyError(...
                 @() ebrains.login("OAuthFlow", "DeviceFlow", ...
                     "OIDCClientID", "my-client", "OIDCClientSecret", "unused"), ...
                 'EBRAINS:login:SecretNotSupported');
+        end
+
+        function testSecretWithoutAFlowNamesTheClientCredentialsFlow(testCase)
+            % The device flow is the default, so a call that gives the
+            % credentials of a service without naming the flow ends up here.
+            try
+                ebrains.login("OIDCClientID", "service", "OIDCClientSecret", "secret");
+                testCase.verifyFail("ebrains.login accepted a secret for the device flow.");
+            catch exception
+                testCase.verifyEqual(exception.identifier, 'EBRAINS:login:SecretNotSupported');
+                testCase.verifySubstring(exception.message, 'OAuthFlow="ClientCredentialsFlow"');
+            end
+        end
+
+        function testRejectedSecretLeavesTheStoredDeviceFlowClientAlone(testCase)
+            % The error is raised before a client is looked up, so that the
+            % client id of a service does not replace the stored client.
+            client = ebrains.mocks.MockDeviceFlowTokenClient(ebrains.common.constant.OIDCClientID());
+            client.seedTokens("access-0", "refresh-0", 7200);
+            testCase.installSingleton(testCase.DeviceFlowSingletonName, client);
+
+            testCase.verifyError(...
+                @() ebrains.login("OIDCClientID", "service", "OIDCClientSecret", "secret"), ...
+                'EBRAINS:login:SecretNotSupported');
+
+            testCase.verifyTrue(isvalid(client));
+            testCase.verifySameHandle(ebrains.iam.DeviceFlowTokenClient.instance(), client);
         end
 
         function testClientCredentialsFlowUsesTheInstalledClient(testCase)
