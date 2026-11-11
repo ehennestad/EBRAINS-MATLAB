@@ -106,7 +106,7 @@ collabClient.createCollab("my-collab", "My collab", public=false)
 collabClient.addTeamUser("my-collab", "editor", "username")
 ```
 
-The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu`, collab requests to `wiki-int.ebrains.eu` and bucket requests to `data-proxy-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment. The Knowledge Graph clients take their server from the `Server` option of each method instead. [`checkServiceAccountCanCreateCollab.m`](src/ebrains/examples/collab/checkServiceAccountCanCreateCollab.m) uses it to check whether a service account can create a collab on `wiki-int.ebrains.eu`.
+The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu`, collab requests to `wiki-int.ebrains.eu` and bucket requests to `data-proxy-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment. The Knowledge Graph clients take their server from the `Server` option of each method instead. [`checkServiceAccountCanCreateCollab.m`](src/ebrains/examples/collab/checkServiceAccountCanCreateCollab.m) uses it to check whether a service account can create a collab on `wiki-int.ebrains.eu`, add a user to its team, create its bucket and upload a file.
 
 More complete examples are in [`src/ebrains/examples`](src/ebrains/examples).
 
