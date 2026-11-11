@@ -64,18 +64,39 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(payload, struct('bucket_name', 'my-collab'));
         end
 
-        function testCreateBucketAcceptsAnExistingBucket(testCase)
+        function testCreateBucketReturnsTrueForANewBucket(testCase)
+            testCase.Client.addResponse('Created', '');
+
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketReturnsFalseForAnExistingBucket(testCase)
             % The proxy answers 204 without a body when the bucket exists.
             testCase.Client.addResponse('NoContent', '');
 
-            testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+            wasCreated = testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+
+            testCase.verifyFalse(wasCreated);
         end
 
         function testCreateBucketAcceptsTheDocumentedStatus(testCase)
             % The API spec documents 200 as the success status.
             testCase.Client.addResponse('OK', struct());
 
-            testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketDisplaysNothingWithoutAnOutput(testCase)
+            testCase.Client.addResponse('Created', '');
+            client = testCase.Client; %#ok<NASGU>
+
+            displayedText = evalc('client.createBucket("my-collab")');
+
+            testCase.verifyEmpty(displayedText);
         end
 
         function testCreateBucketRejectsAnEmptyName(testCase)
