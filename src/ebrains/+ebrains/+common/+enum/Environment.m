@@ -13,7 +13,8 @@ classdef Environment
 %
 %   See also ebrains.useEnvironment, ebrains.util.Preferences,
 %   ebrains.common.constant.IamBaseUrl,
-%   ebrains.common.constant.CollabBaseUrl
+%   ebrains.common.constant.CollabBaseUrl,
+%   ebrains.common.constant.DataProxyApiBaseUrl
 
     enumeration
         PROD("prod")
