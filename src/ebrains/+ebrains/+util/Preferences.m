@@ -18,6 +18,18 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             true (default). The client credentials flow
 %                             renews its token with the client id and
 %                             secret whatever this preference is.
+%       Environment (string) : The EBRAINS environment to work in:
+%                             "prod" (default), the production
+%                             environment, or "int", the integration
+%                             environment. It selects the identity
+%                             provider the token clients log in to
+%                             (iam.ebrains.eu or iam-int.ebrains.eu) and
+%                             the Collaboratory server (wiki.ebrains.eu
+%                             or wiki-int.ebrains.eu). The Data Proxy
+%                             and Knowledge Graph clients send their
+%                             requests to the same servers in both
+%                             environments. ebrains.useEnvironment sets
+%                             it for the current MATLAB session only.
 %
 %   A value set here is the personal value of a MATLAB setting under
 %   settings().ebrains, which MATLAB saves for later sessions. The default
@@ -35,7 +47,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %       setTemporaryValue - Set preferences for this MATLAB session only
 %       reset             - Return every preference to its default value
 %
-%   See also ebrains.getpref, ebrains.setpref,
+%   See also ebrains.getpref, ebrains.setpref, ebrains.useEnvironment,
 %   ebrains.internal.createFactoryTree
 
     % Each preference is also a setting declared in
@@ -44,6 +56,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
     properties (Dependent)
         AutoLogin (1,1) logical
         AutoRenew (1,1) logical
+        Environment (1,1) string {ebrains.internal.mustBeEnvironmentName}
     end
 
     properties (Constant, Hidden)
@@ -65,6 +78,14 @@ classdef Preferences < matlab.mixin.CustomDisplay
 
         function obj = set.AutoRenew(obj, value)
             obj.writeValue("AutoRenew", value)
+        end
+
+        function value = get.Environment(obj)
+            value = obj.readValue("Environment");
+        end
+
+        function obj = set.Environment(obj, value)
+            obj.writeValue("Environment", value)
         end
 
         function setTemporaryValue(obj, preferenceValues)
