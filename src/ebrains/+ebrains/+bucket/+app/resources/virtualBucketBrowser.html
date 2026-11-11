@@ -44,6 +44,18 @@
               and is shown in place of the bucket name. hasList says
               whether the host can show the list of virtual buckets, in
               which case the page offers to go back to it (showList).
+              actions lists the actions the host offers beyond those of
+              the page, such as the tools of a plugin, each as
+              {id, label, scope, title}: id names the action in the
+              request runAction, label is the text of its button, title
+              the tooltip of the button or "", and scope says what the
+              action runs on: "selection", the selected files, which the
+              page sends as paths and which leaves the button disabled
+              while nothing is selected, or "bucket", the whole virtual
+              bucket, which the page sends with no paths. The page shows
+              the actions as buttons after its own, in the order given,
+              and those of scope "selection" also in the menus of files
+              and folders.
     buckets   The list of the virtual buckets of the user, which the page
               shows in place of a bucket until one is opened:
                 {root, separator,
@@ -61,8 +73,8 @@
               modified or "" if never, and exists false for a recorded
               folder whose bucket.json cannot be read. A host that never
               sends buckets shows one bucket, and the page offers no list.
-              The page takes a label or hasList that is left out of state
-              as "" and false.
+              The page takes a label, hasList or actions that is left out
+              of state as "", false and no actions.
     busy      {busy: true|false}. The page is disabled while the host
               carries out a request.
     confirm   {id, title, message, confirmText}. Asks the user to confirm
@@ -96,6 +108,11 @@
     openOnline      Open the page of the bucket in the Collaboratory,
                     https://wiki.ebrains.eu/bin/view/Collabs/<bucket>/Bucket,
                     with the web browser of the system.
+    runAction       {id, paths}. Run the action of the id, one of the
+                    actions of state, on the files of paths, or on the
+                    whole virtual bucket for an action of scope "bucket",
+                    whose paths are empty. The host answers with state,
+                    after any confirm, progress or alert the action needs.
     showList        Show the list of virtual buckets. The host answers with
                     buckets. Sent only when the host offers the list.
     openBucket      {path}. Open the folder, an absolute path of the list,
@@ -337,6 +354,8 @@
   footer .summary { flex: 1; color: var(--text-muted); min-width: 0; overflow: hidden;
                     white-space: nowrap; text-overflow: ellipsis; }
   footer .summary b { color: var(--text); font-weight: 600; }
+  /* The buttons of the actions of the host sit in the row of the footer */
+  footer .actions { display: contents; }
   .message { padding: 0 16px 10px; color: var(--text-muted); font-size: 12px; min-height: 16px; }
 
   /* Context menu */
@@ -505,6 +524,7 @@
     <button id="onlineOnly"><svg class="icon"><use href="#i-cloud"/></svg>Make online only</button>
     <button id="open"><svg class="icon"><use href="#i-open"/></svg>Open</button>
     <button id="reveal"><svg class="icon"><use href="#i-folder-open"/></svg><span id="revealLabel">Show in Finder</span></button>
+    <span class="actions" id="actions"></span>
   </footer>
   <div class="message" id="message"></div>
 
@@ -535,6 +555,7 @@
       <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8v.1"/></symbol>
       <symbol id="i-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5v14l11-7Z"/></symbol>
     </defs>
   </svg>
 
@@ -552,7 +573,7 @@ const STATE_INFO = {
   local_only: { label: "Not in bucket", icon: "i-disk", order: 3 },
 };
 
-let meta = { bucketName: "", localFolder: "", prefix: "", label: "", isListed: false, listedAt: "", message: "", hasList: false };
+let meta = { bucketName: "", localFolder: "", prefix: "", label: "", isListed: false, listedAt: "", message: "", hasList: false, actions: [] };
 
 // The list of virtual buckets, shown until one is opened. hasList says
 // whether the host has sent it, so that a bucket view can go back to it.
@@ -600,7 +621,7 @@ function nameOf(path) {
 // ---------------------------------------------------------------- Model
 
 function receiveState(state) {
-  meta = { label: "", hasList: false, ...state };
+  meta = { label: "", hasList: false, actions: [], ...state };
   showBucketView();
   const f = state.files;
   files = f.path.map((path, i) => ({
@@ -755,6 +776,7 @@ function renderAll() {
   $("localFolder").textContent = "\u200E" + meta.localFolder + "\u200E";
   $("localFolder").title = meta.localFolder;
   $("revealLabel").textContent = meta.revealLabel || "Show in folder";
+  renderActions();
   renderTree();
   renderBreadcrumb();
   renderTable();
@@ -872,6 +894,10 @@ function renderFooter() {
   $("download").disabled = !(states.has("online_only") || states.has("differs"));
   $("onlineOnly").disabled = !(states.has("downloaded") || states.has("differs"));
   $("open").disabled = view.selected.size !== 1;
+  for (const button of $("actions").querySelectorAll("button")) {
+    const action = meta.actions[Number(button.dataset.index)];
+    button.disabled = action.scope === "selection" && selection.length === 0;
+  }
 
   let summary;
   if (view.selected.size > 0) {
@@ -1236,6 +1262,7 @@ function fileMenuItems() {
     { label: "Open", icon: "i-open", disabled: !single, run: () => openRow(single) },
     { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", disabled: view.selected.size === 0,
       run: () => host.send("reveal", { paths: [[...view.selected][0].slice(2)] }) },
+    ...selectionActionItems(selectedPaths()),
   ];
 }
 
@@ -1248,7 +1275,37 @@ function folderMenuItems(path) {
       run: () => host.send("onlineOnly", { paths: filesBelow(path).map((file) => file.path) }) },
     "-",
     { label: meta.revealLabel || "Show in folder", icon: "i-folder-open", run: () => host.send("reveal", { paths: [path] }) },
+    ...selectionActionItems(filesBelow(path).map((file) => file.path)),
   ];
+}
+
+// ---------------------------------------------------------------- Actions of the host
+
+// The actions of the host are shown as buttons after the page's own. The
+// buttons are made when the state arrives, and renderFooter enables them
+// with the selection.
+function renderActions() {
+  const container = $("actions");
+  container.innerHTML = meta.actions.map((action, index) =>
+    `<button data-index="${index}" title="${escapeHtml(action.title || "")}">` +
+    `${icon("i-play")}${escapeHtml(action.label)}</button>`).join("");
+  container.onclick = (event) => {
+    const button = event.target.closest("button[data-index]");
+    if (button) runAction(meta.actions[Number(button.dataset.index)], selectedPaths());
+  };
+}
+
+function runAction(action, paths) {
+  host.send("runAction", { id: action.id, paths: action.scope === "bucket" ? [] : paths });
+}
+
+// The menu items of the actions that run on files, after a separator; none
+// when the host offers no such action.
+function selectionActionItems(paths) {
+  const items = meta.actions.filter((action) => action.scope === "selection").map((action) => ({
+    label: action.label, icon: "i-play", disabled: paths.length === 0, run: () => runAction(action, paths),
+  }));
+  return items.length > 0 ? ["-", ...items] : [];
 }
 
 function setBusy(isBusy) {
