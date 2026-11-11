@@ -41,13 +41,17 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
     end
 
     methods
-        function createBucket(obj, bucketName)
+        function wasCreated = createBucket(obj, bucketName)
         % createBucket - Create a bucket
         %
         %   client.createBucket(bucketName) creates the bucket with the
         %   given name. A collab has no bucket until one is created for
         %   it, and the bucket of a collab has the name of the collab. A
         %   bucket that exists already is left as it is.
+        %
+        %   wasCreated = client.createBucket(bucketName) also returns
+        %   whether the request created the bucket: true when it did, and
+        %   false when the bucket existed already.
 
             arguments
                 obj (1,1) ebrains.bucket.api.BucketsClient
@@ -69,6 +73,12 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 matlab.net.http.StatusCode.OK];
             if ~ismember(response.StatusCode, successStatusCodes)
                 obj.throwError("createBucket", response)
+            end
+
+            % Returned only when asked for, so that a call without a
+            % semicolon does not display the value.
+            if nargout > 0
+                wasCreated = response.StatusCode ~= matlab.net.http.StatusCode.NoContent;
             end
         end
 
