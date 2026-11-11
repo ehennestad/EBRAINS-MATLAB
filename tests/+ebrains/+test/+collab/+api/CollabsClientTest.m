@@ -129,5 +129,42 @@ classdef CollabsClientTest < matlab.unittest.TestCase
             testCase.verifyError(@() testCase.Client.createCollab("my-collab", "My collab"), ...
                 'EBRAINS:Collab:createCollab:Unauthorized');
         end
+
+        function testAddTeamUserSendsPutWithoutBody(testCase)
+            testCase.Client.addResponse('NoContent', '');
+
+            testCase.Client.addTeamUser("my-collab", "editor", "jdoe");
+
+            testCase.Client.verifyRequestMethod(1, 'PUT');
+            testCase.Client.verifyRequestURL(1, ...
+                'https://wiki.ebrains.eu/rest/v1/collabs/my-collab/team/editor/users/jdoe');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testAddTeamUserRejectsUnknownRole(testCase)
+            testCase.verifyError(@() testCase.Client.addTeamUser("my-collab", "owner", "jdoe"), ...
+                'MATLAB:validators:mustBeMember');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testAddTeamUserUnknownUser(testCase)
+            testCase.Client.addResponse('BadRequest', 'The specified user does not exist.');
+            testCase.verifyError(@() testCase.Client.addTeamUser("my-collab", "editor", "nobody"), ...
+                'EBRAINS:Collab:addTeamUser:BadRequest');
+        end
+
+        function testAddTeamUserForbidden(testCase)
+            testCase.Client.addResponse('Forbidden', ...
+                'You must be an administrator of this collab to perform this action.');
+            testCase.verifyError(@() testCase.Client.addTeamUser("my-collab", "editor", "jdoe"), ...
+                'EBRAINS:Collab:addTeamUser:Forbidden');
+        end
+
+        function testAddTeamUserCollabNotFound(testCase)
+            testCase.Client.addResponse('NotFound', 'Collab not found.');
+            testCase.verifyError(@() testCase.Client.addTeamUser("no-such-collab", "editor", "jdoe"), ...
+                'EBRAINS:Collab:addTeamUser:NotFound');
+        end
     end
 end

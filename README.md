@@ -21,7 +21,7 @@ Lightweight MATLAB helpers and API clients for working with EBRAINS services: au
 - List, upload, download, rename, and delete objects in Data Proxy buckets, and compute bucket sizes
 - Sync a local folder to a bucket, or a bucket to a local folder, sending only new and changed files
 - Read, create, update, release, and delete Knowledge Graph instances, and run dynamic queries
-- Search and create collabs through the Collaboratory API
+- Search and create collabs, and add users to their teams, through the Collaboratory API
 
 ## Requirements
 - MATLAB R2022b or newer. The virtual bucket browser (`ebrains.bucket.app.VirtualBucketBrowser`) needs R2023a or newer; the functions work on R2022b.
@@ -98,11 +98,12 @@ Lookups default to the `RELEASED` stage. Pass a stage vector in order of prefere
 instance = kgClient.getInstance(identifier, ["RELEASED", "IN_PROGRESS"]);
 ```
 
-### 4) Search and create collabs
+### 4) Search and create collabs, add team members
 ```matlab
 collabClient = ebrains.collab.api.CollabsClient();
 collabs = collabClient.searchCollabs(limit=50);
 collabClient.createCollab("my-collab", "My collab", public=false)
+collabClient.addTeamUser("my-collab", "editor", "username")
 ```
 
 The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu`, collab requests to `wiki-int.ebrains.eu` and bucket requests to `data-proxy-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment. The Knowledge Graph clients take their server from the `Server` option of each method instead. [`checkServiceAccountCanCreateCollab.m`](src/ebrains/examples/collab/checkServiceAccountCanCreateCollab.m) uses it to check whether a service account can create a collab on `wiki-int.ebrains.eu`.
