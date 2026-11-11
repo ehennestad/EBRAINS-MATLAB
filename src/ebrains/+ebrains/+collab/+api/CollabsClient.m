@@ -7,6 +7,7 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
 %   Example:
 %       client = ebrains.collab.api.CollabsClient();
 %       collabs = client.searchCollabs(search="dataset", limit=50);
+%       client.createCollab("my-collab", "My collab", public=false)
 %
 %   See also ebrains.common.constant.CollabApiBaseUrl
 
@@ -64,6 +65,51 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
                 collabs = response.Body.Data;
             else
                 obj.throwError("searchCollabs", response)
+            end
+        end
+
+        function createCollab(obj, name, title, collabOptions)
+        % createCollab - Create a collab
+        %
+        %   client.createCollab(name, title) creates a collab with the
+        %   given name and title. The name is the id of the collab in its
+        %   URL and in the paths of the API. The request fails with 409
+        %   (Conflict) when a collab with that name exists.
+        %
+        %   client.createCollab(name, title, Name=Value) also sets fields
+        %   of the request body. A field that is not given is left out of
+        %   the request:
+        %       description - Description of the collab
+        %       drive       - Whether the collab gets a drive
+        %       chat        - Whether the collab gets a chat
+        %       public      - Whether the collab is public
+        %
+        %   The documentation of the API asks for a token with the scopes
+        %   clb.wiki.read and/or clb.wiki.write.
+
+            arguments
+                obj (1,1) ebrains.collab.api.CollabsClient
+                name (1,1) string
+                title (1,1) string
+                collabOptions.description (1,1) string
+                collabOptions.drive (1,1) logical
+                collabOptions.chat (1,1) logical
+                collabOptions.public (1,1) logical
+            end
+
+            payload = struct("name", name, "title", title);
+            optionNames = string(fieldnames(collabOptions))';
+            for optionName = optionNames
+                payload.(optionName) = collabOptions.(optionName);
+            end
+
+            request = obj.initializeRequestMessage("POST", JSONPayload=jsonencode(payload));
+            apiUri = ebrains.common.internal.buildApiUri(...
+                ebrains.common.constant.CollabApiBaseUrl(), "collabs");
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode ~= matlab.net.http.StatusCode.Created
+                obj.throwError("createCollab", response)
             end
         end
     end
