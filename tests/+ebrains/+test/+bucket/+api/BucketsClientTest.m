@@ -51,7 +51,8 @@ classdef BucketsClientTest < matlab.unittest.TestCase
     methods (Test)
         %% createBucket
         function testCreateBucketPostsTheBucketName(testCase)
-            testCase.Client.addResponse('OK', struct());
+            % The proxy answers 201 without a body for a new bucket.
+            testCase.Client.addResponse('Created', '');
 
             testCase.Client.createBucket("my-collab");
 
@@ -61,6 +62,20 @@ classdef BucketsClientTest < matlab.unittest.TestCase
                 "https://data-proxy.ebrains.eu/api/v1/buckets");
             payload = jsondecode(testCase.Client.getRequestPayload(1));
             testCase.verifyEqual(payload, struct('bucket_name', 'my-collab'));
+        end
+
+        function testCreateBucketAcceptsAnExistingBucket(testCase)
+            % The proxy answers 204 without a body when the bucket exists.
+            testCase.Client.addResponse('NoContent', '');
+
+            testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+        end
+
+        function testCreateBucketAcceptsTheDocumentedStatus(testCase)
+            % The API spec documents 200 as the success status.
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
         end
 
         function testCreateBucketRejectsAnEmptyName(testCase)
