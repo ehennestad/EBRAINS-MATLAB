@@ -105,6 +105,8 @@ collabs = collabClient.searchCollabs(limit=50);
 collabClient.createCollab("my-collab", "My collab", public=false)
 ```
 
+The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu` and collab requests to `wiki-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment, and the Data Proxy and Knowledge Graph clients send their requests to the same servers in both. [`checkServiceAccountCanCreateCollab.m`](src/ebrains/examples/collab/checkServiceAccountCanCreateCollab.m) uses it to check whether a service account can create a collab on `wiki-int.ebrains.eu`.
+
 More complete examples are in [`src/ebrains/examples`](src/ebrains/examples).
 
 ## Running without a display

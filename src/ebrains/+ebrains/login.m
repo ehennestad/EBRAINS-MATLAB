@@ -24,7 +24,11 @@ function login(mode, options, oidcOptions)
 %   secret, and giving only one of the two is an error. The device flow
 %   ignores the secret with a warning.
 %
-%   See also logout, getTokenManager, ebrains.iam.enum.FlowType,
+%   The login is made at the identity provider of the environment that
+%   the Environment preference names, and is kept apart from a login in
+%   the other environment (see ebrains.useEnvironment).
+%
+%   See also logout, getTokenManager, useEnvironment, ebrains.iam.enum.FlowType,
 %   ebrains.iam.DeviceFlowTokenClient,
 %   ebrains.iam.ClientCredentialsFlowTokenClient
 

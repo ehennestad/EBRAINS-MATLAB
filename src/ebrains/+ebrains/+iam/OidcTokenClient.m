@@ -25,8 +25,15 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 %       reset                - Delete a stored singleton client
 %       resetAll             - Delete every stored singleton client
 %
+%   A client logs in to the identity provider of the environment that
+%   the Environment preference named when the client was created
+%   (iam.ebrains.eu for "prod", iam-int.ebrains.eu for "int"). The stored
+%   singleton clients are kept per environment, so the INSTANCE method of
+%   a subclass returns the client of the current environment.
+%
 %   OidcTokenClient properties:
 %       ClientId    - OIDC client id the client authenticates as
+%       Environment - EBRAINS environment the client logs in to
 %       Scope       - Scopes requested with the token
 %       AccessToken - The access token, fetched or refreshed on demand
 %       ExpiresIn   - Time left until the access token expires
@@ -47,6 +54,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     properties (SetAccess = private)
         ClientId (1,1) string  % OIDC client id the client authenticates as
+        Environment (1,1) string = "prod"  % EBRAINS environment the client logs in to
     end
 
     properties
@@ -82,9 +90,6 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
     end
 
     properties (Constant, Access = protected)
-        IAM_BASE_URL = ...
-            "https://iam.ebrains.eu/auth/realms/hbp/"
-
         WELL_KNOWN_CONFIGURATION_ENDPOINT = ...
             ".well-known/openid-configuration"
     end
@@ -130,6 +135,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
             % rather than here, so that creating a client needs no network.
             obj.tryLoadTokenFromEnvironment()
             obj.ClientId = clientId;
+            obj.Environment = ebrains.getpref("Environment");
         end
 
         function tryLoadTokenFromEnvironment(obj)
@@ -176,7 +182,8 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         function config = requestOpenIdConfiguration(obj)
         %requestOpenIdConfiguration - Fetch the OpenID configuration
             options = weboptions(Timeout=obj.REQUEST_TIMEOUT_SECONDS);
-            config = webread(obj.IAM_BASE_URL + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT, options);
+            iamBaseUrl = ebrains.common.constant.IamBaseUrl(Environment=obj.Environment);
+            config = webread(iamBaseUrl + obj.WELL_KNOWN_CONFIGURATION_ENDPOINT, options);
         end
 
         function tokenResponse = requestToken(obj, formFields)
@@ -517,11 +524,38 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
         function resetAll()
         %resetAll - Delete every stored singleton client
         %   ebrains.iam.OidcTokenClient.resetAll() deletes the stored device
-        %   flow and client credentials clients, so that the next INSTANCE
-        %   call of either creates a new one.
+        %   flow and client credentials clients of every environment, so
+        %   that the next INSTANCE call of either creates a new one.
 
-            ebrains.iam.OidcTokenClient.reset("IAM_DeviceFlow_Client")
-            ebrains.iam.OidcTokenClient.reset("IAM_ClientCredentials_Client")
+            SINGLETON_BASE_NAMES = ["IAM_DeviceFlow_Client", "IAM_ClientCredentials_Client"];
+
+            for environment = ebrains.common.constant.EnvironmentNames()
+                for baseName = SINGLETON_BASE_NAMES
+                    singletonName = ebrains.iam.OidcTokenClient.getSingletonName(baseName, environment);
+                    ebrains.iam.OidcTokenClient.reset(singletonName)
+                end
+            end
+        end
+    end
+
+    methods (Static, Access = protected)
+        function singletonName = getSingletonName(baseName, environment)
+        %getSingletonName - Name a singleton client is stored under for an environment
+        %   singletonName = getSingletonName(baseName) returns the name for
+        %   the environment of the Environment preference. A token is only
+        %   valid at the identity provider that issued it, so each
+        %   environment has its own stored client.
+        %
+        %   singletonName = getSingletonName(baseName,environment) also
+        %   specifies the environment.
+
+            arguments
+                baseName (1,1) string
+                environment (1,1) string {ebrains.internal.mustBeEnvironmentName} = ...
+                    ebrains.getpref("Environment")
+            end
+
+            singletonName = baseName + "_" + environment;
         end
     end
 end

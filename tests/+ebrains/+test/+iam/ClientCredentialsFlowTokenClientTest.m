@@ -117,6 +117,44 @@ classdef ClientCredentialsFlowTokenClientTest < ebrains.test.iam.TokenClientTest
             testCase.verifyEqual(client.ClientId, "id");
         end
 
+        function testInstanceIsKeptPerEnvironment(testCase)
+            prodClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
+
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("int-id", "int-secret");
+
+            testCase.verifyNotSameHandle(intClient, prodClient);
+            testCase.verifyEqual(prodClient.Environment, "prod");
+            testCase.verifyEqual(intClient.Environment, "int");
+
+            ebrains.useEnvironment("prod")
+            testCase.verifyTrue(isvalid(prodClient));
+            testCase.verifySameHandle( ...
+                ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret"), prodClient);
+        end
+
+        function testResetLeavesTheInstanceOfTheOtherEnvironment(testCase)
+            prodClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("int-id", "int-secret");
+
+            ebrains.iam.ClientCredentialsFlowTokenClient.reset();
+
+            testCase.verifyFalse(isvalid(intClient));
+            testCase.verifyTrue(isvalid(prodClient));
+        end
+
+        function testResetAllDeletesTheInstancesOfEveryEnvironment(testCase)
+            prodClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.ClientCredentialsFlowTokenClient.instance("int-id", "int-secret");
+
+            ebrains.iam.OidcTokenClient.resetAll();
+
+            testCase.verifyFalse(isvalid(prodClient));
+            testCase.verifyFalse(isvalid(intClient));
+        end
+
         function testResetDeletesTheInstance(testCase)
             first = ebrains.iam.ClientCredentialsFlowTokenClient.instance("id", "secret");
 

@@ -9,12 +9,15 @@ classdef (Abstract) TokenClientTestCase < matlab.unittest.TestCase
     % deleted at teardown.
     %
     % The AutoLogin and AutoRenew preferences decide whether a token is
-    % looked up with a login or a renewal, so each test also runs with the
-    % default preferences (see ebrains.test.fixtures.PreferencesFixture).
+    % looked up with a login or a renewal, and the Environment preference
+    % which stored client is used, so each test also runs with the default
+    % preferences (see ebrains.test.fixtures.PreferencesFixture).
 
     properties (Constant)
-        DeviceFlowSingletonName = "IAM_DeviceFlow_Client"
-        ClientCredentialsSingletonName = "IAM_ClientCredentials_Client"
+        % The names the singletons of the "prod" environment are stored
+        % under, which is the environment of the default preferences.
+        DeviceFlowSingletonName = "IAM_DeviceFlow_Client_prod"
+        ClientCredentialsSingletonName = "IAM_ClientCredentials_Client_prod"
     end
 
     methods (TestMethodSetup)
