@@ -46,7 +46,8 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         %
         %   client.createBucket(bucketName) creates the bucket with the
         %   given name. A collab has no bucket until one is created for
-        %   it, and the bucket of a collab has the name of the collab.
+        %   it, and the bucket of a collab has the name of the collab. A
+        %   bucket that exists already is left as it is.
 
             arguments
                 obj (1,1) ebrains.bucket.api.BucketsClient
@@ -59,7 +60,14 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             request = obj.initializeRequestMessage("POST", JSONPayload=jsonencode(payload));
             response = obj.sendRequest(request, apiUri);
 
-            if response.StatusCode ~= matlab.net.http.StatusCode.OK
+            % The proxy answers 201 (Created) when it has created the
+            % bucket and 204 (No Content) when the bucket exists already,
+            % where its API spec documents 200 (OK).
+            successStatusCodes = [ ...
+                matlab.net.http.StatusCode.Created, ...
+                matlab.net.http.StatusCode.NoContent, ...
+                matlab.net.http.StatusCode.OK];
+            if ~ismember(response.StatusCode, successStatusCodes)
                 obj.throwError("createBucket", response)
             end
         end
