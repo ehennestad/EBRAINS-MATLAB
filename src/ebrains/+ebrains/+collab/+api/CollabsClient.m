@@ -4,12 +4,18 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
 %   Each method mirrors one endpoint under /collabs of the Collaboratory
 %   REST API.
 %
+%   The requests go to the Collaboratory server of the Environment
+%   preference: wiki.ebrains.eu for "prod" (the default) and
+%   wiki-int.ebrains.eu for "int". ebrains.useEnvironment sets the
+%   preference for the current MATLAB session.
+%
 %   Example:
 %       client = ebrains.collab.api.CollabsClient();
 %       collabs = client.searchCollabs(search="dataset", limit=50);
 %       client.createCollab("my-collab", "My collab", public=false)
 %
-%   See also ebrains.common.constant.CollabApiBaseUrl
+%   See also ebrains.useEnvironment,
+%   ebrains.common.constant.CollabApiBaseUrl
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:Collab"

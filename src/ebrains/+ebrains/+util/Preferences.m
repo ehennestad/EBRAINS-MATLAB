@@ -18,6 +18,21 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             true (default). The client credentials flow
 %                             renews its token with the client id and
 %                             secret whatever this preference is.
+%       Environment (ebrains.common.enum.Environment) : The EBRAINS
+%                             environment to work in, set as a member or
+%                             its name: "prod" (default), the production
+%                             environment, or "int", the integration
+%                             environment. It selects the identity
+%                             provider the token clients log in to
+%                             (iam.ebrains.eu or iam-int.ebrains.eu),
+%                             the Collaboratory server (wiki.ebrains.eu
+%                             or wiki-int.ebrains.eu) and the Data Proxy
+%                             server (data-proxy.ebrains.eu or
+%                             data-proxy-int.ebrains.eu). The Knowledge
+%                             Graph clients take their server from the
+%                             Server option of each method instead.
+%                             ebrains.useEnvironment sets it for the
+%                             current MATLAB session only.
 %
 %   A value set here is the personal value of a MATLAB setting under
 %   settings().ebrains, which MATLAB saves for later sessions. The default
@@ -35,7 +50,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %       setTemporaryValue - Set preferences for this MATLAB session only
 %       reset             - Return every preference to its default value
 %
-%   See also ebrains.getpref, ebrains.setpref,
+%   See also ebrains.getpref, ebrains.setpref, ebrains.useEnvironment,
 %   ebrains.internal.createFactoryTree
 
     % Each preference is also a setting declared in
@@ -44,6 +59,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
     properties (Dependent)
         AutoLogin (1,1) logical
         AutoRenew (1,1) logical
+        Environment (1,1) ebrains.common.enum.Environment
     end
 
     properties (Constant, Hidden)
@@ -67,6 +83,14 @@ classdef Preferences < matlab.mixin.CustomDisplay
             obj.writeValue("AutoRenew", value)
         end
 
+        function value = get.Environment(obj)
+            value = ebrains.common.enum.Environment(obj.readValue("Environment"));
+        end
+
+        function obj = set.Environment(obj, value)
+            obj.writeValue("Environment", value)
+        end
+
         function setTemporaryValue(obj, preferenceValues)
         %setTemporaryValue - Set preferences for this MATLAB session only
         %   setTemporaryValue(OBJ,Name=Value) gives one or more preferences
@@ -87,7 +111,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 
             for preferenceName = reshape(string(fieldnames(preferenceValues)), 1, [])
                 setting = obj.getSetting(preferenceName);
-                setting.TemporaryValue = preferenceValues.(preferenceName);
+                setting.TemporaryValue = obj.toSettingValue(preferenceValues.(preferenceName));
             end
         end
 
@@ -125,12 +149,26 @@ classdef Preferences < matlab.mixin.CustomDisplay
         function writeValue(obj, preferenceName, value)
         %writeValue - Set the value of a preference for this user
             setting = obj.getSetting(preferenceName);
-            setting.PersonalValue = value;
+            setting.PersonalValue = obj.toSettingValue(value);
         end
 
         function preferenceNames = getPreferenceNames(obj)
         %getPreferenceNames - Names of the preferences, as a string row
             preferenceNames = reshape(string(properties(obj)), 1, []);
+        end
+    end
+
+    methods (Static, Access = private)
+        function settingValue = toSettingValue(value)
+        %toSettingValue - The value a setting holds for the value of a preference
+        %   A member of an enumeration is held as its Name, so that the
+        %   value MATLAB saves for later sessions is text.
+
+            if isenum(value)
+                settingValue = value.Name;
+            else
+                settingValue = value;
+            end
         end
     end
 

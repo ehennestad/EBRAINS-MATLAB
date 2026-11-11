@@ -2,6 +2,8 @@ classdef BucketsClientTest < matlab.unittest.TestCase
     % BucketsClientTest - Unit tests for ebrains.bucket.api.BucketsClient
     %
     % Uses MockBucketsClient so that no request reaches the Data Proxy.
+    % The Environment preference selects the server of a request, so each
+    % test runs with the default preferences.
 
     properties
         Client ebrains.mocks.MockBucketsClient
@@ -41,6 +43,7 @@ classdef BucketsClientTest < matlab.unittest.TestCase
 
     methods (TestMethodSetup)
         function createMockClient(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
             testCase.Client = ebrains.mocks.MockBucketsClient();
         end
     end
@@ -57,6 +60,16 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestMethod(1, 'GET');
             testCase.Client.verifyRequestURL(1, ...
                 'https://data-proxy.ebrains.eu/api/v1/buckets/my-bucket/stat');
+        end
+
+        function testGetBucketStatInIntEnvironment(testCase)
+            ebrains.useEnvironment("int")
+            testCase.Client.addResponse('OK', struct('name', 'my-bucket'));
+
+            testCase.Client.getBucketStat("my-bucket");
+
+            testCase.Client.verifyRequestURL(1, ...
+                'https://data-proxy-int.ebrains.eu/api/v1/buckets/my-bucket/stat');
         end
 
         function testGetBucketStatNotFound(testCase)

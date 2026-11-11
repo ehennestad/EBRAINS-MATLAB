@@ -50,6 +50,7 @@ classdef PreferencesTest < matlab.unittest.TestCase
         function testDefaultsComeFromTheFactoryValues(testCase)
             testCase.verifyFalse(ebrains.getpref("AutoLogin"));
             testCase.verifyTrue(ebrains.getpref("AutoRenew"));
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.PROD);
             testCase.verifyFalse(testCase.SettingsGroup.AutoLogin.hasPersonalValue());
         end
 
@@ -171,6 +172,32 @@ classdef PreferencesTest < matlab.unittest.TestCase
         function testSetprefRejectsInvalidValue(testCase)
             testCase.verifyError(@() ebrains.setpref(AutoLogin="yes"), ...
                 'MATLAB:validation:UnableToConvert');
+        end
+
+        function testSetprefRejectsUnknownEnvironment(testCase)
+            testCase.verifyError(@() ebrains.setpref(Environment="bogus"), ...
+                'MATLAB:validation:UnableToConvert');
+        end
+
+        function testEnvironmentIsSavedAsItsName(testCase)
+            % The setting holds text, whichever way the preference is set.
+            ebrains.setpref(Environment=ebrains.common.enum.Environment.INT);
+            testCase.verifyEqual(testCase.SettingsGroup.Environment.PersonalValue, "int");
+
+            ebrains.setpref(Environment="prod", Scope="temporary");
+            testCase.verifyEqual(testCase.SettingsGroup.Environment.TemporaryValue, "prod");
+            testCase.verifyEqual(ebrains.getpref("Environment"), ebrains.common.enum.Environment.PROD);
+        end
+
+        function testSettingRejectsUnknownEnvironment(testCase)
+            % A value written to the setting itself does not pass through
+            % the validation of the Preferences property, and is checked by
+            % the validation function of the setting.
+            function assignPersonalValue()
+                testCase.SettingsGroup.Environment.PersonalValue = "bogus";
+            end
+            testCase.verifyError(@assignPersonalValue, ...
+                'MATLAB:settings:config:ErrorValidateSettingsValue');
         end
 
         function testGetprefRejectsUnknownName(testCase)

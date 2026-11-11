@@ -6,8 +6,10 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 %   with its client id and secret and needs no user interaction.
 %
 %   The shared client is stored in the UserData of the graphics root so
-%   that it survives a clear all. Use RESET to remove it. The remaining
-%   methods and properties are inherited from OidcTokenClient.
+%   that it survives a clear all. One client is stored per environment,
+%   and INSTANCE and RESET act on the one of the environment that the
+%   Environment preference names. The remaining methods and properties
+%   are inherited from OidcTokenClient.
 %
 %   ClientCredentialsFlowTokenClient functions:
 %       instance        - The shared client, created on first use
@@ -26,7 +28,7 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
     end
 
     properties (Constant, Access = private)
-        SINGLETON_NAME = "IAM_ClientCredentials_Client"
+        SINGLETON_BASE_NAME = "IAM_ClientCredentials_Client"
     end
 
     methods (Access = protected)
@@ -171,7 +173,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
 
             authClientObject = [];
 
-            singletonName = ebrains.iam.ClientCredentialsFlowTokenClient.SINGLETON_NAME;
+            singletonName = ebrains.iam.OidcTokenClient.getSingletonName( ...
+                ebrains.iam.ClientCredentialsFlowTokenClient.SINGLETON_BASE_NAME);
 
             rootUserData = get(0, 'UserData');
             if isstruct(rootUserData)
@@ -223,7 +226,8 @@ classdef ClientCredentialsFlowTokenClient < ebrains.iam.OidcTokenClient
         %   ebrains.iam.ClientCredentialsFlowTokenClient.reset() deletes the
         %   stored client so that the next INSTANCE call creates a new one.
 
-            singletonName = ebrains.iam.ClientCredentialsFlowTokenClient.SINGLETON_NAME;
+            singletonName = ebrains.iam.OidcTokenClient.getSingletonName( ...
+                ebrains.iam.ClientCredentialsFlowTokenClient.SINGLETON_BASE_NAME);
             ebrains.iam.OidcTokenClient.reset(singletonName)
         end
     end
