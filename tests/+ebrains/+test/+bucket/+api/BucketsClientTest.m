@@ -49,6 +49,68 @@ classdef BucketsClientTest < matlab.unittest.TestCase
     end
 
     methods (Test)
+        %% createBucket
+        function testCreateBucketPostsTheBucketName(testCase)
+            % The proxy answers 201 without a body for a new bucket.
+            testCase.Client.addResponse('Created', '');
+
+            testCase.Client.createBucket("my-collab");
+
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEqual(string(request.URL.EncodedURI), ...
+                "https://data-proxy.ebrains.eu/api/v1/buckets");
+            payload = jsondecode(testCase.Client.getRequestPayload(1));
+            testCase.verifyEqual(payload, struct('bucket_name', 'my-collab'));
+        end
+
+        function testCreateBucketReturnsTrueForANewBucket(testCase)
+            testCase.Client.addResponse('Created', '');
+
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketReturnsFalseForAnExistingBucket(testCase)
+            % The proxy answers 204 without a body when the bucket exists.
+            testCase.Client.addResponse('NoContent', '');
+
+            wasCreated = testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+
+            testCase.verifyFalse(wasCreated);
+        end
+
+        function testCreateBucketAcceptsTheDocumentedStatus(testCase)
+            % The API spec documents 200 as the success status.
+            testCase.Client.addResponse('OK', struct());
+
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketDisplaysNothingWithoutAnOutput(testCase)
+            testCase.Client.addResponse('Created', '');
+            client = testCase.Client; %#ok<NASGU>
+
+            displayedText = evalc('client.createBucket("my-collab")');
+
+            testCase.verifyEmpty(displayedText);
+        end
+
+        function testCreateBucketRejectsAnEmptyName(testCase)
+            testCase.verifyError(@() testCase.Client.createBucket(""), ...
+                'MATLAB:validators:mustBeNonzeroLengthText');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testCreateBucketValidationError(testCase)
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'Validation error'));
+            testCase.verifyError(@() testCase.Client.createBucket("my-collab"), ...
+                'EBRAINS:Bucket:createBucket:UnprocessableEntity');
+        end
+
         %% getBucketStat
         function testGetBucketStatSuccess(testCase)
             bucketStat = struct('name', 'my-bucket', 'objects_count', 3, 'bytes', 1024);
