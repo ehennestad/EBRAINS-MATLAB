@@ -39,7 +39,6 @@ try
 
     collabClient = ebrains.collab.api.CollabsClient();
     collabClient.createCollab(collabName, collabTitle, public=false)
-    collabClient.
 
     collabUrl = ebrains.common.constant.CollabBaseUrl() + "/bin/view/Collabs/" + collabName;
     fprintf("The service account created the collab %s\n", collabUrl)
