@@ -24,13 +24,15 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             environment, or "int", the integration
 %                             environment. It selects the identity
 %                             provider the token clients log in to
-%                             (iam.ebrains.eu or iam-int.ebrains.eu) and
+%                             (iam.ebrains.eu or iam-int.ebrains.eu),
 %                             the Collaboratory server (wiki.ebrains.eu
-%                             or wiki-int.ebrains.eu). The Data Proxy
-%                             and Knowledge Graph clients send their
-%                             requests to the same servers in both
-%                             environments. ebrains.useEnvironment sets
-%                             it for the current MATLAB session only.
+%                             or wiki-int.ebrains.eu) and the Data Proxy
+%                             server (data-proxy.ebrains.eu or
+%                             data-proxy-int.ebrains.eu). The Knowledge
+%                             Graph clients take their server from the
+%                             Server option of each method instead.
+%                             ebrains.useEnvironment sets it for the
+%                             current MATLAB session only.
 %
 %   A value set here is the personal value of a MATLAB setting under
 %   settings().ebrains, which MATLAB saves for later sessions. The default
