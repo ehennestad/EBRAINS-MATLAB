@@ -13,6 +13,7 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
 %       client = ebrains.collab.api.CollabsClient();
 %       collabs = client.searchCollabs(search="dataset", limit=50);
 %       client.createCollab("my-collab", "My collab", public=false)
+%       client.addTeamUser("my-collab", "editor", "username")
 %
 %   See also ebrains.useEnvironment,
 %   ebrains.common.constant.CollabApiBaseUrl
@@ -116,6 +117,37 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
 
             if response.StatusCode ~= matlab.net.http.StatusCode.Created
                 obj.throwError("createCollab", response)
+            end
+        end
+
+        function addTeamUser(obj, collabId, role, username)
+        % addTeamUser - Add a user to the team of a collab
+        %
+        %   client.addTeamUser(collabId, role, username) gives the user a
+        %   role in the collab. collabId is the name of the collab, as in
+        %   the name field of the collabs that searchCollabs returns. role
+        %   is "viewer", "editor" or "administrator".
+        %
+        %   The API documents these failures: 400 (Bad Request) when the
+        %   user does not exist, 403 (Forbidden) when the account sending
+        %   the request is not an administrator of the collab, and 404
+        %   (Not Found) when the collab does not exist.
+
+            arguments
+                obj (1,1) ebrains.collab.api.CollabsClient
+                collabId (1,1) string {mustBeNonzeroLengthText}
+                role (1,1) string {mustBeMember(role, ["viewer", "editor", "administrator"])}
+                username (1,1) string {mustBeNonzeroLengthText}
+            end
+
+            request = obj.initializeRequestMessage("PUT");
+            apiUri = ebrains.common.internal.buildApiUri(...
+                ebrains.common.constant.CollabApiBaseUrl(), ...
+                ["collabs", collabId, "team", role, "users", username]);
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode ~= matlab.net.http.StatusCode.NoContent
+                obj.throwError("addTeamUser", response)
             end
         end
     end
