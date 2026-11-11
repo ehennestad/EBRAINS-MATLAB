@@ -21,7 +21,7 @@ Lightweight MATLAB helpers and API clients for working with EBRAINS services: au
 - List, upload, download, rename, and delete objects in Data Proxy buckets, and compute bucket sizes
 - Sync a local folder to a bucket, or a bucket to a local folder, sending only new and changed files
 - Read, create, update, release, and delete Knowledge Graph instances, and run dynamic queries
-- Search and create collabs through the Collaboratory API
+- Search and create collabs, and add users to their teams, through the Collaboratory API
 
 ## Requirements
 - MATLAB R2022b or newer. The virtual bucket browser (`ebrains.bucket.app.VirtualBucketBrowser`) needs R2023a or newer; the functions work on R2022b.
@@ -98,11 +98,12 @@ Lookups default to the `RELEASED` stage. Pass a stage vector in order of prefere
 instance = kgClient.getInstance(identifier, ["RELEASED", "IN_PROGRESS"]);
 ```
 
-### 4) Search and create collabs
+### 4) Search and create collabs, add team members
 ```matlab
 collabClient = ebrains.collab.api.CollabsClient();
 collabs = collabClient.searchCollabs(limit=50);
 collabClient.createCollab("my-collab", "My collab", public=false)
+collabClient.addTeamUser("my-collab", "editor", "username")
 ```
 
 The Collaboratory can answer 403 (Forbidden) to a request for a new collab for some seconds after it is created, so a request that follows `createCollab` directly may need to be repeated.
