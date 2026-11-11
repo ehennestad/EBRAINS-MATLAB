@@ -73,5 +73,40 @@ classdef CollabsClientTest < matlab.unittest.TestCase
             testCase.verifyError(@() testCase.Client.searchCollabs(), ...
                 'EBRAINS:Collab:searchCollabs:Unauthorized');
         end
+
+        function testCreateCollabSuccess(testCase)
+            testCase.Client.addResponse('Created', '');
+
+            testCase.Client.createCollab("my-collab", "My collab");
+
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            testCase.Client.verifyRequestURL(1, 'https://wiki.ebrains.eu/rest/v1/collabs');
+            payload = jsondecode(testCase.Client.getRequestPayload(1));
+            testCase.verifyEqual(payload, struct('name', 'my-collab', 'title', 'My collab'));
+        end
+
+        function testCreateCollabSendsGivenOptions(testCase)
+            testCase.Client.addResponse('Created', '');
+
+            testCase.Client.createCollab("my-collab", "My collab", ...
+                description="A test", drive=true, chat=false, public=false);
+
+            payload = jsondecode(testCase.Client.getRequestPayload(1));
+            expectedPayload = struct('name', 'my-collab', 'title', 'My collab', ...
+                'description', 'A test', 'drive', true, 'chat', false, 'public', false);
+            testCase.verifyEqual(payload, expectedPayload);
+        end
+
+        function testCreateCollabConflict(testCase)
+            testCase.Client.addResponse('Conflict', 'A collab with that name already exists.');
+            testCase.verifyError(@() testCase.Client.createCollab("my-collab", "My collab"), ...
+                'EBRAINS:Collab:createCollab:Conflict');
+        end
+
+        function testCreateCollabUnauthorized(testCase)
+            testCase.Client.addResponse('Unauthorized', 'Token is not active');
+            testCase.verifyError(@() testCase.Client.createCollab("my-collab", "My collab"), ...
+                'EBRAINS:Collab:createCollab:Unauthorized');
+        end
     end
 end
