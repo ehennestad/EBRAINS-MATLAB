@@ -18,8 +18,9 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             true (default). The client credentials flow
 %                             renews its token with the client id and
 %                             secret whatever this preference is.
-%       Environment (string) : The EBRAINS environment to work in:
-%                             "prod" (default), the production
+%       Environment (ebrains.common.enum.Environment) : The EBRAINS
+%                             environment to work in, set as a member or
+%                             its name: "prod" (default), the production
 %                             environment, or "int", the integration
 %                             environment. It selects the identity
 %                             provider the token clients log in to
@@ -56,7 +57,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
     properties (Dependent)
         AutoLogin (1,1) logical
         AutoRenew (1,1) logical
-        Environment (1,1) string {ebrains.internal.mustBeEnvironmentName}
+        Environment (1,1) ebrains.common.enum.Environment
     end
 
     properties (Constant, Hidden)
@@ -81,7 +82,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
         end
 
         function value = get.Environment(obj)
-            value = obj.readValue("Environment");
+            value = ebrains.common.enum.Environment(obj.readValue("Environment"));
         end
 
         function obj = set.Environment(obj, value)
@@ -108,7 +109,7 @@ classdef Preferences < matlab.mixin.CustomDisplay
 
             for preferenceName = reshape(string(fieldnames(preferenceValues)), 1, [])
                 setting = obj.getSetting(preferenceName);
-                setting.TemporaryValue = preferenceValues.(preferenceName);
+                setting.TemporaryValue = obj.toSettingValue(preferenceValues.(preferenceName));
             end
         end
 
@@ -146,12 +147,26 @@ classdef Preferences < matlab.mixin.CustomDisplay
         function writeValue(obj, preferenceName, value)
         %writeValue - Set the value of a preference for this user
             setting = obj.getSetting(preferenceName);
-            setting.PersonalValue = value;
+            setting.PersonalValue = obj.toSettingValue(value);
         end
 
         function preferenceNames = getPreferenceNames(obj)
         %getPreferenceNames - Names of the preferences, as a string row
             preferenceNames = reshape(string(properties(obj)), 1, []);
+        end
+    end
+
+    methods (Static, Access = private)
+        function settingValue = toSettingValue(value)
+        %toSettingValue - The value a setting holds for the value of a preference
+        %   A member of an enumeration is held as its Name, so that the
+        %   value MATLAB saves for later sessions is text.
+
+            if isenum(value)
+                settingValue = value.Name;
+            else
+                settingValue = value;
+            end
         end
     end
 

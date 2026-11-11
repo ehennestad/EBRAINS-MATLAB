@@ -7,21 +7,22 @@ function url = IamBaseUrl(options)
 %   URL = ebrains.common.constant.IamBaseUrl(Environment=ENVIRONMENT) also
 %   specifies the environment. ENVIRONMENT must be "prod" or "int".
 %
-%   See also ebrains.useEnvironment, ebrains.iam.OidcTokenClient
+%   See also ebrains.useEnvironment, ebrains.common.enum.Environment,
+%   ebrains.iam.OidcTokenClient
 
     arguments
-        options.Environment (1,1) string {ebrains.internal.mustBeEnvironmentName} = ...
+        options.Environment (1,1) ebrains.common.enum.Environment = ...
             ebrains.getpref("Environment")
     end
 
     REALM_PATH = "/auth/realms/hbp/";
 
     switch options.Environment
-        case "prod"
+        case ebrains.common.enum.Environment.PROD
             url = "https://iam.ebrains.eu" + REALM_PATH;
-        case "int"
+        case ebrains.common.enum.Environment.INT
             url = "https://iam-int.ebrains.eu" + REALM_PATH;
         otherwise
-            % Not reached: mustBeEnvironmentName accepts no other name.
+            % Not reached: the enumeration has no other member.
     end
 end

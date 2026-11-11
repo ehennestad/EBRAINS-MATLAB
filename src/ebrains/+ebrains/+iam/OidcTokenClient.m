@@ -54,7 +54,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
     properties (SetAccess = private)
         ClientId (1,1) string  % OIDC client id the client authenticates as
-        Environment (1,1) string = "prod"  % EBRAINS environment the client logs in to
+        Environment (1,1) ebrains.common.enum.Environment = "prod"  % EBRAINS environment the client logs in to
     end
 
     properties
@@ -529,7 +529,7 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
             SINGLETON_BASE_NAMES = ["IAM_DeviceFlow_Client", "IAM_ClientCredentials_Client"];
 
-            for environment = ebrains.common.constant.EnvironmentNames()
+            for environment = enumeration("ebrains.common.enum.Environment")'
                 for baseName = SINGLETON_BASE_NAMES
                     singletonName = ebrains.iam.OidcTokenClient.getSingletonName(baseName, environment);
                     ebrains.iam.OidcTokenClient.reset(singletonName)
@@ -551,11 +551,11 @@ classdef (Abstract) OidcTokenClient < handle & matlab.mixin.CustomDisplay
 
             arguments
                 baseName (1,1) string
-                environment (1,1) string {ebrains.internal.mustBeEnvironmentName} = ...
+                environment (1,1) ebrains.common.enum.Environment = ...
                     ebrains.getpref("Environment")
             end
 
-            singletonName = baseName + "_" + environment;
+            singletonName = baseName + "_" + environment.Name;
         end
     end
 end

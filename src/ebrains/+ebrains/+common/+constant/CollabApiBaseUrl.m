@@ -9,10 +9,10 @@ function url = CollabApiBaseUrl(options)
 %   also specifies the environment. ENVIRONMENT must be "prod" or "int".
 %
 %   See also CollabBaseUrl, ebrains.useEnvironment,
-%   ebrains.collab.api.CollabsClient
+%   ebrains.common.enum.Environment, ebrains.collab.api.CollabsClient
 
     arguments
-        options.Environment (1,1) string {ebrains.internal.mustBeEnvironmentName} = ...
+        options.Environment (1,1) ebrains.common.enum.Environment = ...
             ebrains.getpref("Environment")
     end
 
