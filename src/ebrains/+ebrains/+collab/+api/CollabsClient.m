@@ -140,6 +140,11 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
                 username (1,1) string {mustBeNonzeroLengthText}
             end
 
+            % The endpoint is a PUT without a body, which MATLAB warns
+            % about on purpose. The warning is off for this request only.
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
             request = obj.initializeRequestMessage("PUT");
             apiUri = ebrains.common.internal.buildApiUri(...
                 ebrains.common.constant.CollabApiBaseUrl(), ...
