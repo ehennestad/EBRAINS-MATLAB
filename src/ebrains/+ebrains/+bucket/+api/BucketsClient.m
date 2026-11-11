@@ -12,6 +12,11 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 %   needs. The temporary URLs the proxy returns are made valid URLs before
 %   they are handed back; see the local functions in this file.
 %
+%   The requests go to the Data Proxy of the Environment preference:
+%   data-proxy.ebrains.eu for "prod" (the default) and
+%   data-proxy-int.ebrains.eu for "int". ebrains.useEnvironment sets the
+%   preference for the current MATLAB session.
+%
 %   The functions of the ebrains.bucket namespace build on this client and
 %   are the intended entry point. Use the client directly when an endpoint
 %   is needed on its own.
