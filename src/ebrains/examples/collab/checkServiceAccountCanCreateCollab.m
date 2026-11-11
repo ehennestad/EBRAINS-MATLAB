@@ -64,8 +64,12 @@ try
     % The bucket of a collab has the name of the collab.
     currentStep = "create the bucket of the collab";
     bucketClient = ebrains.bucket.api.BucketsClient();
-    bucketClient.createBucket(collabName)
-    fprintf("Created the bucket %s\n", collabName)
+    wasBucketCreated = bucketClient.createBucket(collabName);
+    if wasBucketCreated
+        fprintf("Created the bucket %s\n", collabName)
+    else
+        fprintf("The bucket %s existed already\n", collabName)
+    end
 
     currentStep = "upload a file to the bucket";
     ebrains.bucket.uploadFile(collabName, OBJECT_NAME, sourceFile, DisplayMode="Command Window")
