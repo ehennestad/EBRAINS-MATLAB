@@ -39,6 +39,11 @@ classdef VirtualBucketBrowser < handle
 %   is online only and any other file is downloaded. "Open online" shows
 %   the page of the bucket in the Collaboratory in a web browser.
 %
+%   A private bucket is read only with an access token. When the Data
+%   Proxy refuses a download that was requested without one, "Download"
+%   stops at that file and asks whether to log in to EBRAINS. On a yes it
+%   runs ebrains.login and downloads that file and the files after it.
+%
 %   A file whose name ends in ".sync-part" or ".multipart_manifest.json"
 %   is not shown, whether it is in the folder or in the manifest: a
 %   download is received in a file of the first kind next to its target,
@@ -84,6 +89,9 @@ classdef VirtualBucketBrowser < handle
 %                    for ebrains.bucket.downloadFile. Meant for tests.
 %       Opener     : Function that is called with an address to open in
 %                    a web browser. Meant for tests; WEB is called
+%                    otherwise.
+%       Authenticator : Function that logs in to EBRAINS, called without
+%                    arguments. Meant for tests; ebrains.login is called
 %                    otherwise.
 %       Confirmer  : Function that answers a confirmation, called as
 %                    Confirmer(message, title, confirmText) and returning
@@ -151,6 +159,7 @@ classdef VirtualBucketBrowser < handle
         Client ebrains.bucket.api.BucketsClient
         Downloader function_handle
         Opener function_handle
+        Authenticator function_handle
         Confirmer function_handle
         FolderChooser function_handle
         Alerter function_handle
@@ -200,6 +209,7 @@ classdef VirtualBucketBrowser < handle
                 options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
                 options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
                 options.Opener (1,1) function_handle = @web
+                options.Authenticator (1,1) function_handle = @ebrains.login
                 options.Confirmer function_handle {mustBeScalarOrEmpty} = function_handle.empty
                 options.FolderChooser (1,1) function_handle = @chooseFolderWithDialog
                 options.Alerter (1,1) function_handle = @uialert
@@ -222,6 +232,7 @@ classdef VirtualBucketBrowser < handle
             app.Client = options.Client;
             app.Downloader = options.Downloader;
             app.Opener = options.Opener;
+            app.Authenticator = options.Authenticator;
             app.Confirmer = options.Confirmer;
             app.FolderChooser = options.FolderChooser;
             app.Alerter = options.Alerter;
@@ -662,41 +673,111 @@ classdef VirtualBucketBrowser < handle
                 end
             end
 
-            % A file that cannot be downloaded does not stop the others: an
-            % empty file is taken for a placeholder until the bucket is
-            % listed, and it may not stand for any object. Only Cancel in
-            % the progress dialog stops the batch.
             restoreControls = app.setBusy();  %#ok<NASGU>
             nFiles = height(files);
-            failureMessages = strings(nFiles, 1);
-            isFailed = false(nFiles, 1);
-            isCancelled = false;
-            for i = 1:nFiles
-                relativePath = files.Path(i);
-                try
-                    app.downloadOne(relativePath)
-                catch exception
-                    isFailed(i) = true;
-                    failureMessages(i) = exception.message;
-                    if exception.identifier == "webprogress:download:Cancelled"
-                        isCancelled = true;
-                        break
-                    end
+            [isDownloaded, isFailed, failureMessages, stopReason] = ...
+                app.downloadEach(files.Path, StopWhenLoginIsNeeded=true);
+            if stopReason == "login_needed"
+                % The refused file and the files after it. The second pass
+                % reports a refusal as any other failure, so that a login
+                % which does not lead to a token is offered only once.
+                isWaiting = ~isDownloaded & ~isFailed;
+                if app.offerLogin(sum(isWaiting))
+                    [isDownloaded(isWaiting), isFailed(isWaiting), failureMessages(isWaiting), stopReason] = ...
+                        app.downloadEach(files.Path(isWaiting), StopWhenLoginIsNeeded=false);
                 end
             end
 
-            nDownloaded = sum(~isFailed(1:i));
+            nDownloaded = sum(isDownloaded);
             app.Message = "Downloaded " + countText(nDownloaded, "file") + ".";
             if nDownloaded < nFiles
                 app.Message = sprintf("%d of %d files were downloaded.", nDownloaded, nFiles);
             end
             app.refresh()
-            if isCancelled
+            if stopReason == "cancelled"
                 app.alert(app.Message, "Download cancelled", Icon="info")
             elseif any(isFailed)
                 report = ebrains.bucket.app.internal.downloadFailureReport( ...
                     files.Path(isFailed), failureMessages(isFailed), nFiles);
                 app.alert(report, "Some files were not downloaded")
+            end
+        end
+
+        function [isDownloaded, isFailed, failureMessages, stopReason] = downloadEach(app, paths, options)
+        % downloadEach - Download the files of the given paths one by one
+        %
+        %   A file that cannot be downloaded does not stop the others: an
+        %   empty file is taken for a placeholder until the bucket is
+        %   listed, and it may not stand for any object. Two things stop
+        %   the batch, and stopReason names the one that did:
+        %       "cancelled"    - Cancel was pressed in the progress dialog
+        %       "login_needed" - With StopWhenLoginIsNeeded, the Data Proxy
+        %                        refused a download that was requested
+        %                        without an access token. Access is given
+        %                        for a bucket as a whole, so the files
+        %                        after it would be refused as well.
+        %   stopReason is "" when every file was tried. isDownloaded and
+        %   isFailed have one element for each path, and both are false
+        %   for the file that stopped the batch and the files after it.
+        %   failureMessages holds the error message of each failed file.
+            arguments
+                app
+                paths (:,1) string
+                options.StopWhenLoginIsNeeded (1,1) logical = false
+            end
+
+            nFiles = numel(paths);
+            isDownloaded = false(nFiles, 1);
+            isFailed = false(nFiles, 1);
+            failureMessages = strings(nFiles, 1);
+            stopReason = "";
+            for i = 1:nFiles
+                try
+                    app.downloadOne(paths(i))
+                    isDownloaded(i) = true;
+                catch exception
+                    if exception.identifier == "webprogress:download:Cancelled"
+                        stopReason = "cancelled";
+                        break
+                    elseif options.StopWhenLoginIsNeeded && app.isRefusedWithoutToken(exception)
+                        stopReason = "login_needed";
+                        break
+                    end
+                    isFailed(i) = true;
+                    failureMessages(i) = exception.message;
+                end
+            end
+        end
+
+        function tf = isRefusedWithoutToken(app, exception)
+        % isRefusedWithoutToken - Whether an error is the refusal of a request that carried no access token
+        %
+        %   The Data Proxy answers 401 (Unauthorized) to a read of a
+        %   private bucket that carries no token, which the client raises
+        %   as EBRAINS:Bucket:<operation>:Unauthorized. With a token the
+        %   same status means that the token was refused, which a login
+        %   does not necessarily change.
+            isUnauthorized = startsWith(exception.identifier, "EBRAINS:Bucket:") ...
+                && endsWith(exception.identifier, ":Unauthorized");
+            tf = isUnauthorized && ~app.Client.LastSentRequestHasToken;
+        end
+
+        function isLoggedIn = offerLogin(app, nFiles)
+        % offerLogin - Ask whether to log in to EBRAINS to download files, and log in on a yes
+        %
+        %   isLoggedIn is true when the login was run and raised no error.
+            isLoggedIn = false;
+            message = "The files of this bucket can be downloaded only after logging in to EBRAINS. " + ...
+                "Log in and download " + countText(nFiles, "file") + "?";
+            if ~app.confirm(message, "Log in to EBRAINS?", "Log in", Icon="question", IsConfirmDefault=true)
+                return
+            end
+
+            try
+                app.Authenticator()
+                isLoggedIn = true;
+            catch exception
+                app.alert(exception.message, "Could not log in to EBRAINS")
             end
         end
 
@@ -837,14 +918,32 @@ classdef VirtualBucketBrowser < handle
             app.Opener(ebrains.bucket.internal.buildBucketViewURL(app.BucketName))
         end
 
-        function tf = confirm(app, message, title, confirmText)
+        function tf = confirm(app, message, title, confirmText, options)
         % confirm - Ask the user to confirm an action
+        %
+        %   The question has the buttons confirmText and "Cancel". Cancel
+        %   is the default button unless IsConfirmDefault is true, since
+        %   most confirmations are for an action that discards local data.
+            arguments
+                app
+                message (1,1) string
+                title (1,1) string
+                confirmText (1,1) string
+                options.Icon (1,1) string = "warning"
+                options.IsConfirmDefault (1,1) logical = false
+            end
             if ~isempty(app.Confirmer)
                 tf = app.Confirmer(message, title, confirmText);
                 return
             end
-            selection = uiconfirm(app.UIFigure, message, title, ...
-                Options=[confirmText, "Cancel"], DefaultOption=2, CancelOption=2, Icon="warning");
+            cancelText = "Cancel";
+            if options.IsConfirmDefault
+                defaultButton = confirmText;
+            else
+                defaultButton = cancelText;
+            end
+            selection = uiconfirm(app.UIFigure, message, title, Options=[confirmText, cancelText], ...
+                DefaultOption=defaultButton, CancelOption=cancelText, Icon=options.Icon);
             tf = selection == confirmText;
         end
     end

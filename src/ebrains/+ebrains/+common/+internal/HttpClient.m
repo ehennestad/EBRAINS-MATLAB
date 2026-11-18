@@ -29,12 +29,15 @@ classdef (Abstract) HttpClient < handle
         ErrorIdPrefix (1,1) string
     end
 
-    properties (Access = private)
-        % Whether the request sent last carried an access token. The
-        % response to it does not say, and a refusal is reported differently
-        % for a request that was sent without one. Every method reports the
-        % response of the request it has just sent, so the request sent
-        % last is the one being reported.
+    properties (SetAccess = private)
+        % LastSentRequestHasToken - Whether the request sent last carried an access token
+        %
+        % The response to a request does not say, and a refusal is reported
+        % differently for a request that was sent without one. Every method
+        % reports the response of the request it has just sent, so the
+        % request sent last is the one being reported. A caller that
+        % catches the error of a method reads the property to tell whether
+        % logging in could change the outcome.
         LastSentRequestHasToken (1,1) logical = false
     end
 
