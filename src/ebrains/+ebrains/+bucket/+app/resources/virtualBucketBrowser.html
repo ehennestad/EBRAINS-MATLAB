@@ -1297,27 +1297,34 @@ function wireSplitter() {
   });
 }
 
+// A click on a row of the tree or the table draws the row again, and the
+// browser sends no dblclick event when the element of the first click is
+// gone at the second. A double click is therefore the click event whose
+// click count (event.detail) is 2, which the browser counts by time and
+// place, whatever element is there.
+function isSecondClickOfDoubleClick(event) {
+  return event.detail === 2 && !(event.shiftKey || event.metaKey || event.ctrlKey);
+}
+
+function toggleExpanded(path) {
+  if (view.expanded.has(path)) view.expanded.delete(path);
+  else view.expanded.add(path);
+  renderTree();
+}
+
 function wireEvents() {
   wireSplitter();
+  // A click opens a folder and a click on its arrow shows or hides its
+  // subfolders. A double click does both: its first click has opened the
+  // folder, and its second shows or hides the subfolders.
   $("tree").addEventListener("click", (event) => {
     const row = event.target.closest(".tree-row");
     if (!row) return;
     const path = row.dataset.path;
-    if (event.target.closest("[data-toggle]") && folders.get(path).children.size > 0) {
-      if (view.expanded.has(path)) view.expanded.delete(path);
-      else view.expanded.add(path);
-      renderTree();
-    } else {
-      openFolder(path);
-    }
-  });
-  $("tree").addEventListener("dblclick", (event) => {
-    const row = event.target.closest(".tree-row");
-    if (!row || event.target.closest("[data-toggle]")) return;
-    const path = row.dataset.path;
-    if (view.expanded.has(path)) view.expanded.delete(path);
-    else view.expanded.add(path);
-    renderTree();
+    const isOnToggle = Boolean(event.target.closest("[data-toggle]"));
+    if (isOnToggle && folders.get(path).children.size > 0) toggleExpanded(path);
+    else if (!isOnToggle && isSecondClickOfDoubleClick(event)) toggleExpanded(path);
+    else openFolder(path);
   });
   $("tree").addEventListener("contextmenu", (event) => {
     const row = event.target.closest(".tree-row");
@@ -1331,13 +1338,13 @@ function wireEvents() {
     if (link) openFolder(link.dataset.path);
   });
 
+  // A click selects a row. A double click opens it: a folder in the page,
+  // a file with the application of the system.
   $("rows").addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-key]");
-    if (row) selectRow(row.dataset.key, event);
-  });
-  $("rows").addEventListener("dblclick", (event) => {
-    const row = event.target.closest("tr[data-key]");
-    if (row && event.target.type !== "checkbox") openRow(row.dataset.key);
+    if (!row) return;
+    if (event.target.type !== "checkbox" && isSecondClickOfDoubleClick(event)) openRow(row.dataset.key);
+    else selectRow(row.dataset.key, event);
   });
   $("rows").addEventListener("contextmenu", (event) => {
     const row = event.target.closest("tr[data-key]");
