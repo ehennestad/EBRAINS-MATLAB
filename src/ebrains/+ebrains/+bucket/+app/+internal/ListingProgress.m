@@ -57,22 +57,3 @@ classdef ListingProgress < handle
         end
     end
 end
-
-function text = formatCount(count)
-% formatCount - Whole number with thousands separators, such as "20,481"
-    text = regexprep(sprintf("%d", count), "\d(?=(\d{3})+$)", "$0,");
-end
-
-function text = formatDuration(seconds)
-% formatDuration - Rounded duration, such as "40 seconds" or "6 minutes"
-    if seconds < 60
-        text = sprintf("%d seconds", max(round(seconds / 10) * 10, 10));
-    else
-        minutes = round(seconds / 60);
-        if minutes == 1
-            text = "1 minute";
-        else
-            text = sprintf("%d minutes", minutes);
-        end
-    end
-end

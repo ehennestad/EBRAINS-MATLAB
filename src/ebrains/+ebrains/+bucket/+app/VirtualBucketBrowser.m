@@ -845,7 +845,7 @@ classdef VirtualBucketBrowser < handle
             % Any other file may hold changes that exist nowhere else.
             nDiffering = sum(files.State == "differs");
             nUntimed = sum(isnat(files.LocalTime) | isnat(files.RemoteTime));
-            freedBytes = formatBytes(sum(files.LocalBytes, "omitnan"));
+            freedBytes = ebrains.bucket.app.internal.formatBytes(sum(files.LocalBytes, "omitnan"));
             if ~app.IsListed
                 message = sprintf(['Replace %d local files (%s) with empty placeholders? ' ...
                     'The bucket has not been listed, so the files cannot be checked against ' ...
@@ -1182,17 +1182,6 @@ function folder = chooseFolderWithDialog(startFolder, title)
         folder = string.empty;
     else
         folder = string(folder);
-    end
-end
-
-function text = formatBytes(bytes)
-% formatBytes - Size in bytes as text with a binary unit
-    units = ["B", "KB", "MB", "GB", "TB"];
-    exponent = min(max(floor(log(max(bytes, 1)) / log(1024)), 0), numel(units) - 1);
-    if exponent == 0
-        text = sprintf("%d B", bytes);
-    else
-        text = sprintf("%.1f %s", bytes / 1024^exponent, units(exponent + 1));
     end
 end
 
