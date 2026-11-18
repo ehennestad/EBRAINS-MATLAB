@@ -676,7 +676,7 @@ classdef VirtualBucketBrowser < handle
             restoreControls = app.setBusy();  %#ok<NASGU>
             nFiles = height(files);
             [isDownloaded, isFailed, failureMessages, stopReason] = ...
-                app.downloadEach(files.Path, StopWhenLoginIsNeeded=true);
+                app.downloadEach(files.Path, files.RemoteBytes, StopWhenLoginIsNeeded=true);
             if stopReason == "login_needed"
                 % The refused file and the files after it. The second pass
                 % reports a refusal as any other failure, so that a login
@@ -684,7 +684,8 @@ classdef VirtualBucketBrowser < handle
                 isWaiting = ~isDownloaded & ~isFailed;
                 if app.offerLogin(sum(isWaiting))
                     [isDownloaded(isWaiting), isFailed(isWaiting), failureMessages(isWaiting), stopReason] = ...
-                        app.downloadEach(files.Path(isWaiting), StopWhenLoginIsNeeded=false);
+                        app.downloadEach(files.Path(isWaiting), files.RemoteBytes(isWaiting), ...
+                        StopWhenLoginIsNeeded=false);
                 end
             end
 
@@ -703,8 +704,12 @@ classdef VirtualBucketBrowser < handle
             end
         end
 
-        function [isDownloaded, isFailed, failureMessages, stopReason] = downloadEach(app, paths, options)
-        % downloadEach - Download the files of the given paths one by one
+        function [isDownloaded, isFailed, failureMessages, stopReason] = downloadEach(app, paths, fileBytes, options)
+        % downloadEach - Download the files of the given paths one by one, with one progress dialog for all
+        %
+        %   fileBytes holds the size of the object of each path, NaN where
+        %   the bucket has not been listed, which the progress dialog
+        %   measures the download by. The dialog is closed on return.
         %
         %   A file that cannot be downloaded does not stop the others: an
         %   empty file is taken for a placeholder until the bucket is
@@ -723,6 +728,7 @@ classdef VirtualBucketBrowser < handle
             arguments
                 app
                 paths (:,1) string
+                fileBytes (:,1) double
                 options.StopWhenLoginIsNeeded (1,1) logical = false
             end
 
@@ -731,9 +737,22 @@ classdef VirtualBucketBrowser < handle
             isFailed = false(nFiles, 1);
             failureMessages = strings(nFiles, 1);
             stopReason = "";
+
+            progressDialog = app.ProgressDialog(app.UIFigure, Title="Download from bucket", ...
+                Message="Starting the download...", Cancelable="on");
+            closeDialog = onCleanup(@() delete(progressDialog));
+            progress = ebrains.bucket.app.internal.DownloadProgress(progressDialog, fileBytes);
+
             for i = 1:nFiles
+                % A transfer asks whether to stop only while it runs, and
+                % the request for its download URL comes before it
+                if progress.isCancelRequested()
+                    stopReason = "cancelled";
+                    break
+                end
+                progress.startFile(paths(i))
                 try
-                    app.downloadOne(paths(i))
+                    app.downloadOne(paths(i), progress)
                     isDownloaded(i) = true;
                 catch exception
                     if exception.identifier == "webprogress:download:Cancelled"
@@ -746,6 +765,7 @@ classdef VirtualBucketBrowser < handle
                     isFailed(i) = true;
                     failureMessages(i) = exception.message;
                 end
+                progress.finishFile(isDownloaded(i))
             end
         end
 
@@ -781,8 +801,12 @@ classdef VirtualBucketBrowser < handle
             end
         end
 
-        function downloadOne(app, relativePath)
+        function downloadOne(app, relativePath, progress)
         % downloadOne - Download an object into its file, as a sync from the bucket does
+        %
+        %   The transfer shows no progress of its own. It reports its bytes
+        %   to progress, the ebrains.bucket.app.internal.DownloadProgress
+        %   of the batch, and stops when that says Cancel was pressed.
         %
         %   The file gets the size check and the time of its object that
         %   ebrains.bucket.sync.fromBucket gives a download, so that a
@@ -813,8 +837,10 @@ classdef VirtualBucketBrowser < handle
             ebrains.bucket.sync.internal.downloadAndReplace(app.BucketName, app.Prefix + relativePath, ...
                 fullfile(app.LocalFolder, relativePath), ...
                 ExpectedBytes=expectedBytes, ModifiedTime=modifiedTime, LocalFile=app.LocalFiles(isRow, :), ...
-                DisplayMode="Dialog Box", Figure=app.UIFigure, Client=app.Client, ...
-                Downloader=app.Downloader);
+                DisplayMode="None", ...
+                ProgressFcn=@(transfer) progress.reportBytes(transfer.TransferredBytes), ...
+                CancelRequestedFcn=@() progress.isCancelRequested(), ...
+                Client=app.Client, Downloader=app.Downloader);
         end
 
         function makePathsOnlineOnly(app, paths)

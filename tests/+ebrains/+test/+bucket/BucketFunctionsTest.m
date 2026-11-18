@@ -1033,6 +1033,28 @@ classdef BucketFunctionsTest < matlab.unittest.TestCase
             testCase.verifyEqual(suffixes, [".part", ".sync-part"]);
         end
 
+        function testDownloadFileHandsTheProgressFunctionsToTheDownloader(testCase)
+            folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+            targetFile = fullfile(folderFixture.Folder, "file.txt");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/file?sig=1'));
+            received = {};
+            downloader = @(target, url, varargin) recordOptions(target, varargin);
+            function recordOptions(target, nameValues)
+                received = nameValues;
+                writelines("received", target);
+            end
+            progressFcn = @(progress) disp(progress);
+            cancelRequestedFcn = @() false;
+
+            ebrains.bucket.downloadFile("my-bucket", "file.txt", targetFile, ...
+                Client=testCase.Client, Downloader=downloader, DisplayMode="None", ...
+                ProgressFcn=progressFcn, CancelRequestedFcn=cancelRequestedFcn);
+
+            testCase.verifyEqual(string(namedValue(received, "DisplayMode")), "None");
+            testCase.verifyEqual(namedValue(received, "ProgressFcn"), progressFcn);
+            testCase.verifyEqual(namedValue(received, "CancelRequestedFcn"), cancelRequestedFcn);
+        end
+
         function testDownloadFileDownloaderErrorPropagates(testCase)
             folderFixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
             targetFile = fullfile(folderFixture.Folder, "file.txt");

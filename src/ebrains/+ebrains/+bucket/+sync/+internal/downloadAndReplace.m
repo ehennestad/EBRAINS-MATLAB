@@ -40,6 +40,11 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
 %                       the check.
 %       DisplayMode   : Where progress is shown, as for ebrains.bucket.downloadFile.
 %       Figure        : Parent figure of the progress dialog.
+%       ProgressFcn   : Function called with the progress of the transfer,
+%                       as for ebrains.bucket.downloadFile.
+%       CancelRequestedFcn : Function that returns true when the download
+%                       should stop, as for ebrains.bucket.downloadFile.
+%                       The file at localFile is left as it was.
 %       Client        : ebrains.bucket.api.BucketsClient that sends the requests.
 %       Downloader    : Function that performs the transfer, as for
 %                       ebrains.bucket.downloadFile. Meant for tests.
@@ -55,6 +60,8 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
         options.LocalFile = []
         options.DisplayMode (1,1) string = "Command Window"
         options.Figure = []
+        options.ProgressFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
+        options.CancelRequestedFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
     end
@@ -81,6 +88,7 @@ function note = downloadAndReplace(bucketName, objectName, localFile, options)
     ebrains.bucket.downloadFile(bucketName, objectName, temporaryFile, ...
         TemporarySuffix=ebrains.bucket.sync.internal.downloadPartSuffix(), ...
         DisplayMode=options.DisplayMode, Figure=options.Figure, ...
+        ProgressFcn=options.ProgressFcn, CancelRequestedFcn=options.CancelRequestedFcn, ...
         Client=options.Client, Downloader=options.Downloader);
 
     fileInfo = dir(temporaryFile);

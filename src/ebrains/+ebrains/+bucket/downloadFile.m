@@ -22,10 +22,24 @@ function downloadFile(bucketName, objectName, targetFile, options)
 %                    created if it does not exist.
 %
 %   Name-Value Arguments
-%       DisplayMode : Where progress is shown, "Dialog Box" (default) or
-%                     "Command Window".
+%       DisplayMode : Where progress is shown: "Dialog Box" (default),
+%                     "Command Window", or "None", which shows nothing
+%                     and leaves the progress to ProgressFcn.
 %       Figure      : Parent figure of the progress dialog. By default the
 %                     dialog gets a window of its own.
+%       ProgressFcn : Function called with the progress of the transfer,
+%                     as ProgressFcn(progress), at most once a second
+%                     while the transfer runs and once more when it is
+%                     done. progress is a struct with the fields
+%                     ActionName ("Download"), TransferredBytes and
+%                     TotalBytes; TotalBytes is NaN when the size is
+%                     unknown. By default no function is called.
+%       CancelRequestedFcn : Function that returns true when the download
+%                     should stop, called as CancelRequestedFcn() before
+%                     the transfer and at most once a second while it
+%                     runs. A download that is stopped raises the error
+%                     webprogress:download:Cancelled and leaves the
+%                     target as it was. By default no function is called.
 %       TemporarySuffix : Suffix of the temporary file the object is
 %                     received in. The default is ".part". A sync passes
 %                     ".sync-part", which every sync leaves out, so a
@@ -49,8 +63,11 @@ function downloadFile(bucketName, objectName, targetFile, options)
         bucketName (1,1) string {mustBeNonzeroLengthText}
         objectName (1,1) string {mustBeNonzeroLengthText}
         targetFile (1,1) string {mustBeNonzeroLengthText, mustNotBeFolder}
-        options.DisplayMode (1,1) string {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window"])} = "Dialog Box"
+        options.DisplayMode (1,1) string ...
+            {mustBeMember(options.DisplayMode, ["Dialog Box", "Command Window", "None"])} = "Dialog Box"
         options.Figure = []
+        options.ProgressFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
+        options.CancelRequestedFcn function_handle {mustBeScalarOrEmpty} = function_handle.empty
         options.TemporarySuffix (1,1) string {mustBeNonzeroLengthText} = ".part"
         options.Client (1,1) ebrains.bucket.api.BucketsClient = ebrains.bucket.api.BucketsClient()
         options.Downloader (1,1) function_handle = @ebrains.external.webprogress.download
@@ -76,7 +93,8 @@ function downloadFile(bucketName, objectName, targetFile, options)
     try
         options.Downloader(targetFile, downloadUrl, ...
             Filename=objectName, DisplayMode=options.DisplayMode, Figure=options.Figure, ...
-            TemporarySuffix=options.TemporarySuffix);
+            TemporarySuffix=options.TemporarySuffix, ...
+            ProgressFcn=options.ProgressFcn, CancelRequestedFcn=options.CancelRequestedFcn);
     catch exception
         throw(ebrains.bucket.internal.redactSignedUrl(exception, downloadUrl))
     end
