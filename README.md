@@ -98,7 +98,7 @@ Lookups default to the `RELEASED` stage. Pass a stage vector in order of prefere
 instance = kgClient.getInstance(identifier, ["RELEASED", "IN_PROGRESS"]);
 ```
 
-### 4) Search and create collabs, add team members, create the bucket
+### 4) Search and create collabs, add team members, create or delete the bucket
 ```matlab
 collabClient = ebrains.collab.api.CollabsClient();
 collabs = collabClient.searchCollabs(limit=50);
@@ -108,6 +108,9 @@ collabClient.addTeamUser("my-collab", "editor", "username")
 % A new collab has no bucket until one is created for it
 bucketClient = ebrains.bucket.api.BucketsClient();
 bucketClient.createBucket("my-collab")
+
+% Delete the bucket of a collab
+bucketClient.deleteBucket("my-collab")
 ```
 
 The Collaboratory can answer 403 (Forbidden) to a request for a new collab for some seconds after it is created, so a request that follows `createCollab` directly may need to be repeated.
