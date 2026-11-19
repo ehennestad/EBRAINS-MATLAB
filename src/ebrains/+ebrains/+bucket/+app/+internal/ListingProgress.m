@@ -37,42 +37,26 @@ classdef ListingProgress < handle
                 error('EBRAINS:Bucket:ListingCancelled', 'The listing of the bucket was cancelled.')
             end
 
+            listedText = ebrains.bucket.app.internal.formatCount(nListed);
+            totalText = ebrains.bucket.app.internal.formatCount(progress.NumObjects);
+
             if ~progress.IsWholeBucket
                 progress.Dialog.Indeterminate = "on";
                 progress.Dialog.Message = sprintf( ...
                     "Listing the objects of the folder. %s listed so far. The bucket holds about %s.", ...
-                    formatCount(nListed), formatCount(progress.NumObjects));
+                    listedText, totalText);
                 return
             end
 
             progress.Dialog.Indeterminate = "off";
             progress.Dialog.Value = min(nListed / max(progress.NumObjects, 1), 1);
-            message = sprintf("Listed %s of about %s objects.", ...
-                formatCount(nListed), formatCount(progress.NumObjects));
+            message = sprintf("Listed %s of about %s objects.", listedText, totalText);
             if nListed > 0 && nListed < progress.NumObjects
                 secondsLeft = toc(progress.StartTime) / nListed * (progress.NumObjects - nListed);
-                message = message + " About " + formatDuration(secondsLeft) + " left.";
+                timeLeftText = ebrains.bucket.app.internal.formatDuration(secondsLeft);
+                message = message + " About " + timeLeftText + " left.";
             end
             progress.Dialog.Message = message;
-        end
-    end
-end
-
-function text = formatCount(count)
-% formatCount - Whole number with thousands separators, such as "20,481"
-    text = regexprep(sprintf("%d", count), "\d(?=(\d{3})+$)", "$0,");
-end
-
-function text = formatDuration(seconds)
-% formatDuration - Rounded duration, such as "40 seconds" or "6 minutes"
-    if seconds < 60
-        text = sprintf("%d seconds", max(round(seconds / 10) * 10, 10));
-    else
-        minutes = round(seconds / 60);
-        if minutes == 1
-            text = "1 minute";
-        else
-            text = sprintf("%d minutes", minutes);
         end
     end
 end

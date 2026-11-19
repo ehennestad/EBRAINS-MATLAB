@@ -8,7 +8,8 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % replaces every dialog: a Confirmer that records the question and
     % answers with ConfirmAnswer, which refuses unless a test sets it, a
     % FolderChooser that answers with ChosenFolder, an Alerter that records
-    % the alert and a FakeProgressDialog. The Authenticator counts the
+    % the alert and a ProgressDialog that opens a FakeProgressDialog and
+    % records it in ProgressDialogs. The Authenticator counts the
     % logins instead of logging in, and fails with LoginError when a test
     % sets one. A confirmation or
     % folder dialog would wait for a user, and on some releases uialert
@@ -44,6 +45,15 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % ChooserTitles - Titles of the folder dialogs the browser asked for
         ChooserTitles (1,:) string = string.empty(1, 0)
+
+        % ProgressDialogs - The progress dialogs the browser opened; one it has closed is a deleted handle
+        ProgressDialogs (1,:) ebrains.mocks.FakeProgressDialog = ebrains.mocks.FakeProgressDialog.empty(1, 0)
+
+        % ProgressTitles - Titles of the progress dialogs the browser opened
+        ProgressTitles (1,:) string = string.empty(1, 0)
+
+        % OpenProgressDialogCounts - Number of progress dialogs open at each confirmation the browser asked for
+        OpenProgressDialogCounts (1,:) double = zeros(1, 0)
     end
 
     methods (TestClassSetup)
@@ -265,6 +275,77 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifySubstring(testCase.Alerts(2), "1 of 2 files could not be downloaded.");
             testCase.verifySubstring(testCase.Alerts(2), "- a.txt");
             testCase.verifyFalse(contains(testCase.Alerts(2), "b.txt"));
+        end
+
+        function testDownloadOfSeveralFilesOpensOneProgressDialog(testCase)
+            % Each transfer shows nothing of its own and reports to the
+            % dialog of the batch, with the progress struct of
+            % ebrains.external.webprogress.download
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            displayModes = strings(1, 0);
+            testCase.openApp(testCase.Folder, ...
+                Downloader=@(target, ~, varargin) reportThenWrite(target, varargin));
+            function reportThenWrite(target, nameValues)
+                transferOptions = struct(nameValues{:});
+                displayModes(end+1) = transferOptions.DisplayMode;
+                transferOptions.ProgressFcn(struct( ...
+                    "ActionName", "Download", "TransferredBytes", 3, "TotalBytes", 3))
+                writeFile(target, "abc");
+            end
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=2'));
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.ProgressTitles, "Download from bucket");
+            testCase.verifyEqual(displayModes, ["None", "None"], 'No transfer opens a dialog of its own.');
+            testCase.verifyEqual(testCase.App.Files.State, ["downloaded"; "downloaded"]);
+            testCase.verifyFalse(isvalid(testCase.ProgressDialogs), 'The dialog is closed after the last file.');
+        end
+
+        function testCancelBetweenFilesStopsTheBatch(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder, ...
+                Downloader=@(target, varargin) writeAbcThenPressCancel(testCase, target));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            nRequestsBefore = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.Client.getRequestCount() - nRequestsBefore, 1, ...
+                'The file after the cancel is not requested.');
+            testCase.verifyEqual(testCase.App.Files.State, ["downloaded"; "online_only"]);
+            testCase.verifyEqual(testCase.Alerts, ["Download cancelled", "1 of 2 files were downloaded."]);
+        end
+
+        function testCancelDuringATransferStopsTheBatch(testCase)
+            % The transfer asks its CancelRequestedFcn whether to stop, and
+            % raises webprogress:download:Cancelled when that says so
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder, ...
+                Downloader=@(~, ~, varargin) pressCancelDuringTransfer(testCase, varargin));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            nRequestsBefore = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.Client.getRequestCount() - nRequestsBefore, 1, ...
+                'The file after the cancel is not requested.');
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "online_only"]);
+            testCase.verifyEqual(testCase.Alerts, ["Download cancelled", "0 of 2 files were downloaded."]);
+        end
+
+        function testProgressDialogIsClosedWhenTheLoginIsOffered(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.OpenProgressDialogCounts, 0);
         end
 
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
@@ -935,7 +1016,7 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             options.Authenticator = @() countLogin(testCase);
             options.FolderChooser = @(~, title) chooseRecordedFolder(testCase, title);
             options.Alerter = @(~, message, title, varargin) recordAlert(testCase, message, title);
-            options.ProgressDialog = @ebrains.mocks.FakeProgressDialog;
+            options.ProgressDialog = @(varargin) openRecordedProgressDialog(testCase, varargin{:});
             options.Visible = "off";
             optionPairs = namedargs2cell(options);
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, optionPairs{:});
@@ -1073,7 +1154,34 @@ end
 function tf = answerConfirmation(testCase, message, title)
 % answerConfirmation - Confirmer that records the question and answers with ConfirmAnswer
     testCase.Confirmations(end+1, :) = [title, message];
+    testCase.OpenProgressDialogCounts(end+1) = sum(isvalid(testCase.ProgressDialogs));
     tf = testCase.ConfirmAnswer;
+end
+
+function dialog = openRecordedProgressDialog(testCase, varargin)
+% openRecordedProgressDialog - ProgressDialog that opens a FakeProgressDialog and records it
+    dialog = ebrains.mocks.FakeProgressDialog(varargin{:});
+    testCase.ProgressDialogs(end+1) = dialog;
+    testCase.ProgressTitles(end+1) = dialog.Title;
+end
+
+function writeAbcThenPressCancel(testCase, target)
+% writeAbcThenPressCancel - Downloader that delivers the download, after which Cancel is pressed
+    writeFile(target, "abc");
+    testCase.ProgressDialogs(end).CancelRequested = true;
+end
+
+function pressCancelDuringTransfer(testCase, nameValues)
+% pressCancelDuringTransfer - Downloader during whose transfer Cancel is pressed
+%
+%   Stops as ebrains.external.webprogress.download does: it asks its
+%   CancelRequestedFcn and raises webprogress:download:Cancelled on a yes.
+%   On a no it returns without a file, which fails the download.
+    transferOptions = struct(nameValues{:});
+    testCase.ProgressDialogs(end).CancelRequested = true;
+    if transferOptions.CancelRequestedFcn()
+        error('webprogress:download:Cancelled', 'The download was cancelled.')
+    end
 end
 
 function countLogin(testCase)
