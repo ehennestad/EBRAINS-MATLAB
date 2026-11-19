@@ -198,14 +198,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 objectName (1,1) string {mustBeNonzeroLengthText}
             end
 
-            % The endpoint is a PUT without a body, which MATLAB warns
-            % about on purpose. The warning is off for this request only.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName)]);
             request = obj.initializeRequestMessage("PUT");
-            response = obj.sendRequest(request, apiUri);
+            response = obj.sendRequestWithoutBody(request, apiUri);
 
             if response.StatusCode == "OK"
                 uploadUrl = encodeRawUrlCharacters(response.Body.Data.url);
@@ -229,14 +224,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 objectName (1,1) string {mustBeNonzeroLengthText}
             end
 
-            % The endpoint is a PUT without a body, which MATLAB warns
-            % about on purpose. The warning is off for this request only.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             request = obj.initializeRequestMessage("PUT");
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName), "multipart"]);
-            response = obj.sendRequest(request, apiUri);
+            response = obj.sendRequestWithoutBody(request, apiUri);
 
             if response.StatusCode == "OK"
                 uploadId = string(response.Body.Data.uploadId);
@@ -263,15 +253,10 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
                 partNumber (1,1) double {mustBeInteger, mustBePositive}
             end
 
-            % The endpoint is a PUT without a body, which MATLAB warns
-            % about on purpose. The warning is off for this request only.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             request = obj.initializeRequestMessage("PUT");
             apiUri = obj.buildApiUri(["buckets", bucketName, objectPathSegments(objectName), ...
                 "multipart", uploadId, string(partNumber)]);
-            response = obj.sendRequest(request, apiUri);
+            response = obj.sendRequestWithoutBody(request, apiUri);
 
             if response.StatusCode == "OK"
                 partUrl = encodeRawUrlCharacters(response.Body.Data.url);
@@ -390,11 +375,6 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 
             requiredParams = struct('name', targetName, 'send_success_email', options.SendSuccessEmail);
 
-            % The endpoint is a PUT without a body, which MATLAB warns
-            % about on purpose. The warning is off for this request only.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             % The name is sent as a single segment, with every "/" encoded
             % as %2F, unlike for the other endpoints (see objectPathSegments).
             % A trailing "/" marks a folder, and sent as a path separator it
@@ -405,7 +385,7 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             % with the name, so the encoded form reaches it intact.
             apiUri = obj.buildApiUri(["buckets", bucketName, objectName, "copy"], requiredParams);
             request = obj.initializeRequestMessage("PUT");
-            response = obj.sendRequest(request, apiUri);
+            response = obj.sendRequestWithoutBody(request, apiUri);
 
             if ~isQueuedOrDone(response)
                 obj.throwError("copyObject", response)

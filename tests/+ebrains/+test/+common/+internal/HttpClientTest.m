@@ -8,6 +8,11 @@ classdef HttpClientTest < matlab.unittest.TestCase
         Client ebrains.mocks.MockHttpClient
     end
 
+    properties (Constant)
+        % The warning MATLAB raises for a PUT or POST request without a body
+        BodyWarningId = 'MATLAB:http:BodyExpectedFor'
+    end
+
     methods (TestMethodSetup)
         function createMockClient(testCase)
             testCase.Client = ebrains.mocks.MockHttpClient();
@@ -36,6 +41,39 @@ classdef HttpClientTest < matlab.unittest.TestCase
             testCase.Client.dispatch(request, matlab.net.URI("https://example.org/instances"));
 
             testCase.verifyEqual(testCase.Client.getRequestPayload(1), payload);
+        end
+
+        function testRequestWithoutBodyIsSentWithTheBodyWarningOff(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture(testCase.BodyWarningId));
+            request = testCase.Client.buildRequest("PUT");
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.dispatchWithoutBody(request, matlab.net.URI("https://example.org/items/1"));
+
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "off");
+            testCase.verifyEqual(warning('query', testCase.BodyWarningId).state, 'on');
+        end
+
+        function testRequestWithoutBodyRestoresTheBodyWarningAfterAnError(testCase)
+            % No response is queued, so the mock transport raises an error.
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture(testCase.BodyWarningId));
+            request = testCase.Client.buildRequest("PUT");
+
+            testCase.verifyError( ...
+                @() testCase.Client.dispatchWithoutBody(request, matlab.net.URI("https://example.org/items/1")), ...
+                'MockHttpTransport:NoMoreResponses');
+
+            testCase.verifyEqual(warning('query', testCase.BodyWarningId).state, 'on');
+        end
+
+        function testOtherRequestsKeepTheBodyWarning(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture(testCase.BodyWarningId));
+            request = testCase.Client.buildJsonRequest("PUT", '{"name":"x"}');
+            testCase.Client.addResponse('OK', struct());
+
+            testCase.Client.dispatch(request, matlab.net.URI("https://example.org/items/1"));
+
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "on");
         end
 
         function testRequestWithoutOptionsKeepsTheHttpDefaults(testCase)

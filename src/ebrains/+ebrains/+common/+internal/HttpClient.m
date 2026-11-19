@@ -5,6 +5,8 @@ classdef (Abstract) HttpClient < handle
 %   per endpoint. A method builds its request with initializeRequestMessage,
 %   resolves the endpoint with ebrains.common.internal.buildApiUri, sends the
 %   request with sendRequest and reports a failed response with throwError.
+%   A PUT or POST request for an endpoint that takes no body is sent with
+%   sendRequestWithoutBody instead.
 %
 %   A request carries an access token when ebrains.getTokenManager finds
 %   one. With the AutoLogin preference false (the default), no request
@@ -64,6 +66,29 @@ classdef (Abstract) HttpClient < handle
 
             obj.LastSentRequestHasToken = ~isempty(request.getFields("Authorization"));
             response = obj.transmitRequest(request, apiUri, httpOptions);
+        end
+
+        function response = sendRequestWithoutBody(obj, request, apiUri, httpOptions)
+        % sendRequestWithoutBody - Send a PUT or POST request that has no body
+        %
+        %   MATLAB warns (MATLAB:http:BodyExpectedFor) when a PUT or POST
+        %   request is sent without a body, so that a forgotten body is
+        %   noticed. A method for an endpoint that takes such a request
+        %   sends it with this method: the warning is off while the request
+        %   is sent and has its earlier state afterwards, also when sending
+        %   raises an error. Requests sent with sendRequest keep the
+        %   warning.
+            arguments
+                obj (1,1) ebrains.common.internal.HttpClient
+                request (1,1) matlab.net.http.RequestMessage
+                apiUri (1,1) matlab.net.URI
+                httpOptions matlab.net.http.HTTPOptions = matlab.net.http.HTTPOptions.empty
+            end
+
+            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
+            warningCleanup = onCleanup(@() warning(warnState));
+
+            response = obj.sendRequest(request, apiUri, httpOptions);
         end
     end
 
