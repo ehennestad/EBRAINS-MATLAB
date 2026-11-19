@@ -320,6 +320,28 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Alerts, ["Download cancelled", "1 of 2 files were downloaded."]);
         end
 
+        function testCancelReportsTheFilesThatFailedBeforeIt(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder, ...
+                Downloader=@(~, ~, varargin) pressCancelDuringTransfer(testCase, varargin));
+            testCase.Client.addResponse('NotFound', "Object not found");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.assertSize(testCase.Alerts, [1, 2]);
+            testCase.verifyEqual(testCase.Alerts(1), "Download cancelled");
+            expectedStart = join([ ...
+                "0 of 2 files were downloaded."
+                ""
+                "1 of 2 files could not be downloaded."], newline, 1);
+            testCase.verifyTrue(startsWith(testCase.Alerts(2), expectedStart));
+            testCase.verifySubstring(testCase.Alerts(2), "Object not found" + newline + "- a.txt");
+            testCase.verifyFalse(contains(testCase.Alerts(2), "b.txt"), ...
+                "The file that was cancelled is not reported as failed.");
+        end
+
         function testCancelDuringATransferStopsTheBatch(testCase)
             % The transfer asks its CancelRequestedFcn whether to stop, and
             % raises webprogress:download:Cancelled when that says so
