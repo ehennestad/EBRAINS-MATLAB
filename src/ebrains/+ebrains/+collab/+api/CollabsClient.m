@@ -84,6 +84,11 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
         %       chat        - Whether the collab gets a chat
         %       public      - Whether the collab is public
         %
+        %   The Collaboratory can answer 403 (Forbidden) to a request for
+        %   the new collab for some seconds after it is created. A request
+        %   that follows createCollab directly may therefore need to be
+        %   repeated.
+        %
         %   The documentation of the API asks for a token with the scopes
         %   clb.wiki.read and/or clb.wiki.write.
 
