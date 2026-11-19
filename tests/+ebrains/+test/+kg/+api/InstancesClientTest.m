@@ -3,6 +3,8 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     %
     % This test suite uses MockInstancesClient to test the InstancesClient
     % without making real HTTP requests to the EBRAINS Knowledge Graph API.
+    % The KG clients raise an error unless the Environment preference is
+    % "prod", so each test runs with the default preferences.
     %
     % Run all tests:
     %   runtests('tests/+ebrains/+kg/+api/InstancesClientTest')
@@ -40,6 +42,7 @@ classdef InstancesClientTest < matlab.unittest.TestCase
     
     methods (TestMethodSetup)
         function createMockClient(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
             testCase.Client = ebrains.mocks.MockInstancesClient();
         end
     end
@@ -58,6 +61,25 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.verifyInstanceOf(client, 'ebrains.kg.api.InstancesClient');
         end
         
+        %% Environment Tests
+        function testRequestInIntEnvironmentIsAnError(testCase)
+            ebrains.useEnvironment("int")
+
+            testCase.verifyError( ...
+                @() testCase.Client.listInstances("https://openminds.om-i.org/types/Dataset"), ...
+                'EBRAINS:KG_API:UnsupportedEnvironment');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testRequestWithBodyInIntEnvironmentIsAnError(testCase)
+            ebrains.useEnvironment("int")
+
+            testCase.verifyError( ...
+                @() testCase.Client.createNewInstance('{"name": "Test"}'), ...
+                'EBRAINS:KG_API:UnsupportedEnvironment');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
         %% listInstances Tests
         function testListInstancesSuccess(testCase)
             % Arrange

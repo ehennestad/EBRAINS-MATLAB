@@ -107,7 +107,7 @@ collabClient.createCollab("my-collab", "My collab", public=false)
 
 The Collaboratory can answer 403 (Forbidden) to a request for a new collab for some seconds after it is created, so a request that follows `createCollab` directly may need to be repeated.
 
-The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu`, collab requests to `wiki-int.ebrains.eu` and bucket requests to `data-proxy-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment. The Knowledge Graph clients take their server from the `Server` option of each method instead.
+The requests go to the Collaboratory server of the `Environment` preference. `ebrains.useEnvironment("int")` switches the current MATLAB session to the integration environment: logins then go to `iam-int.ebrains.eu`, collab requests to `wiki-int.ebrains.eu` and bucket requests to `data-proxy-int.ebrains.eu`. `ebrains.useEnvironment("prod")` switches back. The toolbox keeps one login per environment. The Knowledge Graph clients work in the `prod` environment only: the `Server` option of each method selects between the Knowledge Graph servers of that environment, and a request made in `int` raises an error.
 
 More complete examples are in [`src/ebrains/examples`](src/ebrains/examples).
 

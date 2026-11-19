@@ -29,8 +29,10 @@ classdef Preferences < matlab.mixin.CustomDisplay
 %                             or wiki-int.ebrains.eu) and the Data Proxy
 %                             server (data-proxy.ebrains.eu or
 %                             data-proxy-int.ebrains.eu). The Knowledge
-%                             Graph clients take their server from the
-%                             Server option of each method instead.
+%                             Graph clients work in "prod" only and
+%                             raise an error in "int"; their Server
+%                             option selects between the servers of
+%                             "prod".
 %                             ebrains.useEnvironment sets it for the
 %                             current MATLAB session only.
 %

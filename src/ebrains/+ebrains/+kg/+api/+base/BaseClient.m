@@ -6,13 +6,41 @@ classdef BaseClient < ebrains.common.internal.HttpClient
 %   ebrains.common.internal.HttpClient. Subclass it to write a KG API
 %   client; it has no public methods of its own.
 %
-%   See also ebrains.kg.api.InstancesClient, ebrains.kg.api.QueriesClient
+%   The KG clients work in the "prod" environment only. The Server option
+%   of a method selects between the KG servers of that environment, and
+%   the toolbox has no KG server for the "int" environment. A request
+%   made while the Environment preference is "int" raises
+%   EBRAINS:KG_API:UnsupportedEnvironment before a token is looked up, so
+%   that a token of the "int" identity provider is not sent to a KG
+%   server.
+%
+%   See also ebrains.kg.api.InstancesClient, ebrains.kg.api.QueriesClient,
+%   ebrains.useEnvironment
 
     properties (Constant, Access = protected)
         ErrorIdPrefix = "EBRAINS:KG_API"  % Prefix of the identifiers of raised errors
     end
 
     methods (Access = protected)
+        function request = initializeRequestMessage(obj, method, options)
+        %initializeRequestMessage - Create a request with the default headers
+        %   Raises EBRAINS:KG_API:UnsupportedEnvironment unless the
+        %   Environment preference is "prod". The check comes before the
+        %   request is created because creating it looks up a token, and
+        %   opens a login when the AutoLogin preference is true.
+
+            arguments
+                obj (1,1) ebrains.kg.api.base.BaseClient
+                method (1,1) string
+                options.JSONPayload (1,1) string = missing
+            end
+
+            obj.assertEnvironmentHasKnowledgeGraph()
+
+            request = initializeRequestMessage@ebrains.common.internal.HttpClient( ...
+                obj, method, JSONPayload=options.JSONPayload);
+        end
+
         function throwError(obj, operationName, response, server)
         %throwError - Throw the error for a failed KG response
 
@@ -38,6 +66,21 @@ classdef BaseClient < ebrains.common.internal.HttpClient
             % Thrown as caller so that the error points at the API method
             % the user called rather than at this helper.
             throwAsCaller(exception)
+        end
+    end
+
+    methods (Access = private)
+        function assertEnvironmentHasKnowledgeGraph(obj)
+        %assertEnvironmentHasKnowledgeGraph - Raise an error outside the "prod" environment
+
+            environment = ebrains.getpref("Environment");
+            if environment ~= ebrains.common.enum.Environment.PROD
+                error(obj.ErrorIdPrefix + ":UnsupportedEnvironment", ...
+                    "The Knowledge Graph clients work in the ""prod"" environment only, " + ...
+                    "and the Environment preference is ""%s"". Run " + ...
+                    "ebrains.useEnvironment(""prod"") before using the Knowledge Graph.", ...
+                    environment.Name)
+            end
         end
     end
 

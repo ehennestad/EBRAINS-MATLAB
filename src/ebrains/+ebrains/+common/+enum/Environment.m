@@ -15,6 +15,9 @@ classdef Environment
 %       CollabHost    - Host of the Collaboratory
 %       DataProxyHost - Host of the Data Proxy
 %
+%   The Knowledge Graph has no server in the "int" environment, and its
+%   clients raise an error there (see ebrains.kg.api.base.BaseClient).
+%
 %   See also ebrains.useEnvironment, ebrains.util.Preferences,
 %   ebrains.common.constant.IamBaseUrl,
 %   ebrains.common.constant.CollabBaseUrl,
