@@ -183,7 +183,9 @@ classdef (Sealed) DownloadProgress < handle
         % describe - The message of the dialog: a line each for the file number, the file name and the bytes
             nFiles = numel(progress.FileBytes);
             fileNumber = min(progress.NumFinished + 1, nFiles);
-            messageLines = sprintf("Downloading file %s of %s.", formatCount(fileNumber), formatCount(nFiles));
+            messageLines = sprintf("Downloading file %s of %s.", ...
+                ebrains.bucket.app.internal.formatCount(fileNumber), ...
+                ebrains.bucket.app.internal.formatCount(nFiles));
 
             if progress.CurrentName ~= ""
                 messageLines(end+1) = shortenFromLeft(progress.CurrentName, progress.MaxNameLength);
@@ -198,7 +200,8 @@ classdef (Sealed) DownloadProgress < handle
             end
             secondsLeft = progress.estimateSecondsLeft();
             if ~isnan(secondsLeft)
-                bytesLine = bytesLine + " About " + formatDuration(secondsLeft) + " left.";
+                timeLeftText = ebrains.bucket.app.internal.formatDuration(secondsLeft);
+                bytesLine = bytesLine + " About " + timeLeftText + " left.";
             end
             messageLines(end+1) = bytesLine;
 
