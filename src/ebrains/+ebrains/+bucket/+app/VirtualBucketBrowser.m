@@ -689,6 +689,13 @@ classdef VirtualBucketBrowser < handle
                 end
             end
 
+            % The progress dialog processes the events of MATLAB when it
+            % redraws. A close of the window among them deletes the
+            % browser, which leaves no window to show the outcome in.
+            if ~isvalid(app)
+                return
+            end
+
             nDownloaded = sum(isDownloaded);
             app.Message = "Downloaded " + countText(nDownloaded, "file") + ".";
             if nDownloaded < nFiles
