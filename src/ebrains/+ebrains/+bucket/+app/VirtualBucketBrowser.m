@@ -702,12 +702,21 @@ classdef VirtualBucketBrowser < handle
                 app.Message = sprintf("%d of %d files were downloaded.", nDownloaded, nFiles);
             end
             app.refresh()
-            if stopReason == "cancelled"
-                app.alert(app.Message, "Download cancelled", Icon="info")
-            elseif any(isFailed)
-                report = ebrains.bucket.app.internal.downloadFailureReport( ...
+            failureReport = "";
+            if any(isFailed)
+                failureReport = ebrains.bucket.app.internal.downloadFailureReport( ...
                     files.Path(isFailed), failureMessages(isFailed), nFiles);
-                app.alert(report, "Some files were not downloaded")
+            end
+            if stopReason == "cancelled"
+                cancelMessage = app.Message;
+                if any(isFailed)
+                    % The report names the files that failed before the
+                    % cancel, which tells them from the files not tried
+                    cancelMessage = cancelMessage + newline + newline + failureReport;
+                end
+                app.alert(cancelMessage, "Download cancelled", Icon="info")
+            elseif any(isFailed)
+                app.alert(failureReport, "Some files were not downloaded")
             end
         end
 
