@@ -97,6 +97,14 @@ classdef CollabsClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(payload, expectedPayload);
         end
 
+        function testCreateCollabRejectsAnEmptyNameOrTitle(testCase)
+            testCase.verifyError(@() testCase.Client.createCollab("", "My collab"), ...
+                'MATLAB:validators:mustBeNonzeroLengthText');
+            testCase.verifyError(@() testCase.Client.createCollab("my-collab", ""), ...
+                'MATLAB:validators:mustBeNonzeroLengthText');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
         function testCreateCollabConflict(testCase)
             testCase.Client.addResponse('Conflict', 'A collab with that name already exists.');
             testCase.verifyError(@() testCase.Client.createCollab("my-collab", "My collab"), ...

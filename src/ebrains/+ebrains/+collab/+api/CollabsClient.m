@@ -89,8 +89,8 @@ classdef CollabsClient < ebrains.common.internal.HttpClient
 
             arguments
                 obj (1,1) ebrains.collab.api.CollabsClient
-                name (1,1) string
-                title (1,1) string
+                name (1,1) string {mustBeNonzeroLengthText}
+                title (1,1) string {mustBeNonzeroLengthText}
                 collabOptions.description (1,1) string
                 collabOptions.drive (1,1) logical
                 collabOptions.chat (1,1) logical
