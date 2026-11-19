@@ -52,6 +52,10 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
         %   wasCreated = client.createBucket(bucketName) also returns
         %   whether the request created the bucket: true when it did, and
         %   false when the bucket existed already.
+        %
+        %   The Data Proxy answers 403 (Forbidden) when no collab has the
+        %   name, and when the account sending the request is not a member
+        %   of the collab.
 
             arguments
                 obj (1,1) ebrains.bucket.api.BucketsClient
@@ -65,8 +69,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             response = obj.sendRequest(request, apiUri);
 
             % The proxy answers 201 (Created) when it has created the
-            % bucket and 204 (No Content) when the bucket exists already,
-            % where its API spec documents 200 (OK).
+            % bucket and 204 (No Content) when the bucket exists already.
+            % Its API spec documents 200 (OK) as the only success status,
+            % so that status is accepted too.
             successStatusCodes = [ ...
                 matlab.net.http.StatusCode.Created, ...
                 matlab.net.http.StatusCode.NoContent, ...
@@ -76,7 +81,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             end
 
             % Returned only when asked for, so that a call without a
-            % semicolon does not display the value.
+            % semicolon does not display the value. The spec does not say
+            % whether a 200 (OK) means that the bucket was created; it is
+            % taken as created.
             if nargout > 0
                 wasCreated = response.StatusCode ~= matlab.net.http.StatusCode.NoContent;
             end

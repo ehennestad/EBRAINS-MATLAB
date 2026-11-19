@@ -105,6 +105,15 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
         end
 
+        function testCreateBucketForbidden(testCase)
+            % The proxy answers 403 when no collab has the name, and when
+            % the account is not a member of the collab.
+            testCase.Client.addResponse('Forbidden', struct('status_code', 403, ...
+                'detail', 'You are not granted access to the requested resource.'));
+            testCase.verifyError(@() testCase.Client.createBucket("no-such-collab"), ...
+                'EBRAINS:Bucket:createBucket:Forbidden');
+        end
+
         function testCreateBucketValidationError(testCase)
             testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'Validation error'));
             testCase.verifyError(@() testCase.Client.createBucket("my-collab"), ...
