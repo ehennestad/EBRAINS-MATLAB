@@ -105,6 +105,8 @@ collabs = collabClient.searchCollabs(limit=50);
 collabClient.createCollab("my-collab", "My collab", public=false)
 ```
 
+The Collaboratory can answer 403 (Forbidden) to a request for a new collab for some seconds after it is created, so a request that follows `createCollab` directly may need to be repeated.
+
 More complete examples are in [`src/ebrains/examples`](src/ebrains/examples).
 
 ## Running without a display
