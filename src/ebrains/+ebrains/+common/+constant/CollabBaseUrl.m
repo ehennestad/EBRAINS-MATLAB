@@ -15,12 +15,5 @@ function url = CollabBaseUrl(options)
             ebrains.getpref("Environment")
     end
 
-    switch options.Environment
-        case ebrains.common.enum.Environment.PROD
-            url = "https://wiki.ebrains.eu";
-        case ebrains.common.enum.Environment.INT
-            url = "https://wiki-int.ebrains.eu";
-        otherwise
-            % Not reached: the enumeration has no other member.
-    end
+    url = "https://" + options.Environment.CollabHost;
 end

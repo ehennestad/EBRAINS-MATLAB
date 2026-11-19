@@ -17,12 +17,5 @@ function url = DataProxyApiBaseUrl(options)
 
     API_PATH = "/api/v1/";
 
-    switch options.Environment
-        case ebrains.common.enum.Environment.PROD
-            url = "https://data-proxy.ebrains.eu" + API_PATH;
-        case ebrains.common.enum.Environment.INT
-            url = "https://data-proxy-int.ebrains.eu" + API_PATH;
-        otherwise
-            % Not reached: the enumeration has no other member.
-    end
+    url = "https://" + options.Environment.DataProxyHost + API_PATH;
 end
