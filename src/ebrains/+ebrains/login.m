@@ -21,8 +21,9 @@ function login(mode, options, oidcOptions)
 %
 %   LOGIN(...,OIDCClientSecret=SECRET) also specifies the client
 %   secret. The client credentials flow needs both a client id and a
-%   secret, and giving only one of the two is an error. The device flow
-%   ignores the secret with a warning.
+%   secret, and giving only one of the two is an error. The device flow,
+%   which is the default, uses no secret, and giving one without
+%   OAuthFlow="ClientCredentialsFlow" is an error.
 %
 %   See also logout, getTokenManager, ebrains.iam.enum.FlowType,
 %   ebrains.iam.DeviceFlowTokenClient,
@@ -45,9 +46,16 @@ function login(mode, options, oidcOptions)
 
     switch string(options.OAuthFlow)
         case "DeviceFlow"
+            % A secret is given to log in as a service. Carrying on with
+            % the device flow would open the browser login for the client
+            % id of the service instead, and store that client.
             if hasClientSecret
-                warning("EBRAINS:login:SecretNotSupported", ...
-                   "The Device Flow does not require a OIDC client secret")
+                error("EBRAINS:login:SecretNotSupported", ...
+                    "An OIDC client secret was given, but the Device Flow, " + ...
+                    "which is the default, does not use one. Add " + ...
+                    "OAuthFlow=""ClientCredentialsFlow"" to log in as a " + ...
+                    "service with its client id and secret, or leave out " + ...
+                    "OIDCClientSecret to log in through the browser.")
             end
             if hasClientId
                 tokenClient = ebrains.iam.DeviceFlowTokenClient.instance(...
