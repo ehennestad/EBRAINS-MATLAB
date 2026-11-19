@@ -6,8 +6,11 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
     % the page are sent to the callback of its uihtml component, as the
     % page sends them. The browser is opened through openApp, which
     % replaces every dialog: a Confirmer that records the question and
-    % refuses, a FolderChooser that answers with ChosenFolder, an Alerter
-    % that records the alert and a FakeProgressDialog. A confirmation or
+    % answers with ConfirmAnswer, which refuses unless a test sets it, a
+    % FolderChooser that answers with ChosenFolder, an Alerter that records
+    % the alert and a FakeProgressDialog. The Authenticator counts the
+    % logins instead of logging in, and fails with LoginError when a test
+    % sets one. A confirmation or
     % folder dialog would wait for a user, and on some releases uialert
     % and uiprogressdlg never return on a virtual display. The window is
     % hidden, so no test shows one. The registry of virtual buckets is
@@ -23,6 +26,15 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
         % Confirmations - Titles and messages of the confirmations the browser asked for, one row each
         Confirmations (:,2) string = strings(0, 2)
+
+        % ConfirmAnswer - What the Confirmer answers; false refuses the confirmation
+        ConfirmAnswer (1,1) logical = false
+
+        % LoginCount - Number of times the browser asked its Authenticator to log in
+        LoginCount (1,1) double = 0
+
+        % LoginError - Message of the error the Authenticator raises; "" for a login that succeeds
+        LoginError (1,1) string = ""
 
         % Alerts - Titles and messages of the alerts the browser showed, one row each
         Alerts (:,2) string = strings(0, 2)
@@ -177,6 +189,82 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifySubstring(testCase.Alerts(2), "2 of 2 files could not be downloaded.");
             testCase.verifyEqual(count(testCase.Alerts(2), "Object not found"), 1, ...
                 'A message that several files share is stated once.');
+        end
+
+        function testDownloadRefusedWithoutTokenStopsAndOffersLogin(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+            nRequestsBefore = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.Client.getRequestCount() - nRequestsBefore, 1, ...
+                'The files after the refused one are not requested.');
+            testCase.assertSize(testCase.Confirmations, [1, 2]);
+            testCase.verifyEqual(testCase.Confirmations(1, 1), "Log in to EBRAINS?");
+            testCase.verifySubstring(testCase.Confirmations(1, 2), "Log in and download 2 files?");
+            testCase.verifyEqual(testCase.LoginCount, 0, 'A refused confirmation starts no login.');
+            testCase.verifyEmpty(testCase.Alerts);
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "online_only"]);
+        end
+
+        function testLoginDownloadsTheRefusedFileAndTheFilesAfterIt(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.ConfirmAnswer = true;
+            testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=2'));
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.LoginCount, 1);
+            testCase.verifyEqual(testCase.App.Files.State, ["downloaded"; "downloaded"]);
+            testCase.verifyEmpty(testCase.Alerts);
+        end
+
+        function testRefusalAfterTheLoginIsReportedWithoutAskingAgain(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.ConfirmAnswer = true;
+            for i = 1:3
+                testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+            end
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.LoginCount, 1);
+            testCase.verifySize(testCase.Confirmations, [1, 2]);
+            testCase.assertSize(testCase.Alerts, [1, 2]);
+            testCase.verifyEqual(testCase.Alerts(1), "Some files were not downloaded");
+            testCase.verifySubstring(testCase.Alerts(2), "2 of 2 files could not be downloaded.");
+        end
+
+        function testFailedLoginIsReported(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.ConfirmAnswer = true;
+            testCase.LoginError = "The login timed out.";
+            testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+            nRequestsBefore = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyEqual(testCase.Client.getRequestCount() - nRequestsBefore, 1, ...
+                'No file is requested again after a login that failed.');
+            testCase.verifyEqual(testCase.Alerts, ["Could not log in to EBRAINS", "The login timed out."]);
+            testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "online_only"]);
+        end
+
+        function testFileThatFailedBeforeTheRefusalIsReported(testCase)
+            testCase.openWithTwoPlaceholders();
+            testCase.Client.addResponse('NotFound', "Object not found");
+            testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifySubstring(testCase.Confirmations(1, 2), "Log in and download 1 file?");
+            testCase.assertSize(testCase.Alerts, [1, 2]);
+            testCase.verifySubstring(testCase.Alerts(2), "1 of 2 files could not be downloaded.");
+            testCase.verifySubstring(testCase.Alerts(2), "- a.txt");
+            testCase.verifyFalse(contains(testCase.Alerts(2), "b.txt"));
         end
 
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
@@ -843,13 +931,21 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
                 options = rmfield(options, "BucketName");
             end
             options.Client = testCase.Client;
-            options.Confirmer = @(message, title, ~) refuseConfirmation(testCase, message, title);
+            options.Confirmer = @(message, title, ~) answerConfirmation(testCase, message, title);
+            options.Authenticator = @() countLogin(testCase);
             options.FolderChooser = @(~, title) chooseRecordedFolder(testCase, title);
             options.Alerter = @(~, message, title, varargin) recordAlert(testCase, message, title);
             options.ProgressDialog = @ebrains.mocks.FakeProgressDialog;
             options.Visible = "off";
             optionPairs = namedargs2cell(options);
             testCase.App = ebrains.bucket.app.VirtualBucketBrowser(folder, optionPairs{:});
+        end
+
+        function openWithTwoPlaceholders(testCase)
+        % openWithTwoPlaceholders - Open the browser on a folder with the empty files a.txt and b.txt
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder);
         end
 
         function openList(testCase)
@@ -974,10 +1070,18 @@ function recordAlert(testCase, message, title)
     testCase.Alerts(end+1, :) = [title, message];
 end
 
-function tf = refuseConfirmation(testCase, message, title)
-% refuseConfirmation - Confirmer that records the question and answers Cancel
+function tf = answerConfirmation(testCase, message, title)
+% answerConfirmation - Confirmer that records the question and answers with ConfirmAnswer
     testCase.Confirmations(end+1, :) = [title, message];
-    tf = false;
+    tf = testCase.ConfirmAnswer;
+end
+
+function countLogin(testCase)
+% countLogin - Authenticator that counts the login, and fails when LoginError is set
+    testCase.LoginCount = testCase.LoginCount + 1;
+    if testCase.LoginError ~= ""
+        error('EBRAINS:Test:LoginFailed', '%s', testCase.LoginError)
+    end
 end
 
 function writeAbc(target, varargin)

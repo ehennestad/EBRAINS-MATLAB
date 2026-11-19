@@ -125,6 +125,17 @@ classdef HttpClientAuthorizationTest < ebrains.test.iam.TokenClientTestCase
 
             testCase.verifySubstring(exception.message, 'ebrains.login()');
         end
+
+        function testClientTellsWhetherTheLastRequestCarriedAToken(testCase)
+            response = makeResponse('Unauthorized', 'You are not authenticated.');
+
+            sendAndReport(testCase.Client, testCase.Client.buildRequest("GET"), response);
+            testCase.verifyFalse(testCase.Client.LastSentRequestHasToken);
+
+            testCase.DeviceClient.seedTokens("access-0", "refresh-0", 7200);
+            sendAndReport(testCase.Client, testCase.Client.buildRequest("GET"), response);
+            testCase.verifyTrue(testCase.Client.LastSentRequestHasToken);
+        end
     end
 end
 
