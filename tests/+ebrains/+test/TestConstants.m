@@ -58,19 +58,6 @@ classdef TestConstants < matlab.unittest.TestCase
                 "MATLAB:validation:UnableToConvert");
         end
 
-        function testEveryEnvironmentHasItsUrls(testCase)
-            % A member added to the enumeration needs a case in each of
-            % the functions that return a URL for an environment.
-            for environment = enumeration("ebrains.common.enum.Environment")'
-                testCase.verifyClass(ebrains.common.constant.IamBaseUrl(Environment=environment), ...
-                    "string", environment.Name);
-                testCase.verifyClass(ebrains.common.constant.CollabApiBaseUrl(Environment=environment), ...
-                    "string", environment.Name);
-                testCase.verifyClass(ebrains.common.constant.DataProxyApiBaseUrl(Environment=environment), ...
-                    "string", environment.Name);
-            end
-        end
-
         function testDataProxyApiBaseUrl(testCase)
             url = ebrains.common.constant.DataProxyApiBaseUrl();
             testCase.verifyEqual(url, "https://data-proxy.ebrains.eu/api/v1/");

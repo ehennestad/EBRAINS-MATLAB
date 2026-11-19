@@ -17,12 +17,5 @@ function url = IamBaseUrl(options)
 
     REALM_PATH = "/auth/realms/hbp/";
 
-    switch options.Environment
-        case ebrains.common.enum.Environment.PROD
-            url = "https://iam.ebrains.eu" + REALM_PATH;
-        case ebrains.common.enum.Environment.INT
-            url = "https://iam-int.ebrains.eu" + REALM_PATH;
-        otherwise
-            % Not reached: the enumeration has no other member.
-    end
+    url = "https://" + options.Environment.IamHost + REALM_PATH;
 end
