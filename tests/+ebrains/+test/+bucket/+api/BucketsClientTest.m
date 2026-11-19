@@ -32,6 +32,7 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             "deleteObject", @(client, bucket, name) client.deleteObject(bucket, name))
         % Each endpoint method called with a name that has a ".." segment
         endpointCallWithDotSegment = struct( ...
+            "deleteBucket", @(client) client.deleteBucket(".."), ...
             "getBucketStat", @(client) client.getBucketStat(".."), ...
             "listObjects", @(client) client.listObjects(".."), ...
             "getDownloadUrl", @(client) client.getDownloadUrl("my-bucket", "a/../b.txt"), ...
@@ -124,6 +125,61 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'Validation error'));
             testCase.verifyError(@() testCase.Client.createBucket("my-collab"), ...
                 'EBRAINS:Bucket:createBucket:UnprocessableEntity');
+        end
+
+        %% deleteBucket
+        function testDeleteBucketSendsDeleteToTheBucketPath(testCase)
+            testCase.Client.addResponse('OK', struct('failures', [], 'number_of_removals', 0));
+
+            testCase.Client.deleteBucket("my-collab");
+
+            testCase.Client.verifyRequestMethod(1, 'DELETE');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEqual(string(request.URL.EncodedURI), ...
+                "https://data-proxy.ebrains.eu/api/v1/buckets/my-collab");
+            testCase.verifyEmpty(request.RequestMessage.Body);
+        end
+
+        function testDeleteBucketReturnsTheReplyOfTheEndpoint(testCase)
+            % The API spec gives the reply the fields failures and
+            % number_of_removals.
+            reply = struct('failures', [], 'number_of_removals', 3);
+            testCase.Client.addResponse('OK', reply);
+
+            deleteResult = testCase.Client.deleteBucket("my-collab");
+
+            testCase.verifyEqual(deleteResult, reply);
+        end
+
+        function testDeleteBucketDisplaysNothingWithoutAnOutput(testCase)
+            testCase.Client.addResponse('OK', struct('failures', [], 'number_of_removals', 0));
+            client = testCase.Client; %#ok<NASGU>
+
+            displayedText = evalc('client.deleteBucket("my-collab")');
+
+            testCase.verifyEmpty(displayedText);
+        end
+
+        function testDeleteBucketRejectsAnEmptyName(testCase)
+            testCase.verifyError(@() testCase.Client.deleteBucket(""), ...
+                'MATLAB:validators:mustBeNonzeroLengthText');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testDeleteBucketSendsASlashInTheNameEncoded(testCase)
+            % Sent as a path separator, the "/" would make the request the
+            % deletion of the object "data" of the bucket "my-collab".
+            testCase.Client.addResponse('OK', struct('failures', [], 'number_of_removals', 0));
+
+            testCase.Client.deleteBucket("my-collab/data");
+
+            testCase.Client.verifyRequestURL(1, '/api/v1/buckets/my-collab%2Fdata');
+        end
+
+        function testDeleteBucketValidationError(testCase)
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'Validation error'));
+            testCase.verifyError(@() testCase.Client.deleteBucket("my-collab"), ...
+                'EBRAINS:Bucket:deleteBucket:UnprocessableEntity');
         end
 
         %% getBucketStat

@@ -2,9 +2,9 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
 % BucketsClient - Client for the bucket endpoints of the EBRAINS Data Proxy
 %
 %   Each method mirrors one endpoint under /buckets of the Data Proxy API:
-%   creating a bucket, bucket stat, one page of the object listing,
-%   temporary download and upload URLs, the three requests of a multipart
-%   upload, rename, copy, and delete.
+%   creating and deleting a bucket, bucket stat, one page of the object
+%   listing, temporary download and upload URLs, the three requests of a
+%   multipart upload, and rename, copy and delete of an object.
 %   An object name that holds "/" (a folder within the bucket) is sent with
 %   the "/" as path separators, since the proxy takes the rest of the path
 %   as the name. The copy endpoint is the exception: copyObject sends the
@@ -86,6 +86,39 @@ classdef BucketsClient < ebrains.common.internal.HttpClient
             % taken as created.
             if nargout > 0
                 wasCreated = response.StatusCode ~= matlab.net.http.StatusCode.NoContent;
+            end
+        end
+
+        function deleteResult = deleteBucket(obj, bucketName)
+        % deleteBucket - Delete a bucket
+        %
+        %   client.deleteBucket(bucketName) deletes the bucket with the
+        %   given name. The request goes to the Data Proxy only, so the
+        %   collab of the bucket is not part of it.
+        %
+        %   deleteResult = client.deleteBucket(bucketName) also returns
+        %   the reply of the endpoint. The API spec of the Data Proxy
+        %   describes it as a struct with the field failures, a list of
+        %   texts, and the field number_of_removals, a count that can be
+        %   empty.
+
+            arguments
+                obj (1,1) ebrains.bucket.api.BucketsClient
+                bucketName (1,1) string {mustBeNonzeroLengthText}
+            end
+
+            apiUri = obj.buildApiUri(["buckets", bucketName]);
+            request = obj.initializeRequestMessage("DELETE");
+            response = obj.sendRequest(request, apiUri);
+
+            if response.StatusCode ~= "OK"
+                obj.throwError("deleteBucket", response)
+            end
+
+            % Returned only when asked for, so that a call without a
+            % semicolon does not display the value.
+            if nargout > 0
+                deleteResult = response.Body.Data;
             end
         end
 
