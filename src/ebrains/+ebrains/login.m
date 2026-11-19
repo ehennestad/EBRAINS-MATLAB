@@ -25,7 +25,11 @@ function login(mode, options, oidcOptions)
 %   which is the default, uses no secret, and giving one without
 %   OAuthFlow="ClientCredentialsFlow" is an error.
 %
-%   See also logout, getTokenManager, ebrains.iam.enum.FlowType,
+%   The login is made at the identity provider of the environment that
+%   the Environment preference names, and is kept apart from a login in
+%   the other environment (see ebrains.useEnvironment).
+%
+%   See also logout, getTokenManager, useEnvironment, ebrains.iam.enum.FlowType,
 %   ebrains.iam.DeviceFlowTokenClient,
 %   ebrains.iam.ClientCredentialsFlowTokenClient
 

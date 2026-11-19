@@ -2,7 +2,9 @@ classdef QueriesClientTest < matlab.unittest.TestCase
     % QueriesClientTest - Unit tests for ebrains.kg.api.QueriesClient
     %
     % Uses MockQueriesClient so that no request reaches the EBRAINS
-    % Knowledge Graph API.
+    % Knowledge Graph API. The KG clients raise an error unless the
+    % Environment preference is "prod", so each test runs with the default
+    % preferences.
 
     properties
         Client ebrains.mocks.MockQueriesClient
@@ -16,11 +18,21 @@ classdef QueriesClientTest < matlab.unittest.TestCase
 
     methods (TestMethodSetup)
         function createMockClient(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
             testCase.Client = ebrains.mocks.MockQueriesClient();
         end
     end
 
     methods (Test)
+        %% Environment Tests
+        function testRequestInIntEnvironmentIsAnError(testCase)
+            ebrains.useEnvironment("int")
+
+            testCase.verifyError(@() testCase.Client.listQueries(), ...
+                'EBRAINS:KG_API:UnsupportedEnvironment');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
         %% listQueries Tests
         function testListQueriesSuccess(testCase)
             queries = struct('id', {'q1', 'q2'});

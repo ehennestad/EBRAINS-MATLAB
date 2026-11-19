@@ -171,5 +171,57 @@ classdef DeviceFlowTokenClientTest < ebrains.test.iam.TokenClientTestCase
             testCase.verifyFalse(isvalid(first));
             testCase.verifyNotSameHandle(ebrains.iam.DeviceFlowTokenClient.instance(), first);
         end
+
+        function testInstanceIsKeptPerEnvironment(testCase)
+            prodClient = ebrains.iam.DeviceFlowTokenClient.instance();
+
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.DeviceFlowTokenClient.instance();
+
+            testCase.verifyNotSameHandle(intClient, prodClient);
+            testCase.verifyEqual(prodClient.Environment, ebrains.common.enum.Environment.PROD);
+            testCase.verifyEqual(intClient.Environment, ebrains.common.enum.Environment.INT);
+
+            ebrains.useEnvironment("prod")
+            testCase.verifyTrue(isvalid(prodClient));
+            testCase.verifySameHandle(ebrains.iam.DeviceFlowTokenClient.instance(), prodClient);
+        end
+
+        function testLoginIsKeptWhileWorkingInTheOtherEnvironment(testCase)
+            prodClient = ebrains.mocks.MockDeviceFlowTokenClient();
+            prodClient.seedTokens("access-prod", "refresh-prod", 3600);
+            testCase.installSingleton(testCase.DeviceFlowSingletonName, prodClient);
+
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.DeviceFlowTokenClient.instance();
+            testCase.verifyFalse(intClient.hasActiveToken());
+
+            ebrains.useEnvironment("prod")
+            client = ebrains.iam.DeviceFlowTokenClient.instance();
+            testCase.verifySameHandle(client, prodClient);
+            testCase.verifyEqual(client.AccessToken, "access-prod");
+        end
+
+        function testResetLeavesTheInstanceOfTheOtherEnvironment(testCase)
+            prodClient = ebrains.iam.DeviceFlowTokenClient.instance();
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.DeviceFlowTokenClient.instance();
+
+            ebrains.iam.DeviceFlowTokenClient.reset();
+
+            testCase.verifyFalse(isvalid(intClient));
+            testCase.verifyTrue(isvalid(prodClient));
+        end
+
+        function testResetAllDeletesTheInstancesOfEveryEnvironment(testCase)
+            prodClient = ebrains.iam.DeviceFlowTokenClient.instance();
+            ebrains.useEnvironment("int")
+            intClient = ebrains.iam.DeviceFlowTokenClient.instance();
+
+            ebrains.iam.OidcTokenClient.resetAll();
+
+            testCase.verifyFalse(isvalid(prodClient));
+            testCase.verifyFalse(isvalid(intClient));
+        end
     end
 end

@@ -2,6 +2,8 @@ classdef CollabsClientTest < matlab.unittest.TestCase
     % CollabsClientTest - Unit tests for ebrains.collab.api.CollabsClient
     %
     % Uses MockCollabsClient so that no request reaches the Collaboratory.
+    % The Environment preference selects the server of a request, so each
+    % test runs with the default preferences.
 
     properties
         Client ebrains.mocks.MockCollabsClient
@@ -9,6 +11,7 @@ classdef CollabsClientTest < matlab.unittest.TestCase
 
     methods (TestMethodSetup)
         function createMockClient(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.PreferencesFixture());
             testCase.Client = ebrains.mocks.MockCollabsClient();
         end
     end
@@ -74,6 +77,15 @@ classdef CollabsClientTest < matlab.unittest.TestCase
                 'EBRAINS:Collab:searchCollabs:Unauthorized');
         end
 
+        function testSearchCollabsInIntEnvironment(testCase)
+            ebrains.useEnvironment("int")
+            testCase.Client.addResponse('OK', struct('name', {}));
+
+            testCase.Client.searchCollabs(limit=1);
+
+            testCase.Client.verifyRequestURL(1, 'https://wiki-int.ebrains.eu/rest/v1/collabs?limit=1');
+        end
+
         function testCreateCollabSuccess(testCase)
             testCase.Client.addResponse('Created', '');
 
@@ -103,6 +115,15 @@ classdef CollabsClientTest < matlab.unittest.TestCase
             testCase.verifyError(@() testCase.Client.createCollab("my-collab", ""), ...
                 'MATLAB:validators:mustBeNonzeroLengthText');
             testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testCreateCollabInIntEnvironment(testCase)
+            ebrains.useEnvironment("int")
+            testCase.Client.addResponse('Created', '');
+
+            testCase.Client.createCollab("my-collab", "My collab");
+
+            testCase.Client.verifyRequestURL(1, 'https://wiki-int.ebrains.eu/rest/v1/collabs');
         end
 
         function testCreateCollabConflict(testCase)
