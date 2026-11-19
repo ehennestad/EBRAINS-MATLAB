@@ -60,6 +60,9 @@ classdef MockHttpTransport < handle
             %     URL           - The request URI
             %     Options       - HTTP options used
             %     Timestamp     - When request was made
+            %     BodyWarningState - State ("on" or "off") of the warning
+            %                     MATLAB:http:BodyExpectedFor while the
+            %                     request was transmitted
 
             if index > numel(obj.RequestHistory)
                 error('MockHttpTransport:InvalidIndex', ...
@@ -114,6 +117,8 @@ classdef MockHttpTransport < handle
                 requestRecord.URL = apiURL;
                 requestRecord.Options = httpOpts;
                 requestRecord.Timestamp = datetime('now');
+                requestRecord.BodyWarningState = ...
+                    string(warning('query', 'MATLAB:http:BodyExpectedFor').state);
                 obj.RequestHistory{end+1} = requestRecord;
             end
 

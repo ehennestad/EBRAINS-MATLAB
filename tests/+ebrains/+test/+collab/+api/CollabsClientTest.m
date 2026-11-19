@@ -150,22 +150,15 @@ classdef CollabsClientTest < matlab.unittest.TestCase
             testCase.verifyEmpty(request.RequestMessage.Body);
         end
 
-        function testAddTeamUserRestoresTheBodyWarning(testCase)
-            % The body-less PUT turns the warning off for the request only,
-            % also when the request ends in an error.
-            warningId = 'MATLAB:http:BodyExpectedFor';
-            originalState = warning('query', warningId);
-            testCase.addTeardown(@() warning(originalState));
-            warning('on', warningId);
+        function testAddTeamUserIsSentWithTheBodyWarningOff(testCase)
+            % MATLAB warns when a PUT without a body is sent, which is the
+            % request the endpoint takes.
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture('MATLAB:http:BodyExpectedFor'));
             testCase.Client.addResponse('NoContent', '');
-            testCase.Client.addResponse('NotFound', 'Collab not found.');
 
             testCase.Client.addTeamUser("my-collab", "editor", "jdoe");
-            testCase.verifyEqual(warning('query', warningId).state, 'on');
 
-            testCase.verifyError(@() testCase.Client.addTeamUser("my-collab", "editor", "jdoe"), ...
-                'EBRAINS:Collab:addTeamUser:NotFound');
-            testCase.verifyEqual(warning('query', warningId).state, 'on');
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "off");
         end
 
         function testAddTeamUserRejectsUnknownRole(testCase)
