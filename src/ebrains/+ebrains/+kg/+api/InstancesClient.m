@@ -417,17 +417,12 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/spaces/" + space;
 
-            % Sending a put request without body/payload will display a warning.
-            % We are doing this on purpose, so suppress warning temporarily.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             req = obj.initializeRequestMessage(OPERATION);
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
 
-            resp = obj.sendRequest(req, apiURL); % matlab.net.http.HTTPOptions('SavePayload', true, 'ConvertResponse', false));
+            resp = obj.sendRequestWithoutBody(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;
@@ -460,16 +455,11 @@ classdef InstancesClient < ebrains.kg.api.base.BaseClient
             OPERATION = "PUT";
             ENDPOINT_PATH = "/instances/" + identifier + "/release";
 
-            % Sending a put request without body/payload will display a warning.
-            % We are doing this on purpose, so suppress warning temporarily.
-            warnState = warning('off', 'MATLAB:http:BodyExpectedFor');
-            warningCleanup = onCleanup(@() warning(warnState));
-
             req = obj.initializeRequestMessage(OPERATION);
 
             % Process input parameters and build full api url
             apiURL = obj.buildApiURL(serverOptions.Server, ENDPOINT_PATH, struct.empty, optionalParams);
-            resp = obj.sendRequest(req, apiURL);
+            resp = obj.sendRequestWithoutBody(req, apiURL);
 
             if resp.StatusCode == "OK"
                 result = resp.Body.Data.data;

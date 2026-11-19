@@ -516,6 +516,26 @@ classdef InstancesClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestMethod(1, 'PUT');
             testCase.Client.verifyRequestURL(1, '/release');
         end
+
+        function testMoveInstanceIsSentWithTheBodyWarningOff(testCase)
+            % MATLAB warns when a PUT without a body is sent, which is the
+            % request the endpoint takes.
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture('MATLAB:http:BodyExpectedFor'));
+            testCase.Client.addResponse('OK', struct('data', struct('moved', true)));
+
+            testCase.Client.moveInstance(testCase.TestData.identifier, "newspace");
+
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "off");
+        end
+
+        function testReleaseInstanceIsSentWithTheBodyWarningOff(testCase)
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture('MATLAB:http:BodyExpectedFor'));
+            testCase.Client.addResponse('OK', struct('data', struct('released', true)));
+
+            testCase.Client.releaseInstance(testCase.TestData.identifier);
+
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "off");
+        end
         
         %% getReleaseStatus Tests
         function testGetReleaseStatusSuccess(testCase)

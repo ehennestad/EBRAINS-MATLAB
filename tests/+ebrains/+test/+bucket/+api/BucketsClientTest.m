@@ -39,6 +39,12 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             "renameObject", @(client) client.renameObject("my-bucket", "a/../b.txt", "new.txt"), ...
             "copyObject", @(client) client.copyObject("my-bucket", "a/../b.txt", "new.txt"), ...
             "deleteObject", @(client) client.deleteObject("my-bucket", "a/../b.txt"))
+        % Each endpoint method whose request is a PUT without a body
+        endpointCallWithoutBody = struct( ...
+            "getUploadUrl", @(client) client.getUploadUrl("my-bucket", "file.txt"), ...
+            "initiateMultipartUpload", @(client) client.initiateMultipartUpload("my-bucket", "file.bin"), ...
+            "getMultipartUploadUrl", @(client) client.getMultipartUploadUrl("my-bucket", "file.bin", "upload-1", 1), ...
+            "copyObject", @(client) client.copyObject("my-bucket", "old.txt", "new.txt"))
     end
 
     methods (TestMethodSetup)
@@ -49,6 +55,77 @@ classdef BucketsClientTest < matlab.unittest.TestCase
     end
 
     methods (Test)
+        %% createBucket
+        function testCreateBucketPostsTheBucketName(testCase)
+            % The proxy answers 201 without a body for a new bucket.
+            testCase.Client.addResponse('Created', '');
+
+            testCase.Client.createBucket("my-collab");
+
+            testCase.Client.verifyRequestMethod(1, 'POST');
+            request = testCase.Client.getRequest(1);
+            testCase.verifyEqual(string(request.URL.EncodedURI), ...
+                "https://data-proxy.ebrains.eu/api/v1/buckets");
+            payload = jsondecode(testCase.Client.getRequestPayload(1));
+            testCase.verifyEqual(payload, struct('bucket_name', 'my-collab'));
+        end
+
+        function testCreateBucketReturnsTrueForANewBucket(testCase)
+            testCase.Client.addResponse('Created', '');
+
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketReturnsFalseForAnExistingBucket(testCase)
+            % The proxy answers 204 without a body when the bucket exists.
+            testCase.Client.addResponse('NoContent', '');
+
+            wasCreated = testCase.verifyWarningFree(@() testCase.Client.createBucket("my-collab"));
+
+            testCase.verifyFalse(wasCreated);
+        end
+
+        function testCreateBucketAcceptsTheDocumentedStatus(testCase)
+            % The API spec documents 200 as the success status.
+            testCase.Client.addResponse('OK', struct());
+
+            wasCreated = testCase.Client.createBucket("my-collab");
+
+            testCase.verifyTrue(wasCreated);
+        end
+
+        function testCreateBucketDisplaysNothingWithoutAnOutput(testCase)
+            testCase.Client.addResponse('Created', '');
+            client = testCase.Client; %#ok<NASGU>
+
+            displayedText = evalc('client.createBucket("my-collab")');
+
+            testCase.verifyEmpty(displayedText);
+        end
+
+        function testCreateBucketRejectsAnEmptyName(testCase)
+            testCase.verifyError(@() testCase.Client.createBucket(""), ...
+                'MATLAB:validators:mustBeNonzeroLengthText');
+            testCase.verifyEqual(testCase.Client.getRequestCount(), 0);
+        end
+
+        function testCreateBucketForbidden(testCase)
+            % The proxy answers 403 when no collab has the name, and when
+            % the account is not a member of the collab.
+            testCase.Client.addResponse('Forbidden', struct('status_code', 403, ...
+                'detail', 'You are not granted access to the requested resource.'));
+            testCase.verifyError(@() testCase.Client.createBucket("no-such-collab"), ...
+                'EBRAINS:Bucket:createBucket:Forbidden');
+        end
+
+        function testCreateBucketValidationError(testCase)
+            testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'Validation error'));
+            testCase.verifyError(@() testCase.Client.createBucket("my-collab"), ...
+                'EBRAINS:Bucket:createBucket:UnprocessableEntity');
+        end
+
         %% getBucketStat
         function testGetBucketStatSuccess(testCase)
             bucketStat = struct('name', 'my-bucket', 'objects_count', 3, 'bytes', 1024);
@@ -385,24 +462,6 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.Client.verifyRequestURL(1, 'name=a%2Bb%26c+d.txt');
         end
 
-        function testCopyObjectRestoresTheBodyWarning(testCase)
-            % The body-less PUT turns the warning off for the request only,
-            % also when the request ends in an error.
-            warningId = 'MATLAB:http:BodyExpectedFor';
-            originalState = warning('query', warningId);
-            testCase.addTeardown(@() warning(originalState));
-            warning('on', warningId);
-            testCase.Client.addResponse('OK', struct());
-            testCase.Client.addResponse('NotFound', struct('detail', 'missing'));
-
-            testCase.Client.copyObject("my-bucket", "old.txt", "new.txt");
-            testCase.verifyEqual(warning('query', warningId).state, 'on');
-
-            testCase.verifyError(@() testCase.Client.copyObject("my-bucket", "old.txt", "new.txt"), ...
-                'EBRAINS:Bucket:copyObject:NotFound');
-            testCase.verifyEqual(warning('query', warningId).state, 'on');
-        end
-
         function testCopyObjectValidationError(testCase)
             testCase.Client.addResponse('UnprocessableEntity', struct('detail', 'invalid name'));
             testCase.verifyError(@() testCase.Client.copyObject("my-bucket", "old.txt", "new.txt"), ...
@@ -485,6 +544,19 @@ classdef BucketsClientTest < matlab.unittest.TestCase
             testCase.verifyTrue(endsWith(strjoin(request.URL.Path, "/"), "/my-bucket/" + dottedName));
         end 
         
+        %% Requests without a body
+        function testRequestWithoutBodyIsSentWithTheBodyWarningOff(testCase, endpointCallWithoutBody)
+            % MATLAB warns when a PUT without a body is sent, which is the
+            % request these endpoints take.
+            testCase.applyFixture(ebrains.test.fixtures.EnabledWarningFixture('MATLAB:http:BodyExpectedFor'));
+            testCase.Client.addResponse('OK', ...
+                struct('url', 'https://swift.example.org/up', 'uploadId', 'upload-1'));
+
+            endpointCallWithoutBody(testCase.Client);
+
+            testCase.verifyEqual(testCase.Client.getRequest(1).BodyWarningState, "off");
+        end
+
         %% Timeouts
         function testRequestsFailWhenNoDataArrivesForTheTimeout(testCase)
             % Without a DataTimeout, a request to a server that has stopped

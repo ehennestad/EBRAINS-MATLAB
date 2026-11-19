@@ -30,6 +30,10 @@ classdef MockHttpClient < ebrains.common.internal.HttpClient & ebrains.mocks.Moc
             response = obj.sendRequest(request, apiUri);
         end
 
+        function response = dispatchWithoutBody(obj, request, apiUri)
+            response = obj.sendRequestWithoutBody(request, apiUri);
+        end
+
         function exception = buildError(obj, operationName, response, options)
             arguments
                 obj (1,1) ebrains.mocks.MockHttpClient
