@@ -694,8 +694,9 @@ classdef VirtualBucketBrowser < handle
             if isCancelled
                 app.alert(app.Message, "Download cancelled", Icon="info")
             elseif any(isFailed)
-                app.alert(failureReport(files.Path(isFailed), failureMessages(isFailed), nFiles), ...
-                    "Some files were not downloaded")
+                report = ebrains.bucket.app.internal.downloadFailureReport( ...
+                    files.Path(isFailed), failureMessages(isFailed), nFiles);
+                app.alert(report, "Some files were not downloaded")
             end
         end
 
@@ -1093,21 +1094,6 @@ function text = formatBytes(bytes)
         text = sprintf("%d B", bytes);
     else
         text = sprintf("%.1f %s", bytes / 1024^exponent, units(exponent + 1));
-    end
-end
-
-function message = failureReport(failedPaths, failureMessages, nFiles)
-% failureReport - Say which files of a batch could not be downloaded, and why
-%
-%   Only the first few are named, so that the alert stays readable.
-    maxNamed = 5;
-    nFailed = numel(failedPaths);
-    nNamed = min(nFailed, maxNamed);
-    lines = compose("""%s"": %s", failedPaths(1:nNamed), failureMessages(1:nNamed));
-    message = sprintf("%d of %d files could not be downloaded:", nFailed, nFiles) + newline + newline + ...
-        join(lines, newline + newline);
-    if nFailed > nNamed
-        message = message + newline + newline + sprintf("and %d more.", nFailed - nNamed);
     end
 end
 

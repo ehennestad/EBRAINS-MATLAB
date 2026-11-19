@@ -163,6 +163,22 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.App.Files.State, ["online_only"; "downloaded"]);
         end
 
+        function testSeveralFailedDownloadsGiveOneAlert(testCase)
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder);
+            testCase.Client.addResponse('NotFound', "Object not found");
+            testCase.Client.addResponse('NotFound', "Object not found");
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifySize(testCase.Alerts, [1 2]);
+            testCase.verifyEqual(testCase.Alerts(1), "Some files were not downloaded");
+            testCase.verifySubstring(testCase.Alerts(2), "2 of 2 files could not be downloaded.");
+            testCase.verifyEqual(count(testCase.Alerts(2), "Object not found"), 1, ...
+                'A message that several files share is stated once.');
+        end
+
         function testOnlineOnlyEmptiesFileThatMatchesItsObject(testCase)
             writeFile(fullfile(testCase.Folder, "a.txt"), "abc");
             giveTimeOfListedObjects(fullfile(testCase.Folder, "a.txt"));
