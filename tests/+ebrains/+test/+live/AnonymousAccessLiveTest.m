@@ -34,6 +34,17 @@ classdef AnonymousAccessLiveTest < ebrains.test.iam.TokenClientTestCase
                 'EBRAINS:Bucket:getBucketStat:Unauthorized')
         end
 
+        function testPrivateDownloadUrlWithoutTokenIsRefused(testCase)
+            % The Data Proxy refuses the request before it looks up the
+            % object, so the object need not exist
+            client = ebrains.bucket.api.BucketsClient();
+
+            testCase.verifyError(...
+                @() client.getDownloadUrl(testCase.PrivateBucketName, "no-such-object.txt"), ...
+                'EBRAINS:Bucket:getDownloadUrl:Unauthorized')
+            testCase.verifyFalse(client.LastSentRequestHasToken)
+        end
+
         function testKgWithoutTokenIsRefused(testCase)
             client = ebrains.kg.api.InstancesClient();
             testCase.verifyError(@() client.listTypes(), ...
