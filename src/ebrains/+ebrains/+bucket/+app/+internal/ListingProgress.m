@@ -10,8 +10,9 @@ classdef ListingProgress < handle
 %
 %   progress.update(nListed) shows that nListed objects have been listed,
 %   with an estimate of the time left from the rate so far. If the user
-%   has pressed Cancel, it throws EBRAINS:Bucket:ListingCancelled, which
-%   stops the listing.
+%   has pressed Cancel, or the dialog has been deleted, as when its window
+%   is closed, it throws EBRAINS:Bucket:ListingCancelled, which stops the
+%   listing.
 
     properties (SetAccess = private)
         Dialog
@@ -33,7 +34,7 @@ classdef ListingProgress < handle
             % processes its events, which it does not do on its own
             % between the requests of a listing.
             drawnow
-            if progress.Dialog.CancelRequested
+            if ~isvalid(progress.Dialog) || progress.Dialog.CancelRequested
                 error('EBRAINS:Bucket:ListingCancelled', 'The listing of the bucket was cancelled.')
             end
 

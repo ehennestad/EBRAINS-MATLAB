@@ -751,6 +751,16 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
 
             testCase.verifyError(@() progress.update(5), 'EBRAINS:Bucket:ListingCancelled');
         end
+
+        function testDeletedDialogStopsTheListing(testCase)
+            % A window that is closed deletes the dialog it shows
+            dialog = ebrains.mocks.FakeProgressDialog([]);
+            progress = ebrains.bucket.app.internal.ListingProgress(dialog, 10, true);
+
+            delete(dialog)
+
+            testCase.verifyError(@() progress.update(5), "EBRAINS:Bucket:ListingCancelled");
+        end
     end
 
     methods (Test)
