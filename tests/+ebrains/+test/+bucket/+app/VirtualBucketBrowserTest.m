@@ -338,6 +338,24 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             testCase.verifyEqual(testCase.Alerts, ["Download cancelled", "0 of 2 files were downloaded."]);
         end
 
+        function testWindowClosedDuringATransferStopsTheBatch(testCase)
+            % The browser is deleted while its download runs, so the
+            % download has no window to report in when it returns
+            writeFile(fullfile(testCase.Folder, "a.txt"), "");
+            writeFile(fullfile(testCase.Folder, "b.txt"), "");
+            testCase.openApp(testCase.Folder, ...
+                Downloader=@(~, ~, varargin) closeWindowDuringTransfer(testCase, varargin));
+            testCase.Client.addResponse('OK', struct('url', 'https://store.example.org/download?sig=1'));
+            nRequestsBefore = testCase.Client.getRequestCount();
+
+            sendPageEvent("download", ["a.txt", "b.txt"])
+
+            testCase.verifyFalse(isvalid(testCase.App));
+            testCase.verifyEqual(testCase.Client.getRequestCount() - nRequestsBefore, 1, ...
+                "The file after the close is not requested.");
+            testCase.verifyEmpty(testCase.Alerts);
+        end
+
         function testProgressDialogIsClosedWhenTheLoginIsOffered(testCase)
             testCase.openWithTwoPlaceholders();
             testCase.Client.addResponse('Unauthorized', "You are not authenticated.");
@@ -732,6 +750,16 @@ classdef VirtualBucketBrowserTest < matlab.unittest.TestCase
             progress = ebrains.bucket.app.internal.ListingProgress(dialog, 10, true);
 
             testCase.verifyError(@() progress.update(5), 'EBRAINS:Bucket:ListingCancelled');
+        end
+
+        function testDeletedDialogStopsTheListing(testCase)
+            % A window that is closed deletes the dialog it shows
+            dialog = ebrains.mocks.FakeProgressDialog([]);
+            progress = ebrains.bucket.app.internal.ListingProgress(dialog, 10, true);
+
+            delete(dialog)
+
+            testCase.verifyError(@() progress.update(5), "EBRAINS:Bucket:ListingCancelled");
         end
     end
 
@@ -1181,6 +1209,20 @@ function pressCancelDuringTransfer(testCase, nameValues)
     testCase.ProgressDialogs(end).CancelRequested = true;
     if transferOptions.CancelRequestedFcn()
         error('webprogress:download:Cancelled', 'The download was cancelled.')
+    end
+end
+
+function closeWindowDuringTransfer(testCase, nameValues)
+% closeWindowDuringTransfer - Downloader during whose transfer the window of the browser is closed
+%
+%   Deletes the browser, as the CloseRequestFcn of its window does, and
+%   the progress dialog, which is deleted with the window it is shown in.
+%   The transfer then stops as in pressCancelDuringTransfer.
+    transferOptions = struct(nameValues{:});
+    delete(testCase.App)
+    delete(testCase.ProgressDialogs(end))
+    if transferOptions.CancelRequestedFcn()
+        error("webprogress:download:Cancelled", "The download was cancelled.")
     end
 end
 
